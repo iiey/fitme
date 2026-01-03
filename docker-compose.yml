@@ -1,0 +1,27 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: strastat-backend
+    environment:
+      # Override defaults here if needed (see backend/app/config.py).
+      - STRASTAT_DATABASE_URL=sqlite:////app/storage/strastat.db
+    volumes:
+      - ./backend/storage:/app/storage
+      - ./backend/config:/app/config
+      # Mount your Strava export here, then run an import (see README).
+      - ./sample-data:/data:ro
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: strastat-frontend
+    environment:
+      # The frontend proxies /api/* to this URL (server-side).
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
