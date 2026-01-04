@@ -1,0 +1,1 @@
+"""StraStat backend application package."""
