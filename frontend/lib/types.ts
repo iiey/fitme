@@ -1,0 +1,251 @@
+// Shared API response types, mirroring the FastAPI Pydantic schemas.
+
+export interface Meta {
+  app_name: string;
+  app_subtitle: string;
+  unit_system: "metric" | "imperial";
+  distance_unit: string;
+  elevation_unit: string;
+  sport_types: SportTypeOption[];
+  activity_count: number;
+  first_activity: string | null;
+  last_activity: string | null;
+  athlete: AthleteInfo | null;
+}
+
+export interface AthleteInfo {
+  athlete_id: string | null;
+  name: string | null;
+  location: string | null;
+  profile_url: string | null;
+}
+
+export interface ImportResult {
+  added: number;
+  updated: number;
+  skipped: number;
+  gear_upserted: number;
+  files_parsed: number;
+  parse_errors: number;
+}
+
+export interface SportTypeOption {
+  value: string;
+  label: string;
+  activity_type: string;
+}
+
+export interface ActivitySummary {
+  activity_id: string;
+  name: string;
+  start_date_time: string;
+  sport_type: string;
+  sport_label: string;
+  activity_type: string;
+  distance_km: number;
+  distance_mi: number;
+  elevation_m: number;
+  moving_time_s: number;
+  elapsed_time_s: number;
+  average_speed_kmh: number | null;
+  average_pace_s_per_km: number | null;
+  pace_unit: string;
+  average_heart_rate: number | null;
+  max_heart_rate: number | null;
+  average_power: number | null;
+  calories: number | null;
+  is_commute: boolean;
+  gear_name: string | null;
+  has_map: boolean;
+}
+
+export interface BestEffortItem {
+  distance_m: number;
+  label: string;
+  time_s: number;
+}
+
+export interface ActivityDetail extends ActivitySummary {
+  description: string | null;
+  max_speed_kmh: number | null;
+  average_cadence: number | null;
+  max_cadence: number | null;
+  max_power: number | null;
+  normalized_power: number | null;
+  device_name: string | null;
+  polyline: string | null;
+  start_latitude: number | null;
+  start_longitude: number | null;
+  streams: Record<string, (number | null)[]>;
+  best_efforts: BestEffortItem[];
+}
+
+export interface PaginatedActivities {
+  total: number;
+  limit: number;
+  offset: number;
+  items: ActivitySummary[];
+}
+
+export interface Totals {
+  count: number;
+  distance: number;
+  elevation: number;
+  moving_time_s: number;
+  calories: number;
+}
+
+export interface PeriodTotals extends Totals {
+  period: string;
+}
+
+export interface LabeledTotals extends Totals {
+  label: string;
+}
+
+export interface Dashboard {
+  empty: boolean;
+  filtered_empty?: boolean;
+  available_years?: number[];
+  unit_system: string;
+  totals: Totals;
+  recent_activities: ActivitySummary[];
+  weekly_stats: PeriodTotals[];
+  monthly_stats: PeriodTotals[];
+  yearly_stats: PeriodTotals[];
+  activity_calendar: CalendarPoint[];
+  streaks: { current: number; longest: number };
+  eddington: EddingtonSummary[];
+  weekday_stats: LabeledTotals[];
+  daytime_stats: LabeledTotals[];
+  distance_breakdown: LabeledTotals[];
+  hr_zones: { zones: number[]; window_days: number } | null;
+  peak_power: { durations: number[]; outputs: { duration_s: number; watts: number | null }[]; window_days: number } | null;
+  training_load: { date: string; load: number }[];
+  recent_milestones: Milestone[];
+  gear_stats: GearItem[];
+}
+
+export interface CalendarPoint {
+  date: string;
+  count: number;
+  distance: number;
+  moving_time_s: number;
+  training_load: number;
+}
+
+export interface EddingtonSummary {
+  activity_type: string;
+  number: number;
+  longest_day: number;
+  next: number;
+  days_to_next: number | null;
+}
+
+export interface GearItem {
+  gear_id: string;
+  name: string;
+  gear_type: string;
+  distance_km: number;
+  is_retired: boolean;
+}
+
+export interface EddingtonResult {
+  activity_type: string;
+  number: number;
+  unit: string;
+  longest_day: number;
+  times_completed: { distance: number; count: number }[];
+  days_to_next: { distance: number; days_needed: number }[];
+  history: { number: number; date: string }[];
+}
+
+export interface EddingtonResponse {
+  unit: string;
+  unit_system: string;
+  results: EddingtonResult[];
+}
+
+export interface MonthResponse {
+  year: number;
+  month: number;
+  month_name: string;
+  first_weekday: number;
+  days_in_month: number;
+  unit_system: string;
+  totals: { count: number; distance: number; elevation: number; moving_time_s: number };
+  per_sport: { sport_type: string; label: string; count: number; distance: number; moving_time_s: number }[];
+  days: MonthDay[];
+  activities: ActivitySummary[];
+}
+
+export interface MonthDay {
+  date: string;
+  day: number;
+  weekday: number;
+  count: number;
+  distance: number;
+  moving_time_s: number;
+  sport_types: string[];
+}
+
+export interface HeatmapRoute {
+  activity_id: string;
+  name: string;
+  sport_type: string;
+  activity_type: string;
+  polyline: string;
+  start_date: string;
+}
+
+export interface HeatmapResponse {
+  count: number;
+  country_count: number;
+  routes: HeatmapRoute[];
+}
+
+export interface Milestone {
+  achieved_on: string;
+  group: string;
+  title: string;
+  description: string;
+  icon: string;
+  sport_type: string | null;
+  activity_id: string | null;
+  fun_comparison: string | null;
+}
+
+export interface MilestonesResponse {
+  groups: string[];
+  total: number;
+  timeline: { year: number; milestones: Milestone[] }[];
+}
+
+export interface RewindResponse {
+  available_years: number[];
+  selected_year: number | null;
+  rewind: Rewind;
+}
+
+export interface Rewind {
+  year: number | null;
+  unit: string;
+  summary: { count: number; distance: number; elevation_m: number; moving_time_s: number };
+  totals_per_month: { month: string; distance: number; count: number; moving_time_s: number }[];
+  moving_time_per_sport: { sport_type: string; label: string; moving_time_s: number }[];
+  start_times: number[];
+  locations: { lat: number; lng: number; sport_type: string }[];
+  biggest_activity: {
+    activity_id: string;
+    name: string;
+    date: string;
+    distance: number;
+    elevation_m: number;
+    moving_time_s: number;
+    polyline: string | null;
+  } | null;
+  calories: { total: number; pizza_slices: number; bananas: number };
+  carbon_saved: { co2_kg: number; google_searches: number; plastic_bottles: number };
+  active_vs_rest: { active_days: number; rest_days: number; total_days: number };
+  longest_streak: { length: number; start: string; end: string } | null;
+}

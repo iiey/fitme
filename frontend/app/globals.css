@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f5f6f8;
+  --foreground: #1a1d21;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Leaflet marker icons are loaded from the package CSS; ensure maps fill height. */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #aad3df;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+  }
+  .card-title {
+    @apply text-sm font-semibold text-gray-500 uppercase tracking-wide;
+  }
+  .stat-value {
+    @apply text-2xl font-bold text-gray-900;
+  }
+}
