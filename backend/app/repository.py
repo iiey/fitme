@@ -69,6 +69,24 @@ def streams_for_activity(db: Session, activity_id: str) -> dict[str, list]:
     return {row.stream_type: row.data for row in rows}
 
 
+def streams_for_activities(
+    db: Session,
+    activity_ids: list[str],
+    stream_types: list[str] | None = None,
+) -> dict[str, dict[str, list]]:
+    """Batch-load streams for multiple activities, avoiding N+1 queries."""
+    if not activity_ids:
+        return {}
+    stmt = select(ActivityStream).where(ActivityStream.activity_id.in_(activity_ids))
+    if stream_types:
+        stmt = stmt.where(ActivityStream.stream_type.in_(stream_types))
+    rows = db.execute(stmt).scalars().all()
+    result: dict[str, dict[str, list]] = {}
+    for row in rows:
+        result.setdefault(row.activity_id, {})[row.stream_type] = row.data
+    return result
+
+
 def activities_with_polyline(db: Session) -> list[Activity]:
     stmt = (
         select(Activity)

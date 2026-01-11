@@ -125,9 +125,14 @@ def _hr_zones(db: Session, activities, athlete, anchor: datetime) -> dict | None
         return None
     cutoff = anchor - timedelta(days=HR_ZONES_WINDOW_DAYS)
     recent = [a for a in activities if a.start_date_time >= cutoff and a.average_heart_rate]
+    if not recent:
+        return None
+    all_streams = repository.streams_for_activities(
+        db, [a.activity_id for a in recent], stream_types=["heartrate"]
+    )
     zones = [0, 0, 0, 0, 0]
     for activity in recent:
-        streams = repository.streams_for_activity(db, activity.activity_id)
+        streams = all_streams.get(activity.activity_id, {})
         for index, seconds in enumerate(time_in_hr_zones(streams, bounds)):
             zones[index] += seconds
     if not any(zones):
@@ -144,9 +149,14 @@ def _peak_power(db: Session, activities, anchor: datetime) -> dict | None:
         and a.start_date_time >= cutoff
         and a.average_power
     ]
+    if not rides:
+        return None
+    all_streams = repository.streams_for_activities(
+        db, [a.activity_id for a in rides], stream_types=["time", "watts"]
+    )
     best: dict[int, float] = {}
     for activity in rides:
-        streams = repository.streams_for_activity(db, activity.activity_id)
+        streams = all_streams.get(activity.activity_id, {})
         for duration, watts in peak_power_outputs(streams).items():
             if watts > best.get(duration, 0):
                 best[duration] = watts
