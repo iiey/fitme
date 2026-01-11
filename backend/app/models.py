@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, Index, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
+from app.types import CompressedJSON
 
 
 class Activity(Base):
@@ -77,7 +78,7 @@ class ActivityStream(Base):
 
     activity_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     stream_type: Mapped[str] = mapped_column(String, primary_key=True)
-    data: Mapped[list] = mapped_column(JSON, default=list)
+    data: Mapped[list] = mapped_column(CompressedJSON, default=list)
     created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
