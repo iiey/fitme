@@ -1,5 +1,49 @@
 from __future__ import annotations
 
+import math
+
+
+def _perpendicular_distance(point: list[float], start: list[float], end: list[float]) -> float:
+    if start[0] == end[0] and start[1] == end[1]:
+        return math.hypot(point[0] - start[0], point[1] - start[1])
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    return abs(dy * point[0] - dx * point[1] + end[0] * start[1] - end[1] * start[0]) / math.hypot(
+        dx, dy
+    )
+
+
+def rdp_simplify(coords: list[list[float]], epsilon: float = 0.00005) -> list[list[float]]:
+    """Ramer-Douglas-Peucker polyline simplification."""
+    if len(coords) <= 2:
+        return coords
+
+    max_dist = 0.0
+    max_index = 0
+    for i in range(1, len(coords) - 1):
+        d = _perpendicular_distance(coords[i], coords[0], coords[-1])
+        if d > max_dist:
+            max_dist = d
+            max_index = i
+
+    if max_dist > epsilon:
+        left = rdp_simplify(coords[: max_index + 1], epsilon)
+        right = rdp_simplify(coords[max_index:], epsilon)
+        return left[:-1] + right
+    return [coords[0], coords[-1]]
+
+
+def simplify_to_limit(coords: list[list[float]], max_points: int) -> list[list[float]]:
+    """Simplify coordinates to fit within max_points using iterative RDP."""
+    if len(coords) <= max_points:
+        return coords
+    epsilon = 0.00005
+    result = rdp_simplify(coords, epsilon)
+    while len(result) > max_points and epsilon < 1.0:
+        epsilon *= 2
+        result = rdp_simplify(coords, epsilon)
+    return result
+
 
 def encode(coordinates: list[list[float]]) -> str:
     """Encode a list of ``[lat, lng]`` pairs as a Google encoded polyline."""

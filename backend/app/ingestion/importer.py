@@ -83,7 +83,7 @@ def _build_polyline(parsed: ParsedActivityFile) -> str | None:
     coords = parsed.latlng()
     if len(coords) < 2:
         return None
-    coords = _downsample(coords, MAX_POLYLINE_POINTS)
+    coords = polyline_codec.simplify_to_limit(coords, MAX_POLYLINE_POINTS)
     return polyline_codec.encode(coords)
 
 
