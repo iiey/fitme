@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (lint + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+
+  frontend:
+    name: Frontend (lint + typecheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx next lint
+      - run: npx tsc --noEmit
+
+  docker:
+    name: Docker build (verify images build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t strastat-backend:ci ./backend
+      - run: docker build -t strastat-frontend:ci ./frontend
