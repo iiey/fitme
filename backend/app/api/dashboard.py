@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
@@ -119,7 +120,7 @@ def _eddington_summary(activities, unit_system: str) -> list[dict]:
     return results
 
 
-def _hr_zones(db: Session, activities, athlete, anchor: datetime) -> dict | None:
+def _hr_zones(activities, athlete, anchor: datetime, all_streams: dict) -> dict | None:
     bounds = athlete.hr_zone_boundaries()
     if not bounds:
         return None
@@ -127,9 +128,6 @@ def _hr_zones(db: Session, activities, athlete, anchor: datetime) -> dict | None
     recent = [a for a in activities if a.start_date_time >= cutoff and a.average_heart_rate]
     if not recent:
         return None
-    all_streams = repository.streams_for_activities(
-        db, [a.activity_id for a in recent], stream_types=["heartrate"]
-    )
     zones = [0, 0, 0, 0, 0]
     for activity in recent:
         streams = all_streams.get(activity.activity_id, {})
@@ -140,7 +138,7 @@ def _hr_zones(db: Session, activities, athlete, anchor: datetime) -> dict | None
     return {"zones": zones, "window_days": HR_ZONES_WINDOW_DAYS}
 
 
-def _peak_power(db: Session, activities, anchor: datetime) -> dict | None:
+def _peak_power(activities, anchor: datetime, all_streams: dict) -> dict | None:
     cutoff = anchor - timedelta(days=PEAK_POWER_WINDOW_DAYS)
     rides = [
         a
@@ -151,9 +149,6 @@ def _peak_power(db: Session, activities, anchor: datetime) -> dict | None:
     ]
     if not rides:
         return None
-    all_streams = repository.streams_for_activities(
-        db, [a.activity_id for a in rides], stream_types=["time", "watts"]
-    )
     best: dict[int, float] = {}
     for activity in rides:
         streams = all_streams.get(activity.activity_id, {})
@@ -206,12 +201,53 @@ def get_dashboard(
         }
 
     recent_sorted = sorted(activities, key=lambda a: a.start_date_time, reverse=True)
-    # Anchor rolling windows on the most recent activity so that an imported
-    # historical export still shows meaningful "recent" widgets.
     anchor = recent_sorted[0].start_date_time
+
+    # ── Pre-fetch all DB data before parallel section ──
     best_efforts = list(db.execute(select(BestEffort)).scalars().all())
-    milestones = discover_milestones(activities, best_efforts, unit_system)
-    longest_streak = stats.longest_daily_streak(activities)
+    activity_ids = [a.activity_id for a in activities]
+    all_streams = repository.streams_for_activities(
+        db, activity_ids, stream_types=["heartrate", "time", "watts"]
+    )
+    gear = repository.list_gear(db)
+
+    # ── Run CPU-bound computations in parallel ──
+    results: dict[str, object] = {}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(_weekly_stats, activities, unit_system): "weekly_stats",
+            pool.submit(_monthly_stats, activities, unit_system): "monthly_stats",
+            pool.submit(_yearly_stats, activities, unit_system): "yearly_stats",
+            pool.submit(
+                _activity_calendar, activities, athlete, unit_system, anchor
+            ): "activity_calendar",
+            pool.submit(_eddington_summary, activities, unit_system): "eddington",
+            pool.submit(
+                _distribution_payload,
+                stats.weekday_distribution(activities),
+                unit_system,
+            ): "weekday_stats",
+            pool.submit(
+                _distribution_payload,
+                stats.daytime_distribution(activities),
+                unit_system,
+            ): "daytime_stats",
+            pool.submit(
+                _distribution_payload,
+                stats.distance_breakdown(activities),
+                unit_system,
+            ): "distance_breakdown",
+            pool.submit(_hr_zones, activities, athlete, anchor, all_streams): "hr_zones",
+            pool.submit(_peak_power, activities, anchor, all_streams): "peak_power",
+            pool.submit(_training_load, activities, athlete, anchor): "training_load",
+            pool.submit(discover_milestones, activities, best_efforts, unit_system): "milestones",
+            pool.submit(stats.longest_daily_streak, activities): "longest_streak",
+        }
+        for future in as_completed(futures):
+            results[futures[future]] = future.result()
+
+    longest_streak = results["longest_streak"]
+    milestones = results["milestones"]
 
     return {
         "empty": False,
@@ -223,23 +259,21 @@ def get_dashboard(
             serialize_activity_summary(a).model_dump()
             for a in recent_sorted[:RECENT_ACTIVITY_COUNT]
         ],
-        "weekly_stats": _weekly_stats(activities, unit_system),
-        "monthly_stats": _monthly_stats(activities, unit_system),
-        "yearly_stats": _yearly_stats(activities, unit_system),
-        "activity_calendar": _activity_calendar(activities, athlete, unit_system, anchor),
+        "weekly_stats": results["weekly_stats"],
+        "monthly_stats": results["monthly_stats"],
+        "yearly_stats": results["yearly_stats"],
+        "activity_calendar": results["activity_calendar"],
         "streaks": {
             "current": stats.current_daily_streak(activities, anchor.date()),
             "longest": longest_streak.length if longest_streak else 0,
         },
-        "eddington": _eddington_summary(activities, unit_system),
-        "weekday_stats": _distribution_payload(stats.weekday_distribution(activities), unit_system),
-        "daytime_stats": _distribution_payload(stats.daytime_distribution(activities), unit_system),
-        "distance_breakdown": _distribution_payload(
-            stats.distance_breakdown(activities), unit_system
-        ),
-        "hr_zones": _hr_zones(db, activities, athlete, anchor),
-        "peak_power": _peak_power(db, activities, anchor),
-        "training_load": _training_load(activities, athlete, anchor),
+        "eddington": results["eddington"],
+        "weekday_stats": results["weekday_stats"],
+        "daytime_stats": results["daytime_stats"],
+        "distance_breakdown": results["distance_breakdown"],
+        "hr_zones": results["hr_zones"],
+        "peak_power": results["peak_power"],
+        "training_load": results["training_load"],
         "recent_milestones": [m.as_dict() for m in milestones[:RECENT_ACTIVITY_COUNT]],
-        "gear_stats": [serialize_gear(g).model_dump() for g in repository.list_gear(db)],
+        "gear_stats": [serialize_gear(g).model_dump() for g in gear],
     }
