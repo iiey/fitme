@@ -1,4 +1,5 @@
 import useSWR from "swr";
+import type { ZodType } from "zod";
 
 import type {
   ActivityDetail,
@@ -12,12 +13,30 @@ import type {
   PaginatedActivities,
   RewindResponse,
 } from "./types";
+import {
+  ActivityDetailSchema,
+  DashboardSchema,
+  ImportResultSchema,
+  MetaSchema,
+  PaginatedActivitiesSchema,
+} from "./schemas";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
     this.name = "ApiError";
   }
+}
+
+function validated<T>(schema: ZodType) {
+  return async (url: string): Promise<T> => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new ApiError(response.status, `Request failed: ${response.status}`);
+    }
+    const json = await response.json();
+    return schema.parse(json) as T;
+  };
 }
 
 export async function fetcher<T>(url: string): Promise<T> {
@@ -43,7 +62,7 @@ function buildQuery(params: Record<string, unknown>): string {
 }
 
 export function useMeta() {
-  return useSWR<Meta>("/api/meta", fetcher);
+  return useSWR<Meta>("/api/meta", validated(MetaSchema));
 }
 
 export interface DashboardFilters {
@@ -54,7 +73,7 @@ export interface DashboardFilters {
 
 export function useDashboard(filters: DashboardFilters = {}) {
   const query = buildQuery(filters as Record<string, unknown>);
-  return useSWR<Dashboard>(`/api/dashboard${query}`, fetcher, {
+  return useSWR<Dashboard>(`/api/dashboard${query}`, validated(DashboardSchema), {
     keepPreviousData: true,
   });
 }
@@ -73,7 +92,7 @@ export interface ActivityFilters {
 
 export function useActivities(filters: ActivityFilters) {
   const query = buildQuery(filters as Record<string, unknown>);
-  return useSWR<PaginatedActivities>(`/api/activities${query}`, fetcher, {
+  return useSWR<PaginatedActivities>(`/api/activities${query}`, validated(PaginatedActivitiesSchema), {
     keepPreviousData: true,
   });
 }
@@ -81,7 +100,7 @@ export function useActivities(filters: ActivityFilters) {
 export function useActivity(activityId: string | null) {
   return useSWR<ActivityDetail>(
     activityId ? `/api/activities/${activityId}` : null,
-    fetcher,
+    validated(ActivityDetailSchema),
   );
 }
 
@@ -116,7 +135,7 @@ export async function uploadExport(file: File): Promise<ImportResult> {
     const detail = await response.text();
     throw new ApiError(response.status, detail || "Upload failed");
   }
-  return response.json() as Promise<ImportResult>;
+  return ImportResultSchema.parse(await response.json());
 }
 
 export async function importFromPath(source: string): Promise<ImportResult> {
@@ -129,5 +148,5 @@ export async function importFromPath(source: string): Promise<ImportResult> {
     const detail = await response.text();
     throw new ApiError(response.status, detail || "Import failed");
   }
-  return response.json() as Promise<ImportResult>;
+  return ImportResultSchema.parse(await response.json());
 }

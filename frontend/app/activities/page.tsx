@@ -51,7 +51,7 @@ export default function ActivitiesPage() {
     search: search || undefined,
     sport_type: sportTypes.length ? sportTypes : undefined,
     sort,
-    order,
+    order: order as "asc" | "desc",
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   });
@@ -179,7 +179,7 @@ export default function ActivitiesPage() {
             columns={columns}
             rows={data?.items ?? []}
             sort={sort}
-            order={order}
+            order={order as "asc" | "desc"}
             onSort={toggleSort}
             getRowKey={(row) => row.activity_id}
           />
