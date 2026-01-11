@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from datetime import date
+from functools import lru_cache
 
 
 @dataclass
@@ -66,10 +68,14 @@ def _eddington_history(distances_per_day: dict[date, float], number: int) -> dic
     return dict(sorted(history.items()))
 
 
-def compute_eddington(distances_per_day: dict[date, float], unit: str = "km") -> EddingtonResult:
-    if not distances_per_day:
-        return EddingtonResult(unit=unit)
+def _cache_key(distances_per_day: dict[date, float]) -> str:
+    raw = "|".join(f"{d.isoformat()}:{v:.2f}" for d, v in sorted(distances_per_day.items()))
+    return hashlib.md5(raw.encode()).hexdigest()
 
+
+@lru_cache(maxsize=64)
+def _compute_cached(cache_key: str, distances_tuple: tuple, unit: str) -> EddingtonResult:
+    distances_per_day = dict(distances_tuple)
     times_completed = _times_completed(distances_per_day)
     number = _eddington_number(times_completed)
     longest_day = int(max(distances_per_day.values()))
@@ -88,3 +94,11 @@ def compute_eddington(distances_per_day: dict[date, float], unit: str = "km") ->
         days_to_next=days_to_next,
         history=history,
     )
+
+
+def compute_eddington(distances_per_day: dict[date, float], unit: str = "km") -> EddingtonResult:
+    if not distances_per_day:
+        return EddingtonResult(unit=unit)
+    key = _cache_key(distances_per_day)
+    as_tuple = tuple(sorted(distances_per_day.items()))
+    return _compute_cached(key, as_tuple, unit)
