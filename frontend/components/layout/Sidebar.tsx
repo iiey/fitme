@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { ImportDialog } from "@/components/import/ImportDialog";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useMeta } from "@/lib/api";
 import type { AthleteInfo } from "@/lib/types";
 
@@ -25,7 +26,7 @@ export function Sidebar() {
   const [importOpen, setImportOpen] = useState(false);
 
   return (
-    <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-gray-200 bg-white lg:flex">
+    <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 lg:flex">
       <div className="flex items-center gap-2 px-6 py-5">
         <span className="text-2xl">🏃</span>
         <span className="text-xl font-bold tracking-tight">
@@ -44,7 +45,7 @@ export function Sidebar() {
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 active
                   ? "bg-brand/10 text-brand"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200",
               )}
             >
               <span className="text-lg">{item.icon}</span>
@@ -53,7 +54,7 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="space-y-2 border-t border-gray-200 p-3">
+      <div className="space-y-2 border-t border-gray-200 p-3 dark:border-gray-700">
         <button
           onClick={() => setImportOpen(true)}
           className="flex w-full items-center gap-3 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-dark"
@@ -61,7 +62,10 @@ export function Sidebar() {
           <span className="text-lg">⬆️</span>
           Import data
         </button>
-        <AthleteButton athlete={meta?.athlete ?? null} />
+        <div className="flex items-center justify-between">
+          <AthleteButton athlete={meta?.athlete ?? null} />
+          <ThemeToggle />
+        </div>
       </div>
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
     </aside>
@@ -86,7 +90,7 @@ function AthleteButton({ athlete }: { athlete: AthleteInfo | null }) {
         {initials}
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-sm font-medium text-gray-900">{athlete.name}</span>
+        <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-200">{athlete.name}</span>
         {athlete.location && (
           <span className="block truncate text-xs text-gray-400">{athlete.location}</span>
         )}
@@ -102,7 +106,7 @@ function AthleteButton({ athlete }: { athlete: AthleteInfo | null }) {
         target="_blank"
         rel="noopener noreferrer"
         title="Open Strava profile"
-        className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-gray-100"
+        className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
       >
         {content}
       </a>

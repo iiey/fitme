@@ -6,17 +6,17 @@ const config: Config = {
     "./components/**/*.{ts,tsx}",
     "./lib/**/*.{ts,tsx}",
   ],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        // Strava-inspired accent.
         brand: {
           DEFAULT: "#fc4c02",
           dark: "#d63e00",
         },
         surface: {
-          DEFAULT: "#ffffff",
-          muted: "#f5f6f8",
+          DEFAULT: "var(--surface)",
+          muted: "var(--surface-muted)",
         },
       },
     },

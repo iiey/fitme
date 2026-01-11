@@ -5,6 +5,15 @@
 :root {
   --background: #f5f6f8;
   --foreground: #1a1d21;
+  --surface: #ffffff;
+  --surface-muted: #f5f6f8;
+}
+
+.dark {
+  --background: #111318;
+  --foreground: #e4e6ea;
+  --surface: #1c1e24;
+  --surface-muted: #16181d;
 }
 
 html,
@@ -13,7 +22,6 @@ body {
   color: var(--foreground);
 }
 
-/* Leaflet marker icons are loaded from the package CSS; ensure maps fill height. */
 .leaflet-container {
   height: 100%;
   width: 100%;
@@ -22,12 +30,12 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-xl border border-gray-200 bg-white shadow-sm;
+    @apply rounded-xl border border-gray-200 bg-surface shadow-sm dark:border-gray-700;
   }
   .card-title {
-    @apply text-sm font-semibold text-gray-500 uppercase tracking-wide;
+    @apply text-sm font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400;
   }
   .stat-value {
-    @apply text-2xl font-bold text-gray-900;
+    @apply text-2xl font-bold text-gray-900 dark:text-gray-100;
   }
 }
