@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -8,10 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import get_db
+from app.db import SessionLocal, get_db
 from app.ingestion.importer import import_export
 from app.models import ImportRun
-from app.schemas import ImportRequest, ImportResult
+from app.schemas import ImportRequest
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 
@@ -20,22 +21,44 @@ _ALLOWED_UPLOAD_SUFFIXES = {".zip"}
 # Guard against unbounded uploads (default 500 MB).
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 
+_import_lock = threading.Lock()
 
-@router.post("", response_model=ImportResult)
-def run_import(payload: ImportRequest, db: Session = Depends(get_db)) -> ImportResult:
+
+def _run_import_in_background(source: str | Path, *, force: bool = False) -> None:
+    db = SessionLocal()
     try:
-        summary = import_export(db, payload.source, force=payload.force)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return ImportResult(**summary.as_dict())
+        import_export(db, source, force=force)
+    except Exception:
+        import logging
+
+        logging.getLogger("strastat.import").exception("Background import failed")
+    finally:
+        db.close()
 
 
-@router.post("/upload", response_model=ImportResult)
+@router.post("")
+def run_import(payload: ImportRequest, db: Session = Depends(get_db)) -> dict:
+    if not _import_lock.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="An import is already running.")
+    try:
+        thread = threading.Thread(
+            target=_background_import_wrapper,
+            args=(payload.source,),
+            kwargs={"force": payload.force},
+            daemon=True,
+        )
+        thread.start()
+    except Exception:
+        _import_lock.release()
+        raise
+    return {"status": "started", "message": "Import running in the background."}
+
+
+@router.post("/upload")
 def upload_import(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-) -> ImportResult:
-    """Accept a Strava export ``.zip`` upload, store it and import it."""
+) -> dict:
+    """Accept a Strava export ``.zip`` upload, store it and import in the background."""
     filename = file.filename or "export.zip"
     suffix = Path(filename).suffix.lower()
     if suffix not in _ALLOWED_UPLOAD_SUFFIXES:
@@ -59,13 +82,26 @@ def upload_import(
     finally:
         file.file.close()
 
-    try:
-        summary = import_export(db, target)
-    except (FileNotFoundError, ValueError) as exc:
+    if not _import_lock.acquire(blocking=False):
         target.unlink(missing_ok=True)
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=409, detail="An import is already running.")
 
-    return ImportResult(**summary.as_dict())
+    try:
+        thread = threading.Thread(target=_background_import_wrapper, args=(target,), daemon=True)
+        thread.start()
+    except Exception:
+        _import_lock.release()
+        target.unlink(missing_ok=True)
+        raise
+
+    return {"status": "started", "message": "Import running in the background."}
+
+
+def _background_import_wrapper(source: str | Path, *, force: bool = False) -> None:
+    try:
+        _run_import_in_background(source, force=force)
+    finally:
+        _import_lock.release()
 
 
 @router.get("/runs")
