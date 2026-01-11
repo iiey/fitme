@@ -176,21 +176,6 @@ def _training_load(activities, athlete, anchor: datetime) -> list[dict]:
     return [{"date": day.isoformat(), "load": load} for day, load in sorted(load_by_day.items())]
 
 
-def _apply_dashboard_filters(activities, sport_type, start, end):
-    """Filter the activity set by sport type and an inclusive date range."""
-    sport_set = set(sport_type) if sport_type else None
-    result = []
-    for activity in activities:
-        if sport_set and activity.sport_type not in sport_set:
-            continue
-        if start and activity.start_date_time < start:
-            continue
-        if end and activity.start_date_time > end:
-            continue
-        result.append(activity)
-    return result
-
-
 @router.get("")
 def get_dashboard(
     db: Session = Depends(get_db),
@@ -200,15 +185,18 @@ def get_dashboard(
 ) -> dict:
     athlete = get_athlete()
     unit_system = athlete.unit_system
-    all_activities = repository.all_activities(db)
 
-    if not all_activities:
+    available_years = repository.distinct_years(db)
+    if not available_years:
         return {"empty": True, "unit_system": unit_system, "available_years": []}
 
-    # Available years come from the full set so the selector stays stable.
-    available_years = sorted({a.start_date_time.year for a in all_activities}, reverse=True)
-
-    activities = _apply_dashboard_filters(all_activities, sport_type, start, end)
+    activities = repository.list_activities(
+        db,
+        sport_types=sport_type,
+        start=start,
+        end=end,
+        descending=False,
+    )
     if not activities:
         return {
             "empty": False,

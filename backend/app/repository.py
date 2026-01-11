@@ -110,6 +110,19 @@ def distinct_sport_types(db: Session) -> list[str]:
     return sorted(rows)
 
 
+def distinct_years(db: Session) -> list[int]:
+    rows = (
+        db.execute(
+            select(func.distinct(func.strftime("%Y", Activity.start_date_time))).order_by(
+                func.strftime("%Y", Activity.start_date_time).desc()
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [int(y) for y in rows if y]
+
+
 def date_range(db: Session) -> tuple[datetime | None, datetime | None]:
     row = db.execute(
         select(func.min(Activity.start_date_time), func.max(Activity.start_date_time))
