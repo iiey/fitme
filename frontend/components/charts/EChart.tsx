@@ -2,9 +2,11 @@
 
 import dynamic from "next/dynamic";
 import type { EChartsOption } from "echarts";
+import echarts from "@/lib/echarts";
 
-// echarts-for-react touches the DOM, so it must only render on the client.
-const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+const ReactECharts = dynamic(() => import("echarts-for-react/lib/core"), {
+  ssr: false,
+});
 
 export function EChart({
   option,
@@ -15,6 +17,7 @@ export function EChart({
 }) {
   return (
     <ReactECharts
+      echarts={echarts}
       option={option}
       style={{ height }}
       notMerge
