@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Column, DataTable } from "@/components/ui/DataTable";
 import { ErrorState, Spinner } from "@/components/ui/States";
@@ -11,13 +12,40 @@ import type { ActivitySummary } from "@/lib/types";
 
 const PAGE_SIZE = 25;
 
+function useUrlState(key: string, fallback: string) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const value = searchParams.get(key) ?? fallback;
+
+  const setValue = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === fallback) {
+        params.delete(key);
+      } else {
+        params.set(key, next);
+      }
+      const qs = params.toString();
+      router.replace(qs ? `?${qs}` : "?", { scroll: false });
+    },
+    [key, fallback, searchParams, router],
+  );
+
+  return [value, setValue] as const;
+}
+
 export default function ActivitiesPage() {
   const { data: meta } = useMeta();
-  const [search, setSearch] = useState("");
-  const [sportTypes, setSportTypes] = useState<string[]>([]);
-  const [sort, setSort] = useState("start_date_time");
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
-  const [page, setPage] = useState(0);
+  const searchParams = useSearchParams();
+
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [sportFilter, setSportFilter] = useUrlState("sport", "");
+  const [sort, setSort] = useUrlState("sort", "start_date_time");
+  const [order, setOrder] = useUrlState("order", "desc");
+  const [pageStr, setPageStr] = useUrlState("page", "0");
+
+  const sportTypes = sportFilter ? [sportFilter] : [];
+  const page = Math.max(0, parseInt(pageStr, 10) || 0);
 
   const { data, error, isLoading } = useActivities({
     search: search || undefined,
@@ -37,7 +65,7 @@ export default function ActivitiesPage() {
       setSort(key);
       setOrder("desc");
     }
-    setPage(0);
+    setPageStr("0");
   };
 
   const columns: Column<ActivitySummary>[] = [
@@ -119,17 +147,16 @@ export default function ActivitiesPage() {
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
-            setPage(0);
+            setPageStr("0");
           }}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none md:max-w-md"
         />
         <select
           multiple={false}
-          value={sportTypes[0] ?? ""}
+          value={sportFilter}
           onChange={(event) => {
-            const value = event.target.value;
-            setSportTypes(value ? [value] : []);
-            setPage(0);
+            setSportFilter(event.target.value);
+            setPageStr("0");
           }}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
         >
@@ -164,7 +191,7 @@ export default function ActivitiesPage() {
           <button
             className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40"
             disabled={page === 0}
-            onClick={() => setPage((value) => Math.max(0, value - 1))}
+            onClick={() => setPageStr(String(Math.max(0, page - 1)))}
           >
             Previous
           </button>
@@ -174,7 +201,7 @@ export default function ActivitiesPage() {
           <button
             className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40"
             disabled={page >= totalPages - 1}
-            onClick={() => setPage((value) => value + 1)}
+            onClick={() => setPageStr(String(page + 1))}
           >
             Next
           </button>
