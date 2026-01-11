@@ -3,8 +3,10 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from app.config import settings
 from app.db import init_db
@@ -19,6 +21,29 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_CACHEABLE_PREFIXES = (
+    "/api/dashboard",
+    "/api/eddington",
+    "/api/milestones",
+    "/api/rewind",
+    "/api/heatmap",
+    "/api/calendar",
+)
+_CACHE_MAX_AGE = 300
+
+
+class CacheControlMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        if (
+            request.method == "GET"
+            and response.status_code == 200
+            and request.url.path.startswith(_CACHEABLE_PREFIXES)
+        ):
+            response.headers.setdefault("Cache-Control", f"public, max-age={_CACHE_MAX_AGE}")
+        return response
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
@@ -27,6 +52,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.add_middleware(CacheControlMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
