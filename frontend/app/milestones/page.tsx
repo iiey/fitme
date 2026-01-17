@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States";
 import { useMilestones } from "@/lib/api";
+import { useAthleteContext } from "@/lib/athlete-context";
 import { formatDate } from "@/lib/format";
 
 const GROUP_ICONS: Record<string, string> = {
@@ -20,7 +21,8 @@ const GROUP_ICONS: Record<string, string> = {
 };
 
 export default function MilestonesPage() {
-  const { data, error, isLoading } = useMilestones();
+  const { athleteId } = useAthleteContext();
+  const { data, error, isLoading } = useMilestones(athleteId);
   const [activeGroup, setActiveGroup] = useState<string>("All");
 
   const filteredTimeline = useMemo(() => {

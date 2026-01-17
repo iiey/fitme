@@ -8,11 +8,13 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States";
 import { useEddington } from "@/lib/api";
+import { useAthleteContext } from "@/lib/athlete-context";
 import { formatNumber } from "@/lib/format";
 import type { EddingtonResult } from "@/lib/types";
 
 export default function EddingtonPage() {
-  const { data, error, isLoading } = useEddington();
+  const { athleteId } = useAthleteContext();
+  const { data, error, isLoading } = useEddington(athleteId);
   const [activeTab, setActiveTab] = useState(0);
 
   if (isLoading) return <Spinner label="Computing Eddington numbers…" />;

@@ -1,5 +1,13 @@
 // Shared API response types, mirroring the FastAPI Pydantic schemas.
 
+export interface AthleteListItem {
+  athlete_id: string;
+  name: string | null;
+  location: string | null;
+  activity_count: number;
+  profile_url: string | null;
+}
+
 export interface Meta {
   app_name: string;
   app_subtitle: string;
@@ -11,6 +19,7 @@ export interface Meta {
   first_activity: string | null;
   last_activity: string | null;
   athlete: AthleteInfo | null;
+  athletes: AthleteListItem[];
 }
 
 export interface AthleteInfo {

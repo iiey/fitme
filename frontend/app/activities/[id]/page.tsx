@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { ErrorState, Spinner } from "@/components/ui/States";
 import { useActivity, useMeta } from "@/lib/api";
+import { useAthleteContext } from "@/lib/athlete-context";
 import { colorForActivityType, formatDate, formatDuration, formatNumber } from "@/lib/format";
 import type { ActivityDetail } from "@/lib/types";
 
@@ -48,8 +49,9 @@ export default function ActivityDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { data: activity, error, isLoading } = useActivity(id);
-  const { data: meta } = useMeta();
+  const { athleteId } = useAthleteContext();
+  const { data: activity, error, isLoading } = useActivity(athleteId, id);
+  const { data: meta } = useMeta(athleteId);
 
   if (isLoading) return <Spinner label="Loading activity…" />;
   if (error || !activity) return <ErrorState message="Activity not found." />;

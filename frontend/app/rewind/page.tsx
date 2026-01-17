@@ -8,13 +8,15 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States";
 import { useRewind } from "@/lib/api";
+import { useAthleteContext } from "@/lib/athlete-context";
 import { formatDuration, formatHours, formatNumber } from "@/lib/format";
 
 export default function RewindPage() {
+  const { athleteId } = useAthleteContext();
   const [filter, setFilter] = useState<string>("");
   const year = filter && filter !== "last365" ? Number(filter) : null;
   const days = filter === "last365" ? 365 : null;
-  const { data, error, isLoading } = useRewind(year, days);
+  const { data, error, isLoading } = useRewind(athleteId, year, days);
 
   if (isLoading && !data) return <Spinner label="Rewinding your year…" />;
   if (error) return <ErrorState />;

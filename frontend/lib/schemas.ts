@@ -7,6 +7,14 @@ export const AthleteInfoSchema = z.object({
   profile_url: z.string().nullable(),
 });
 
+export const AthleteListItemSchema = z.object({
+  athlete_id: z.string(),
+  name: z.string().nullable(),
+  location: z.string().nullable(),
+  activity_count: z.number(),
+  profile_url: z.string().nullable(),
+});
+
 export const SportTypeOptionSchema = z.object({
   value: z.string(),
   label: z.string(),
@@ -24,6 +32,7 @@ export const MetaSchema = z.object({
   first_activity: z.string().nullable(),
   last_activity: z.string().nullable(),
   athlete: AthleteInfoSchema.nullable(),
+  athletes: z.array(AthleteListItemSchema).default([]),
 });
 
 export const TotalsSchema = z.object({

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { ErrorState, Spinner } from "@/components/ui/States";
 import { useMeta, useMonth } from "@/lib/api";
+import { useAthleteContext } from "@/lib/athlete-context";
 import { colorForSportType, formatHours, formatNumber } from "@/lib/format";
 import type { MonthDay } from "@/lib/types";
 
@@ -14,7 +15,8 @@ const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const now = new Date();
 
 export default function CalendarPage() {
-  const { data: meta } = useMeta();
+  const { athleteId } = useAthleteContext();
+  const { data: meta } = useMeta(athleteId);
   // Default to the month of the most recent activity (the export may be historical).
   const [current, setCurrent] = useState<{ year: number; month: number } | null>(null);
   const [initialised, setInitialised] = useState(false);
@@ -33,7 +35,7 @@ export default function CalendarPage() {
 
   const year = current?.year ?? now.getFullYear();
   const month = current?.month ?? now.getMonth() + 1;
-  const { data, error, isLoading } = useMonth(year, month);
+  const { data, error, isLoading } = useMonth(athleteId, year, month);
 
   const goPrev = () => {
     setCurrent(

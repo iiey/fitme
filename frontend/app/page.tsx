@@ -12,10 +12,12 @@ import { DeferredSection } from "@/components/ui/DeferredSection";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States";
 import { useDashboard, useMeta } from "@/lib/api";
+import { useAthleteContext } from "@/lib/athlete-context";
 import { formatDate, formatHours, formatNumber } from "@/lib/format";
 
 export default function DashboardPage() {
-  const { data: meta } = useMeta();
+  const { athleteId } = useAthleteContext();
+  const { data: meta } = useMeta(athleteId);
   const [importOpen, setImportOpen] = useState(false);
   const [sportType, setSportType] = useState("");
   const [year, setYear] = useState("");
@@ -28,7 +30,7 @@ export default function DashboardPage() {
     }),
     [sportType, year],
   );
-  const { data, error, isLoading } = useDashboard(filters);
+  const { data, error, isLoading } = useDashboard(athleteId, filters);
 
   const distanceUnit = meta?.distance_unit ?? "km";
   const availableYears = data?.available_years ?? [];

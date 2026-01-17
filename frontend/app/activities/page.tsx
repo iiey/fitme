@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Column, DataTable } from "@/components/ui/DataTable";
 import { ErrorState, Spinner } from "@/components/ui/States";
 import { useActivities, useMeta } from "@/lib/api";
+import { useAthleteContext } from "@/lib/athlete-context";
 import { formatActivityPace, formatDate, formatDuration, formatNumber } from "@/lib/format";
 import type { ActivitySummary } from "@/lib/types";
 
@@ -35,7 +36,8 @@ function useUrlState(key: string, fallback: string) {
 }
 
 export default function ActivitiesPage() {
-  const { data: meta } = useMeta();
+  const { athleteId } = useAthleteContext();
+  const { data: meta } = useMeta(athleteId);
   const searchParams = useSearchParams();
 
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
@@ -47,7 +49,7 @@ export default function ActivitiesPage() {
   const sportTypes = sportFilter ? [sportFilter] : [];
   const page = Math.max(0, parseInt(pageStr, 10) || 0);
 
-  const { data, error, isLoading } = useActivities({
+  const { data, error, isLoading } = useActivities(athleteId, {
     search: search || undefined,
     sport_type: sportTypes.length ? sportTypes : undefined,
     sort,

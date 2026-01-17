@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { ErrorState, Spinner } from "@/components/ui/States";
 import { useHeatmap, useMeta } from "@/lib/api";
+import { useAthleteContext } from "@/lib/athlete-context";
 import { formatNumber } from "@/lib/format";
 
 const HeatmapView = dynamic(() => import("@/components/map/HeatmapView"), {
@@ -13,11 +14,12 @@ const HeatmapView = dynamic(() => import("@/components/map/HeatmapView"), {
 });
 
 export default function HeatmapPage() {
-  const { data: meta } = useMeta();
+  const { athleteId } = useAthleteContext();
+  const { data: meta } = useMeta(athleteId);
   const [sportType, setSportType] = useState<string>("");
   const [commute, setCommute] = useState<string>("");
 
-  const { data, error, isLoading } = useHeatmap({
+  const { data, error, isLoading } = useHeatmap(athleteId, {
     sport_type: sportType ? [sportType] : undefined,
     commute: commute === "" ? undefined : commute === "true",
   });
