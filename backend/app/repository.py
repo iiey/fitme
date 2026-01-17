@@ -10,6 +10,7 @@ from app.models import Activity, ActivityStream, BestEffort, Gear
 
 def list_activities(
     db: Session,
+    athlete_id: str,
     *,
     sport_types: list[str] | None = None,
     activity_types: list[str] | None = None,
@@ -22,7 +23,7 @@ def list_activities(
     limit: int | None = None,
     offset: int | None = None,
 ) -> list[Activity]:
-    stmt = select(Activity)
+    stmt = select(Activity).where(Activity.athlete_id == athlete_id)
     stmt = _apply_filters(stmt, sport_types, activity_types, start, end, search, name_terms)
 
     sort_column = getattr(Activity, order_by, Activity.start_date_time)
@@ -37,6 +38,7 @@ def list_activities(
 
 def count_activities(
     db: Session,
+    athlete_id: str,
     *,
     sport_types: list[str] | None = None,
     activity_types: list[str] | None = None,
@@ -45,19 +47,28 @@ def count_activities(
     search: str | None = None,
     name_terms: list[str] | None = None,
 ) -> int:
-    stmt = select(func.count()).select_from(Activity)
+    stmt = select(func.count()).select_from(Activity).where(Activity.athlete_id == athlete_id)
     stmt = _apply_filters(stmt, sport_types, activity_types, start, end, search, name_terms)
     return db.execute(stmt).scalar_one()
 
 
-def all_activities(db: Session) -> list[Activity]:
+def all_activities(db: Session, athlete_id: str) -> list[Activity]:
     return list(
-        db.execute(select(Activity).order_by(Activity.start_date_time.asc())).scalars().all()
+        db.execute(
+            select(Activity)
+            .where(Activity.athlete_id == athlete_id)
+            .order_by(Activity.start_date_time.asc())
+        )
+        .scalars()
+        .all()
     )
 
 
-def get_activity(db: Session, activity_id: str) -> Activity | None:
-    return db.get(Activity, activity_id)
+def get_activity(db: Session, athlete_id: str, activity_id: str) -> Activity | None:
+    activity = db.get(Activity, activity_id)
+    if activity is not None and activity.athlete_id != athlete_id:
+        return None
+    return activity
 
 
 def streams_for_activity(db: Session, activity_id: str) -> dict[str, list]:
@@ -87,35 +98,51 @@ def streams_for_activities(
     return result
 
 
-def activities_with_polyline(db: Session) -> list[Activity]:
+def activities_with_polyline(db: Session, athlete_id: str) -> list[Activity]:
     stmt = (
         select(Activity)
-        .where(Activity.polyline.is_not(None))
+        .where(Activity.athlete_id == athlete_id, Activity.polyline.is_not(None))
         .order_by(Activity.start_date_time.asc())
     )
     return list(db.execute(stmt).scalars().all())
 
 
-def best_efforts_for_activity_types(db: Session, activity_type: str) -> list[BestEffort]:
-    stmt = select(BestEffort).where(BestEffort.activity_type == activity_type)
+def best_efforts_for_activity_types(
+    db: Session, athlete_id: str, activity_type: str
+) -> list[BestEffort]:
+    stmt = (
+        select(BestEffort)
+        .join(Activity, BestEffort.activity_id == Activity.activity_id)
+        .where(Activity.athlete_id == athlete_id, BestEffort.activity_type == activity_type)
+    )
     return list(db.execute(stmt).scalars().all())
 
 
-def list_gear(db: Session) -> list[Gear]:
-    return list(db.execute(select(Gear).order_by(Gear.distance_m.desc())).scalars().all())
+def list_gear(db: Session, athlete_id: str) -> list[Gear]:
+    return list(
+        db.execute(
+            select(Gear).where(Gear.athlete_id == athlete_id).order_by(Gear.distance_m.desc())
+        )
+        .scalars()
+        .all()
+    )
 
 
-def distinct_sport_types(db: Session) -> list[str]:
-    rows = db.execute(select(Activity.sport_type).distinct()).scalars().all()
+def distinct_sport_types(db: Session, athlete_id: str) -> list[str]:
+    rows = (
+        db.execute(select(Activity.sport_type).where(Activity.athlete_id == athlete_id).distinct())
+        .scalars()
+        .all()
+    )
     return sorted(rows)
 
 
-def distinct_years(db: Session) -> list[int]:
+def distinct_years(db: Session, athlete_id: str) -> list[int]:
     rows = (
         db.execute(
-            select(func.distinct(func.strftime("%Y", Activity.start_date_time))).order_by(
-                func.strftime("%Y", Activity.start_date_time).desc()
-            )
+            select(func.distinct(func.strftime("%Y", Activity.start_date_time)))
+            .where(Activity.athlete_id == athlete_id)
+            .order_by(func.strftime("%Y", Activity.start_date_time).desc())
         )
         .scalars()
         .all()
@@ -123,9 +150,11 @@ def distinct_years(db: Session) -> list[int]:
     return [int(y) for y in rows if y]
 
 
-def date_range(db: Session) -> tuple[datetime | None, datetime | None]:
+def date_range(db: Session, athlete_id: str) -> tuple[datetime | None, datetime | None]:
     row = db.execute(
-        select(func.min(Activity.start_date_time), func.max(Activity.start_date_time))
+        select(func.min(Activity.start_date_time), func.max(Activity.start_date_time)).where(
+            Activity.athlete_id == athlete_id
+        )
     ).one()
     return row[0], row[1]
 
@@ -141,7 +170,6 @@ def _apply_filters(stmt, sport_types, activity_types, start, end, search, name_t
         stmt = stmt.where(Activity.start_date_time <= end)
     if search:
         stmt = stmt.where(Activity.name.ilike(f"%{search}%"))
-    # Each free-text term must appear in the name (AND), enabling fuzzy queries.
     for term in name_terms or []:
         stmt = stmt.where(Activity.name.ilike(f"%{term}%"))
     return stmt

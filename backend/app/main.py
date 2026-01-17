@@ -64,6 +64,7 @@ def create_app() -> FastAPI:
     # Routers are imported lazily to keep the module import graph shallow.
     from app.api import (
         activities,
+        athletes,
         calendar,
         dashboard,
         eddington,
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(meta.router)
+    app.include_router(athletes.router)
     app.include_router(imports.router)
     app.include_router(activities.router)
     app.include_router(dashboard.router)

@@ -100,9 +100,8 @@ def test_import_parses_athlete_profile(db_session, tmp_path):
 
     import_export(db_session, export)
 
-    profile = db_session.get(AthleteProfile, 1)
+    profile = db_session.get(AthleteProfile, "987654")
     assert profile is not None
-    assert profile.athlete_id == "987654"
     assert profile.first_name == "Sam"
     assert profile.last_name == "Runner"
     assert profile.city == "Ghent"
@@ -114,4 +113,4 @@ def test_import_without_profile_csv_is_fine(db_session, tmp_path):
     export = tmp_path / "export"
     _write_export(export)
     import_export(db_session, export)
-    assert db_session.get(AthleteProfile, 1) is None
+    assert db_session.query(AthleteProfile).count() == 0

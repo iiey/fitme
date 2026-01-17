@@ -15,6 +15,7 @@ class Activity(Base):
     __tablename__ = "activity"
 
     activity_id: Mapped[str] = mapped_column(String, primary_key=True)
+    athlete_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
     start_date_time: Mapped[datetime] = mapped_column(DateTime, index=True)
     sport_type: Mapped[str] = mapped_column(String, index=True)
@@ -68,6 +69,7 @@ class Activity(Base):
     __table_args__ = (
         Index("ix_activity_type_start", "activity_type", "start_date_time"),
         Index("ix_activity_sport_start", "sport_type", "start_date_time"),
+        Index("ix_activity_athlete_start", "athlete_id", "start_date_time"),
     )
 
 
@@ -103,6 +105,7 @@ class Gear(Base):
     __tablename__ = "gear"
 
     gear_id: Mapped[str] = mapped_column(String, primary_key=True)
+    athlete_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String, default="")
     gear_type: Mapped[str] = mapped_column(String, default="bike")  # bike | shoe
     distance_m: Mapped[float] = mapped_column(Float, default=0.0)
@@ -116,6 +119,7 @@ class ImportRun(Base):
     __tablename__ = "import_run"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    athlete_id: Mapped[str | None] = mapped_column(String, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     source: Mapped[str] = mapped_column(String, default="")
@@ -128,15 +132,11 @@ class ImportRun(Base):
 
 
 class AthleteProfile(Base):
-    """The athlete's identity, parsed from the export's ``profile.csv``.
-
-    Single row, keyed by a fixed id, so re-imports overwrite it in place.
-    """
+    """An athlete's identity, parsed from the export's ``profile.csv``."""
 
     __tablename__ = "athlete_profile"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
-    athlete_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    athlete_id: Mapped[str] = mapped_column(String, primary_key=True)
     first_name: Mapped[str | None] = mapped_column(String, nullable=True)
     last_name: Mapped[str | None] = mapped_column(String, nullable=True)
     city: Mapped[str | None] = mapped_column(String, nullable=True)

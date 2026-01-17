@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import repository
+from app.api.athletes import get_athlete_id
 from app.api.serializers import serialize_activity_summary, serialize_gear
 from app.athlete import get_athlete
 from app.db import get_db
@@ -174,6 +175,7 @@ def _training_load(activities, athlete, anchor: datetime) -> list[dict]:
 @router.get("")
 def get_dashboard(
     db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_athlete_id),
     sport_type: list[str] | None = Query(default=None),
     start: datetime | None = None,
     end: datetime | None = None,
@@ -181,12 +183,13 @@ def get_dashboard(
     athlete = get_athlete()
     unit_system = athlete.unit_system
 
-    available_years = repository.distinct_years(db)
+    available_years = repository.distinct_years(db, athlete_id)
     if not available_years:
         return {"empty": True, "unit_system": unit_system, "available_years": []}
 
     activities = repository.list_activities(
         db,
+        athlete_id,
         sport_types=sport_type,
         start=start,
         end=end,
@@ -204,12 +207,20 @@ def get_dashboard(
     anchor = recent_sorted[0].start_date_time
 
     # ── Pre-fetch all DB data before parallel section ──
-    best_efforts = list(db.execute(select(BestEffort)).scalars().all())
     activity_ids = [a.activity_id for a in activities]
+    best_efforts = (
+        list(
+            db.execute(select(BestEffort).where(BestEffort.activity_id.in_(activity_ids)))
+            .scalars()
+            .all()
+        )
+        if activity_ids
+        else []
+    )
     all_streams = repository.streams_for_activities(
         db, activity_ids, stream_types=["heartrate", "time", "watts"]
     )
-    gear = repository.list_gear(db)
+    gear = repository.list_gear(db, athlete_id)
 
     # ── Run CPU-bound computations in parallel ──
     results: dict[str, object] = {}

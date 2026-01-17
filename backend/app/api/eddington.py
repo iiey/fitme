@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app import repository
+from app.api.athletes import get_athlete_id
 from app.athlete import get_athlete
 from app.db import get_db
 from app.domain.eddington import compute_eddington
@@ -30,13 +31,14 @@ def _daily_distances_by_activity_type(activities, unit_system: str) -> dict[str,
 @router.get("")
 def get_eddington(
     db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_athlete_id),
     unit: str | None = None,
 ) -> dict:
     athlete = get_athlete()
     unit_system = "imperial" if (unit or athlete.unit_system) == "imperial" else "metric"
     unit_label = distance_unit_label(unit_system)
 
-    activities = repository.all_activities(db)
+    activities = repository.all_activities(db, athlete_id)
     grouped = _daily_distances_by_activity_type(activities, unit_system)
 
     results = []

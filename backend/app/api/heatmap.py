@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app import repository
+from app.api.athletes import get_athlete_id
 from app.db import get_db
 
 router = APIRouter(prefix="/api/heatmap", tags=["heatmap"])
@@ -17,6 +18,7 @@ MAX_HEATMAP_ROUTES = 500
 @router.get("/routes")
 def get_routes(
     db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_athlete_id),
     sport_type: list[str] | None = Query(default=None),
     activity_type: list[str] | None = Query(default=None),
     start: datetime | None = None,
@@ -26,7 +28,7 @@ def get_routes(
     offset: int = Query(default=0, ge=0),
 ) -> dict:
     """Encoded polylines for matching activities, for the Leaflet heatmap."""
-    activities = repository.activities_with_polyline(db)
+    activities = repository.activities_with_polyline(db, athlete_id)
 
     filtered = []
     sport_set = set(sport_type) if sport_type else None

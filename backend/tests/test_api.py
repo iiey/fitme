@@ -81,6 +81,13 @@ def _seed(session_factory, tmp_path: Path) -> None:
         writer.writerow(header)
         writer.writerow(row)
 
+    profile_header = ["Athlete ID", "First Name", "Last Name", "City", "Country"]
+    profile_row = ["42", "Test", "User", "Testville", "Testland"]
+    with (export / "profile.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(profile_header)
+        writer.writerow(profile_row)
+
     session = session_factory()
     try:
         import_export(session, export)

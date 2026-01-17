@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app import repository
+from app.api.athletes import get_athlete_id
 from app.api.serializers import serialize_activity_summary
 from app.athlete import get_athlete
 from app.db import get_db
@@ -18,7 +19,12 @@ router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
 
 @router.get("/{year}/{month}")
-def get_month(year: int, month: int, db: Session = Depends(get_db)) -> dict:
+def get_month(
+    year: int,
+    month: int,
+    db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_athlete_id),
+) -> dict:
     if not 1 <= month <= 12:
         return {"error": "month must be between 1 and 12"}
 
@@ -30,7 +36,9 @@ def get_month(year: int, month: int, db: Session = Depends(get_db)) -> dict:
     end = date(year, month, last_day)
 
     activities = [
-        a for a in repository.all_activities(db) if start <= a.start_date_time.date() <= end
+        a
+        for a in repository.all_activities(db, athlete_id)
+        if start <= a.start_date_time.date() <= end
     ]
     days = calendar_days(activities)
 

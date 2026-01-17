@@ -21,4 +21,6 @@ class CompressedJSON(TypeDecorator):
     def process_result_value(self, value, dialect):
         if value is None:
             return None
+        if isinstance(value, str):
+            return json.loads(value)
         return json.loads(zlib.decompress(value))

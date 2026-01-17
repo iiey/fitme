@@ -101,17 +101,23 @@ def import_export(db: Session, source: str | Path, *, force: bool = False) -> Im
     gear_accumulator: dict[str, dict] = {}
 
     with ExportReader(source) as reader:
-        rows = reader.read_activities_csv()
-        existing = {a.activity_id: a for a in db.execute(select(Activity)).scalars().all()}
+        athlete_id = _upsert_athlete_profile(db, reader)
+        run.athlete_id = athlete_id
 
-        _upsert_athlete_profile(db, reader)
+        rows = reader.read_activities_csv()
+        existing = {
+            a.activity_id: a
+            for a in db.execute(select(Activity).where(Activity.athlete_id == athlete_id))
+            .scalars()
+            .all()
+        }
 
         for row in rows:
             source_hash = _row_hash(row)
             current = existing.get(row.activity_id)
             unchanged = current is not None and current.source_hash == source_hash
 
-            _accumulate_gear(gear_accumulator, row)
+            _accumulate_gear(gear_accumulator, row, athlete_id)
 
             if unchanged and not force:
                 summary.skipped += 1
@@ -130,7 +136,7 @@ def import_export(db: Session, source: str | Path, *, force: bool = False) -> Im
                     summary.parse_errors += 1
                     logger.warning("Failed to parse %s: %s", row.filename, exc)
 
-            _upsert_activity(db, row, parsed, source_hash, current)
+            _upsert_activity(db, row, parsed, source_hash, current, athlete_id)
             if current is None:
                 summary.added += 1
             else:
@@ -161,6 +167,7 @@ def _upsert_activity(
     parsed: ParsedActivityFile | None,
     source_hash: str,
     current: Activity | None,
+    athlete_id: str,
 ) -> None:
     summary = summarize_streams(parsed) if parsed else None
     sport = _resolve_sport_type(row, parsed)
@@ -175,7 +182,8 @@ def _upsert_activity(
     moving_s = merge(row.moving_time_s, summary.moving_time_s if summary else None) or 0
     elapsed_s = merge(row.elapsed_time_s, summary.elapsed_time_s if summary else None) or moving_s
 
-    activity = current or Activity(activity_id=row.activity_id)
+    activity = current or Activity(activity_id=row.activity_id, athlete_id=athlete_id)
+    activity.athlete_id = athlete_id
     activity.start_date_time = start_dt
     activity.sport_type = sport.value
     activity.activity_type = sport.activity_type.value
@@ -203,7 +211,7 @@ def _upsert_activity(
     activity.calories = merge(row.calories, parsed.calories if parsed else None)
     activity.is_commute = row.is_commute
     activity.gear_name = row.gear_name
-    activity.gear_id = _gear_slug(row.gear_name) if row.gear_name else None
+    activity.gear_id = _gear_slug(row.gear_name, athlete_id) if row.gear_name else None
     activity.import_source = _ext_for_filename(row.filename) if row.filename else "csv"
 
     if parsed:
@@ -258,8 +266,9 @@ def _store_best_efforts(
         )
 
 
-def _gear_slug(name: str) -> str:
-    return "gear-" + hashlib.sha1(name.strip().lower().encode("utf-8")).hexdigest()[:12]
+def _gear_slug(name: str, athlete_id: str = "") -> str:
+    key = f"{athlete_id}:{name.strip().lower()}" if athlete_id else name.strip().lower()
+    return "gear-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
 
 
 def _ext_for_filename(filename: str) -> str:
@@ -275,12 +284,19 @@ def _ext_for_filename(filename: str) -> str:
     return "csv"
 
 
-def _accumulate_gear(acc: dict[str, dict], row: CsvActivityRow) -> None:
+def _accumulate_gear(acc: dict[str, dict], row: CsvActivityRow, athlete_id: str) -> None:
     if not row.gear_name:
         return
-    slug = _gear_slug(row.gear_name)
+    slug = _gear_slug(row.gear_name, athlete_id)
     entry = acc.setdefault(
-        slug, {"name": row.gear_name, "distance_m": 0.0, "run_walk": 0, "ride": 0}
+        slug,
+        {
+            "name": row.gear_name,
+            "distance_m": 0.0,
+            "run_walk": 0,
+            "ride": 0,
+            "athlete_id": athlete_id,
+        },
     )
     entry["distance_m"] += row.distance_m or 0.0
     sport = SportType.from_strava(row.sport_type_raw)
@@ -293,7 +309,8 @@ def _accumulate_gear(acc: dict[str, dict], row: CsvActivityRow) -> None:
 def _upsert_gear(db: Session, acc: dict[str, dict]) -> int:
     count = 0
     for slug, entry in acc.items():
-        gear = db.get(Gear, slug) or Gear(gear_id=slug)
+        gear = db.get(Gear, slug) or Gear(gear_id=slug, athlete_id=entry["athlete_id"])
+        gear.athlete_id = entry["athlete_id"]
         gear.name = entry["name"]
         gear.distance_m = entry["distance_m"]
         gear.gear_type = "shoe" if entry["run_walk"] > entry["ride"] else "bike"
@@ -302,18 +319,18 @@ def _upsert_gear(db: Session, acc: dict[str, dict]) -> int:
     return count
 
 
-def _upsert_athlete_profile(db: Session, reader: ExportReader) -> None:
-    """Parse ``profile.csv`` and store the athlete identity (single row)."""
+def _upsert_athlete_profile(db: Session, reader: ExportReader) -> str:
+    """Parse ``profile.csv`` and store the athlete identity. Returns athlete_id."""
     try:
         profile_row = reader.read_profile()
     except Exception as exc:  # noqa: BLE001 — a malformed profile must not abort import.
         logger.warning("Failed to parse profile.csv: %s", exc)
-        return
+        return "1"
     if profile_row is None:
-        return
+        return "1"
 
-    profile = db.get(AthleteProfile, 1) or AthleteProfile(id=1)
-    profile.athlete_id = profile_row.athlete_id
+    athlete_id = profile_row.athlete_id or "1"
+    profile = db.get(AthleteProfile, athlete_id) or AthleteProfile(athlete_id=athlete_id)
     profile.first_name = profile_row.first_name
     profile.last_name = profile_row.last_name
     profile.city = profile_row.city
@@ -321,3 +338,4 @@ def _upsert_athlete_profile(db: Session, reader: ExportReader) -> None:
     profile.country = profile_row.country
     profile.sex = profile_row.sex
     db.add(profile)
+    return athlete_id

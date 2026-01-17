@@ -79,6 +79,14 @@ class ImportResult(BaseModel):
     parse_errors: int
 
 
+class AthleteListItem(BaseModel):
+    athlete_id: str
+    name: str | None
+    location: str | None
+    activity_count: int
+    profile_url: str | None
+
+
 class MetaResponse(BaseModel):
     app_name: str
     app_subtitle: str
@@ -90,6 +98,7 @@ class MetaResponse(BaseModel):
     first_activity: datetime | None
     last_activity: datetime | None
     athlete: AthleteInfo | None = None
+    athletes: list[AthleteListItem] = []
 
 
 class AthleteInfo(BaseModel):

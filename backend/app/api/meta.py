@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app import repository
+from app.api.athletes import get_athlete_id, list_athletes
 from app.athlete import get_athlete
 from app.config import settings
 from app.db import get_db
@@ -17,15 +18,13 @@ router = APIRouter(tags=["meta"])
 STRAVA_ATHLETE_URL = "https://www.strava.com/athletes/{athlete_id}"
 
 
-def _athlete_info(db: Session) -> AthleteInfo | None:
-    profile = db.get(AthleteProfile, 1)
+def _athlete_info(db: Session, athlete_id: str) -> AthleteInfo | None:
+    profile = db.get(AthleteProfile, athlete_id)
     if profile is None:
         return None
     name = " ".join(part for part in (profile.first_name, profile.last_name) if part)
     location = ", ".join(part for part in (profile.city, profile.country) if part)
-    profile_url = (
-        STRAVA_ATHLETE_URL.format(athlete_id=profile.athlete_id) if profile.athlete_id else None
-    )
+    profile_url = STRAVA_ATHLETE_URL.format(athlete_id=profile.athlete_id)
     return AthleteInfo(
         athlete_id=profile.athlete_id,
         name=name or None,
@@ -35,11 +34,14 @@ def _athlete_info(db: Session) -> AthleteInfo | None:
 
 
 @router.get("/api/meta", response_model=MetaResponse)
-def get_meta(db: Session = Depends(get_db)) -> MetaResponse:
+def get_meta(
+    db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_athlete_id),
+) -> MetaResponse:
     athlete = get_athlete()
     unit_system = athlete.unit_system
-    first, last = repository.date_range(db)
-    used_sports = repository.distinct_sport_types(db)
+    first, last = repository.date_range(db, athlete_id)
+    used_sports = repository.distinct_sport_types(db, athlete_id)
 
     options = [
         SportTypeOption(
@@ -57,8 +59,9 @@ def get_meta(db: Session = Depends(get_db)) -> MetaResponse:
         distance_unit=distance_unit_label(unit_system),
         elevation_unit=elevation_unit_label(unit_system),
         sport_types=sorted(options, key=lambda o: o.label),
-        activity_count=repository.count_activities(db),
+        activity_count=repository.count_activities(db, athlete_id),
         first_activity=first,
         last_activity=last,
-        athlete=_athlete_info(db),
+        athlete=_athlete_info(db, athlete_id),
+        athletes=list_athletes(db),
     )

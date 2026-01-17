@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app import repository
+from app.api.athletes import get_athlete_id
 from app.api.serializers import serialize_activity_detail, serialize_activity_summary
 from app.db import get_db
 from app.domain.best_efforts import (  # noqa: F401  (kept for label parity)
@@ -32,6 +33,7 @@ _SORTABLE_COLUMNS = {
 @router.get("", response_model=PaginatedActivities)
 def list_activities(
     db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_athlete_id),
     sport_type: list[str] | None = Query(default=None),
     activity_type: list[str] | None = Query(default=None),
     start: datetime | None = None,
@@ -45,7 +47,6 @@ def list_activities(
     sort_column = sort if sort in _SORTABLE_COLUMNS else "start_date_time"
     descending = order.lower() != "asc"
 
-    # Fuzzy search: "2025-12 run" → December 2025 + run sports + leftover text.
     parsed = parse_activity_search(search)
     sport_filter = sorted({*(sport_type or []), *parsed.sport_types}) or None
     start_filter = start or parsed.start
@@ -59,9 +60,10 @@ def list_activities(
         "name_terms": parsed.terms,
     }
 
-    total = repository.count_activities(db, **filters)
+    total = repository.count_activities(db, athlete_id, **filters)
     activities = repository.list_activities(
         db,
+        athlete_id,
         **filters,
         order_by=sort_column,
         descending=descending,
@@ -77,8 +79,12 @@ def list_activities(
 
 
 @router.get("/{activity_id}", response_model=ActivityDetail)
-def get_activity(activity_id: str, db: Session = Depends(get_db)) -> ActivityDetail:
-    activity = repository.get_activity(db, activity_id)
+def get_activity(
+    activity_id: str,
+    db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_athlete_id),
+) -> ActivityDetail:
+    activity = repository.get_activity(db, athlete_id, activity_id)
     if activity is None:
         raise HTTPException(status_code=404, detail="Activity not found")
 
