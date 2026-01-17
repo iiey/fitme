@@ -18,10 +18,6 @@ rich, interactive insights.
 | **Milestones** | A grouped, filterable timeline of achievements with fun comparisons |
 | **Rewind** | A year-in-review with monthly totals, sport breakdown, start-time histogram, calories/carbon equivalents, biggest activity and more |
 
-> **Scope note:** the Strava bulk export does not contain segment efforts or
-> challenges, so those two features from the reference app are intentionally out
-> of scope. Everything here works fully offline from the export.
-
 ## Architecture
 
 ```

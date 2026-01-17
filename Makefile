@@ -54,6 +54,12 @@ import: ## Import a Strava export. Override with `make import SOURCE=/path/expor
 seed: migrate sample-data ## Migrate, generate sample data and import it.
 	cd $(BACKEND) && uv run python -m app.cli import ../$(SAMPLE)
 
+.PHONY: db-reset
+db-reset: ## Wipe the database and uploaded exports.
+	rm -f $(BACKEND)/storage/strastat.db $(BACKEND)/storage/strastat.db-shm $(BACKEND)/storage/strastat.db-wal
+	rm -rf $(BACKEND)/storage/uploads/*
+	@echo "Database and uploads wiped. Run 'make seed' to re-populate."
+
 # ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
@@ -66,8 +72,14 @@ backend: ## Run the FastAPI backend (http://localhost:8000).
 frontend: ## Run the Next.js frontend (http://localhost:3000).
 	cd $(FRONTEND) && npm run dev
 
-.PHONY: dev
-dev: ## Run backend and frontend together (Ctrl-C stops both).
+.PHONY: stop
+stop: ## Kill any orphaned running backend/frontend dev servers.
+	@-lsof -ti :8000 | xargs -r kill 2>/dev/null; true
+	@-lsof -ti :3000 | xargs -r kill 2>/dev/null; true
+	@echo "Stopped servers on :8000 and :3000."
+
+.PHONY: run
+run: ## Run backend and frontend together (Ctrl-C stops both).
 	@echo "Starting backend on :8000 and frontend on :3000…"
 	@trap 'kill 0' EXIT; \
 		( cd $(BACKEND) && uv run uvicorn app.main:app --port 8000 ) & \
