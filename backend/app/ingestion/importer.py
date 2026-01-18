@@ -172,7 +172,15 @@ def _upsert_activity(
     summary = summarize_streams(parsed) if parsed else None
     sport = _resolve_sport_type(row, parsed)
 
-    start_dt = row.parsed_date() or (parsed.start_time if parsed else None) or datetime.utcnow()
+    # Prefer the file's local wall-clock start (FIT timezone offset) so weekday
+    # and time-of-day breakdowns reflect the athlete's local time. The Strava
+    # CSV "Activity Date" is UTC, so it is only a fallback.
+    start_dt = (
+        (parsed.start_time_local if parsed else None)
+        or row.parsed_date()
+        or (parsed.start_time if parsed else None)
+        or datetime.utcnow()
+    )
 
     def merge(csv_value, stream_value):
         return csv_value if csv_value is not None else stream_value

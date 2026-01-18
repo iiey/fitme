@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import io
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from app.enums import StreamType
 from app.ingestion.parsed import ParsedActivityFile
@@ -64,6 +64,10 @@ def parse_fit(content: bytes) -> ParsedActivityFile:
     sport_type: str | None = None
     device_name: str | None = None
     calories: int | None = None
+    # UTC vs local wall-clock pair from the ``activity`` message, used to derive
+    # the athlete's timezone offset so start times can be stored in local time.
+    activity_utc: datetime | None = None
+    activity_local: datetime | None = None
 
     with fitdecode.FitReader(io.BytesIO(content)) as reader:
         for frame in reader:
@@ -80,6 +84,9 @@ def parse_fit(content: bytes) -> ParsedActivityFile:
                 cal = _get(frame, "total_calories")
                 if cal is not None:
                     calories = int(cal)
+            elif frame.name == "activity":
+                activity_utc = _get(frame, "timestamp")
+                activity_local = _get(frame, "local_timestamp")
             elif frame.name == "device_info" and device_name is None:
                 manufacturer = _get(frame, "manufacturer")
                 product = _get(frame, "garmin_product", "product_name", "product")
@@ -136,10 +143,36 @@ def parse_fit(content: bytes) -> ParsedActivityFile:
 
     from app.ingestion.gpx import _prune_empty
 
+    start_utc = datetime.fromtimestamp(start_ts, tz=timezone.utc).replace(tzinfo=None)
+    start_local = _local_start(start_utc, activity_utc, activity_local)
+
     return ParsedActivityFile(
         streams=_prune_empty(streams),
-        start_time=datetime.fromtimestamp(start_ts),
+        start_time=start_utc,
+        start_time_local=start_local,
         sport_type=sport_type,
         device_name=device_name,
         calories=calories,
     )
+
+
+def _local_start(
+    start_utc: datetime,
+    activity_utc: datetime | None,
+    activity_local: datetime | None,
+) -> datetime | None:
+    """Derive the local wall-clock start from the FIT timezone offset.
+
+    FIT ``activity`` messages carry both a UTC ``timestamp`` and a
+    ``local_timestamp`` (the same instant expressed as local wall-clock time).
+    Their difference is the athlete's UTC offset, which we apply to the activity
+    start. Returns ``None`` when the offset is missing or implausible.
+    """
+    if activity_utc is None or activity_local is None:
+        return None
+    utc = activity_utc.replace(tzinfo=None)
+    local = activity_local.replace(tzinfo=None)
+    offset = local - utc
+    if abs(offset) > timedelta(hours=14):
+        return None
+    return start_utc + offset

@@ -13,6 +13,10 @@ class ParsedActivityFile:
 
     streams: dict[str, list] = field(default_factory=dict)
     start_time: datetime | None = None
+    # Wall-clock start time in the athlete's local timezone, when the source
+    # file carries timezone information (FIT ``local_timestamp``). Falls back to
+    # ``None`` for formats that only record UTC (GPX/TCX).
+    start_time_local: datetime | None = None
     sport_type: str | None = None
     device_name: str | None = None
     calories: int | None = None

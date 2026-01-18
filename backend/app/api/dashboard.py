@@ -275,7 +275,12 @@ def get_dashboard(
                 _peak_power, activities, anchor, all_streams, power_window_days
             ): "peak_power",
             pool.submit(_training_load, activities, athlete, anchor): "training_load",
-            pool.submit(vo2max_trend, activities): "vo2max_trend",
+            pool.submit(
+                vo2max_trend,
+                activities,
+                athlete.estimated_max_heart_rate(),
+                athlete.resting_heart_rate,
+            ): "vo2max_trend",
             pool.submit(
                 training_load_analysis, activities, athlete, anchor.date()
             ): "training_load_analysis",

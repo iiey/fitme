@@ -85,7 +85,9 @@ def weekday_distribution(activities: list[Activity]) -> dict[str, Totals]:
 
 
 def daytime_label(hour: int) -> str:
-    if 6 <= hour < 12:
+    # Treat the early-morning hours (from 05:00) as "Morning": endurance
+    # athletes routinely start training at 5–6 AM, which is not "Night".
+    if 5 <= hour < 12:
         return "Morning"
     if 12 <= hour < 18:
         return "Afternoon"

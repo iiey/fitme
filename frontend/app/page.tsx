@@ -166,6 +166,15 @@ export default function DashboardPage() {
   }
 
   const monthly = data.monthly_stats.slice(-24);
+  // Size the physiology row to the number of visible cards so it always fills
+  // the row (peak power is absent for athletes without a power meter).
+  const physioCards = (data.hr_zones ? 1 : 0) + (data.peak_power ? 1 : 0) + 1;
+  const physioColsClass =
+    physioCards === 1
+      ? "lg:grid-cols-1"
+      : physioCards === 2
+        ? "lg:grid-cols-2"
+        : "lg:grid-cols-3";
 
   return (
     <div className="space-y-6">
@@ -250,17 +259,9 @@ export default function DashboardPage() {
         </DeferredSection>
       )}
 
-      {/* Yearly stats + HR zones + Peak power + By weekday */}
+      {/* HR zones + Peak power + By weekday */}
       <DeferredSection height={340}>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
-          {data.monthly_stats.length > 0 && (
-            <Card title={`Yearly stats (${distanceUnit})`}>
-              <EChart
-                option={yearlyStatsChart(data.monthly_stats, distanceUnit, isDark)}
-                height={280}
-              />
-            </Card>
-          )}
+        <div className={`grid grid-cols-1 gap-4 ${physioColsClass}`}>
           {data.hr_zones && (
             <Card
               title={
@@ -321,13 +322,13 @@ export default function DashboardPage() {
               </div>
             </Card>
           )}
-          <Card title="By weekday">
+          <Card title="By weekday (hours)">
             <EChart
               option={barChart(
                 data.weekday_stats.map((d) => d.label),
-                data.weekday_stats.map((d) => d.count),
+                data.weekday_stats.map((d) => Math.round((d.moving_time_s / 3600) * 10) / 10),
                 "#16a34a",
-                "",
+                "h",
                 isDark,
               )}
               height={220}
@@ -378,6 +379,18 @@ export default function DashboardPage() {
           </Card>
         </div>
       </DeferredSection>
+
+      {/* Yearly stats */}
+      {data.monthly_stats.length > 0 && (
+        <DeferredSection height={300}>
+          <Card title={`Yearly stats (${distanceUnit})`}>
+            <EChart
+              option={yearlyStatsChart(data.monthly_stats, distanceUnit, isDark)}
+              height={280}
+            />
+          </Card>
+        </DeferredSection>
+      )}
 
       {/* Recent activities + milestones */}
       <DeferredSection height={200}>
