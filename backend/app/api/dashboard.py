@@ -21,7 +21,7 @@ from app.domain.streams_analysis import (
     peak_power_outputs,
     time_in_hr_zones,
 )
-from app.domain.training_load import daily_training_load
+from app.domain.training_load import daily_training_load, training_load_analysis
 from app.domain.units import distance_for_unit, elevation_for_unit
 from app.enums import ActivityType, SportType
 from app.models import BestEffort
@@ -251,6 +251,9 @@ def get_dashboard(
             pool.submit(_hr_zones, activities, athlete, anchor, all_streams): "hr_zones",
             pool.submit(_peak_power, activities, anchor, all_streams): "peak_power",
             pool.submit(_training_load, activities, athlete, anchor): "training_load",
+            pool.submit(
+                training_load_analysis, activities, athlete, anchor.date()
+            ): "training_load_analysis",
             pool.submit(discover_milestones, activities, best_efforts, unit_system): "milestones",
             pool.submit(stats.longest_daily_streak, activities): "longest_streak",
         }
@@ -285,6 +288,7 @@ def get_dashboard(
         "hr_zones": results["hr_zones"],
         "peak_power": results["peak_power"],
         "training_load": results["training_load"],
+        "training_load_analysis": results["training_load_analysis"],
         "recent_milestones": [m.as_dict() for m in milestones[:RECENT_ACTIVITY_COUNT]],
         "gear_stats": [serialize_gear(g).model_dump() for g in gear],
     }

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { ActivityHeatmap } from "@/components/charts/ActivityHeatmap";
 import { EChart } from "@/components/charts/EChart";
 import { barChart, donutChart, lineChart } from "@/components/charts/options";
+import { TrainingLoadSection } from "@/components/charts/TrainingLoadSection";
 import { ImportDialog } from "@/components/import/ImportDialog";
 import { Card } from "@/components/ui/Card";
 import { DeferredSection } from "@/components/ui/DeferredSection";
@@ -134,7 +135,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Activity heatmap calendar */}
-      <Card title="Activity heatmap (last 12 months)">
+      <Card title="Activity intensity">
         <ActivityHeatmap points={data.activity_calendar} />
       </Card>
 
@@ -195,19 +196,12 @@ export default function DashboardPage() {
         </div>
       </DeferredSection>
 
-      {/* Training load */}
-      <DeferredSection height={260}>
-        <Card title="Training load (last 90 days)">
-          <EChart
-            option={barChart(
-              data.training_load.map((t) => t.date.slice(5)),
-              data.training_load.map((t) => t.load),
-              "#7c3aed",
-            )}
-            height={220}
-          />
-        </Card>
-      </DeferredSection>
+      {/* Training load analysis */}
+      {data.training_load_analysis && (
+        <DeferredSection height={160}>
+          <TrainingLoadSection analysis={data.training_load_analysis} />
+        </DeferredSection>
+      )}
 
       {/* Distributions */}
       <DeferredSection height={260}>

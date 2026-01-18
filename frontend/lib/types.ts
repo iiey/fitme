@@ -131,8 +131,26 @@ export interface Dashboard {
   hr_zones: { zones: number[]; window_days: number } | null;
   peak_power: { durations: number[]; outputs: { duration_s: number; watts: number | null }[]; window_days: number } | null;
   training_load: { date: string; load: number }[];
+  training_load_analysis: TrainingLoadAnalysis | null;
   recent_milestones: Milestone[];
   gear_stats: GearItem[];
+}
+
+export interface TrainingLoadAnalysis {
+  ctl: number;
+  atl: number;
+  tsb: number;
+  tsb_status: string;
+  tsb_color: string;
+  ac_ratio: number;
+  ac_status: string;
+  ac_color: string;
+  rest_days: number;
+  monotony: number;
+  strain: number;
+  weekly_trimp: number;
+  series: { date: string; load: number; ctl: number; atl: number; tsb: number }[];
+  display_days: number;
 }
 
 export interface CalendarPoint {
