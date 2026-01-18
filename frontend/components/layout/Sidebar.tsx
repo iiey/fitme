@@ -37,11 +37,14 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 lg:flex">
-      <div className="flex items-center gap-2 px-6 py-5">
-        <span className="text-2xl">🏃</span>
-        <span className="text-xl font-bold tracking-tight">
-          Stra<span className="text-brand">Stat</span>
-        </span>
+      <div className="flex items-center justify-between px-6 py-5">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">🏃</span>
+          <span className="text-xl font-bold tracking-tight">
+            Stra<span className="text-brand">Stat</span>
+          </span>
+        </div>
+        <ThemeToggle />
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
         {NAV_ITEMS.map((item) => {
@@ -72,14 +75,11 @@ export function Sidebar() {
           <span className="text-lg">⬆️</span>
           Import data
         </button>
-        <div className="flex items-center justify-between">
-          <AthleteSwitcher
-            athletes={athletes}
-            activeId={athleteId}
-            onSwitch={setAthleteId}
-          />
-          <ThemeToggle />
-        </div>
+        <AthleteSwitcher
+          athletes={athletes}
+          activeId={athleteId}
+          onSwitch={setAthleteId}
+        />
       </div>
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
     </aside>

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -18,13 +18,25 @@ def list_activities(
     end: datetime | None = None,
     search: str | None = None,
     name_terms: list[str] | None = None,
+    distance_min_m: float | None = None,
+    distance_max_m: float | None = None,
     order_by: str = "start_date_time",
     descending: bool = True,
     limit: int | None = None,
     offset: int | None = None,
 ) -> list[Activity]:
     stmt = select(Activity).where(Activity.athlete_id == athlete_id)
-    stmt = _apply_filters(stmt, sport_types, activity_types, start, end, search, name_terms)
+    stmt = _apply_filters(
+        stmt,
+        sport_types,
+        activity_types,
+        start,
+        end,
+        search,
+        name_terms,
+        distance_min_m=distance_min_m,
+        distance_max_m=distance_max_m,
+    )
 
     sort_column = getattr(Activity, order_by, Activity.start_date_time)
     stmt = stmt.order_by(sort_column.desc() if descending else sort_column.asc())
@@ -46,9 +58,21 @@ def count_activities(
     end: datetime | None = None,
     search: str | None = None,
     name_terms: list[str] | None = None,
+    distance_min_m: float | None = None,
+    distance_max_m: float | None = None,
 ) -> int:
     stmt = select(func.count()).select_from(Activity).where(Activity.athlete_id == athlete_id)
-    stmt = _apply_filters(stmt, sport_types, activity_types, start, end, search, name_terms)
+    stmt = _apply_filters(
+        stmt,
+        sport_types,
+        activity_types,
+        start,
+        end,
+        search,
+        name_terms,
+        distance_min_m=distance_min_m,
+        distance_max_m=distance_max_m,
+    )
     return db.execute(stmt).scalar_one()
 
 
@@ -159,7 +183,18 @@ def date_range(db: Session, athlete_id: str) -> tuple[datetime | None, datetime 
     return row[0], row[1]
 
 
-def _apply_filters(stmt, sport_types, activity_types, start, end, search, name_terms=None):
+def _apply_filters(
+    stmt,
+    sport_types,
+    activity_types,
+    start,
+    end,
+    search,
+    name_terms=None,
+    *,
+    distance_min_m=None,
+    distance_max_m=None,
+):
     if sport_types:
         stmt = stmt.where(Activity.sport_type.in_(sport_types))
     if activity_types:
@@ -167,7 +202,14 @@ def _apply_filters(stmt, sport_types, activity_types, start, end, search, name_t
     if start is not None:
         stmt = stmt.where(Activity.start_date_time >= start)
     if end is not None:
-        stmt = stmt.where(Activity.start_date_time <= end)
+        if end.hour == 0 and end.minute == 0 and end.second == 0:
+            stmt = stmt.where(Activity.start_date_time < end + timedelta(days=1))
+        else:
+            stmt = stmt.where(Activity.start_date_time <= end)
+    if distance_min_m is not None:
+        stmt = stmt.where(Activity.distance_m >= distance_min_m)
+    if distance_max_m is not None:
+        stmt = stmt.where(Activity.distance_m <= distance_max_m)
     if search:
         stmt = stmt.where(Activity.name.ilike(f"%{search}%"))
     for term in name_terms or []:

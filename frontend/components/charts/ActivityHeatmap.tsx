@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CalendarPoint } from "@/lib/types";
+import { useIsDark } from "@/lib/use-is-dark";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -12,11 +13,11 @@ const MONTH_LABELS = [
 ];
 
 const COLORS = [
-  "#ebedf0", // no activity
-  "#9be9a8", // low
+  "#d4d8de",
+  "#7bc96f",
   "#40c463",
   "#30a14e",
-  "#216e39", // high
+  "#216e39",
 ];
 
 const DARK_COLORS = [
@@ -43,9 +44,7 @@ interface YearOption {
 }
 
 export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
-  const isDark =
-    typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
+  const isDark = useIsDark();
 
   const availableYears = useMemo(() => {
     const years = new Set<number>();

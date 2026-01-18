@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app import repository
 from app.api.athletes import get_athlete_id
 from app.api.serializers import serialize_activity_detail, serialize_activity_summary
+from app.athlete import get_athlete
 from app.db import get_db
 from app.domain.best_efforts import (  # noqa: F401  (kept for label parity)
     DISTANCE_LABELS,
@@ -38,10 +39,12 @@ def list_activities(
     activity_type: list[str] | None = Query(default=None),
     start: datetime | None = None,
     end: datetime | None = None,
+    distance_min: float | None = Query(default=None, description="Min distance in km"),
+    distance_max: float | None = Query(default=None, description="Max distance in km"),
     search: str | None = None,
     sort: str = "start_date_time",
     order: str = "desc",
-    limit: int = Query(default=25, ge=1, le=200),
+    limit: int = Query(default=25, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
 ) -> PaginatedActivities:
     sort_column = sort if sort in _SORTABLE_COLUMNS else "start_date_time"
@@ -58,6 +61,8 @@ def list_activities(
         "start": start_filter,
         "end": end_filter,
         "name_terms": parsed.terms,
+        "distance_min_m": distance_min * 1000 if distance_min is not None else None,
+        "distance_max_m": distance_max * 1000 if distance_max is not None else None,
     }
 
     total = repository.count_activities(db, athlete_id, **filters)
@@ -96,4 +101,7 @@ def get_activity(
         .all()
     )
     best_efforts = [(e.distance_m, e.time_s) for e in efforts]
-    return serialize_activity_detail(activity, streams, best_efforts)
+    athlete = get_athlete()
+    return serialize_activity_detail(
+        activity, streams, best_efforts, hr_zone_bounds=athlete.hr_zone_boundaries()
+    )

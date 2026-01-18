@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from app.domain.best_efforts import DISTANCE_LABELS
+from app.domain.streams_analysis import time_in_hr_zones
 from app.domain.units import m_to_km, m_to_mi, ms_to_kmh
 from app.enums import SportType
 from app.models import Activity, Gear
-from app.schemas import ActivityDetail, ActivitySummary, BestEffortItem, GearItem
+from app.schemas import ActivityDetail, ActivitySummary, BestEffortItem, GearItem, HrZoneItem
 
 
 def _pace_seconds_per_km(activity: Activity) -> float | None:
@@ -46,8 +47,38 @@ def serialize_activity_summary(activity: Activity) -> ActivitySummary:
     )
 
 
+_ZONE_LABELS = ["Warm Up", "Easy", "Aerobic", "Threshold", "Maximum"]
+
+
+def _build_hr_zones(
+    streams: dict[str, list], zone_bounds: list[int] | None
+) -> list[HrZoneItem] | None:
+    if not zone_bounds or len(zone_bounds) < 5:
+        return None
+    seconds = time_in_hr_zones(streams, zone_bounds)
+    total = sum(seconds)
+    if total == 0:
+        return None
+    items: list[HrZoneItem] = []
+    for i in range(5):
+        items.append(
+            HrZoneItem(
+                zone=i + 1,
+                label=_ZONE_LABELS[i],
+                lower_bpm=zone_bounds[i],
+                upper_bpm=zone_bounds[i + 1] - 1 if i < 4 else None,
+                seconds=seconds[i],
+                percentage=round(100 * seconds[i] / total, 1),
+            )
+        )
+    return items
+
+
 def serialize_activity_detail(
-    activity: Activity, streams: dict[str, list], best_efforts: list[tuple[int, float]]
+    activity: Activity,
+    streams: dict[str, list],
+    best_efforts: list[tuple[int, float]],
+    hr_zone_bounds: list[int] | None = None,
 ) -> ActivityDetail:
     summary = serialize_activity_summary(activity)
     return ActivityDetail(
@@ -75,6 +106,7 @@ def serialize_activity_detail(
             )
             for distance_m, time_s in best_efforts
         ],
+        hr_zones=_build_hr_zones(streams, hr_zone_bounds),
     )
 
 

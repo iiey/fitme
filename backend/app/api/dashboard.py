@@ -23,6 +23,7 @@ from app.domain.streams_analysis import (
 )
 from app.domain.training_load import daily_training_load, training_load_analysis
 from app.domain.units import distance_for_unit, elevation_for_unit
+from app.domain.vo2max import vo2max_trend
 from app.enums import ActivityType, SportType
 from app.models import BestEffort
 
@@ -121,11 +122,17 @@ def _eddington_summary(activities, unit_system: str) -> list[dict]:
     return results
 
 
-def _hr_zones(activities, athlete, anchor: datetime, all_streams: dict) -> dict | None:
+def _hr_zones(
+    activities,
+    athlete,
+    anchor: datetime,
+    all_streams: dict,
+    window_days: int = HR_ZONES_WINDOW_DAYS,
+) -> dict | None:
     bounds = athlete.hr_zone_boundaries()
     if not bounds:
         return None
-    cutoff = anchor - timedelta(days=HR_ZONES_WINDOW_DAYS)
+    cutoff = anchor - timedelta(days=window_days)
     recent = [a for a in activities if a.start_date_time >= cutoff and a.average_heart_rate]
     if not recent:
         return None
@@ -136,11 +143,16 @@ def _hr_zones(activities, athlete, anchor: datetime, all_streams: dict) -> dict 
             zones[index] += seconds
     if not any(zones):
         return None
-    return {"zones": zones, "window_days": HR_ZONES_WINDOW_DAYS}
+    return {"zones": zones, "window_days": window_days}
 
 
-def _peak_power(activities, anchor: datetime, all_streams: dict) -> dict | None:
-    cutoff = anchor - timedelta(days=PEAK_POWER_WINDOW_DAYS)
+def _peak_power(
+    activities,
+    anchor: datetime,
+    all_streams: dict,
+    window_days: int = PEAK_POWER_WINDOW_DAYS,
+) -> dict | None:
+    cutoff = anchor - timedelta(days=window_days)
     rides = [
         a
         for a in activities
@@ -161,7 +173,7 @@ def _peak_power(activities, anchor: datetime, all_streams: dict) -> dict | None:
     return {
         "durations": PEAK_POWER_DURATIONS,
         "outputs": [{"duration_s": d, "watts": best.get(d)} for d in PEAK_POWER_DURATIONS],
-        "window_days": PEAK_POWER_WINDOW_DAYS,
+        "window_days": window_days,
     }
 
 
@@ -179,6 +191,8 @@ def get_dashboard(
     sport_type: list[str] | None = Query(default=None),
     start: datetime | None = None,
     end: datetime | None = None,
+    hr_window: int | None = Query(default=None, ge=7, le=365),
+    power_window: int | None = Query(default=None, ge=7, le=365),
 ) -> dict:
     athlete = get_athlete()
     unit_system = athlete.unit_system
@@ -202,6 +216,9 @@ def get_dashboard(
             "unit_system": unit_system,
             "available_years": available_years,
         }
+
+    hr_window_days = hr_window or HR_ZONES_WINDOW_DAYS
+    power_window_days = power_window or PEAK_POWER_WINDOW_DAYS
 
     recent_sorted = sorted(activities, key=lambda a: a.start_date_time, reverse=True)
     anchor = recent_sorted[0].start_date_time
@@ -248,9 +265,14 @@ def get_dashboard(
                 stats.distance_breakdown(activities),
                 unit_system,
             ): "distance_breakdown",
-            pool.submit(_hr_zones, activities, athlete, anchor, all_streams): "hr_zones",
-            pool.submit(_peak_power, activities, anchor, all_streams): "peak_power",
+            pool.submit(
+                _hr_zones, activities, athlete, anchor, all_streams, hr_window_days
+            ): "hr_zones",
+            pool.submit(
+                _peak_power, activities, anchor, all_streams, power_window_days
+            ): "peak_power",
             pool.submit(_training_load, activities, athlete, anchor): "training_load",
+            pool.submit(vo2max_trend, activities): "vo2max_trend",
             pool.submit(
                 training_load_analysis, activities, athlete, anchor.date()
             ): "training_load_analysis",
@@ -289,6 +311,7 @@ def get_dashboard(
         "peak_power": results["peak_power"],
         "training_load": results["training_load"],
         "training_load_analysis": results["training_load_analysis"],
+        "vo2max_trend": results["vo2max_trend"],
         "recent_milestones": [m.as_dict() for m in milestones[:RECENT_ACTIVITY_COUNT]],
         "gear_stats": [serialize_gear(g).model_dump() for g in gear],
     }

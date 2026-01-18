@@ -29,6 +29,15 @@ class ActivitySummary(BaseModel):
     has_map: bool
 
 
+class HrZoneItem(BaseModel):
+    zone: int
+    label: str
+    lower_bpm: int
+    upper_bpm: int | None
+    seconds: int
+    percentage: float
+
+
 class ActivityDetail(ActivitySummary):
     description: str | None
     max_speed_kmh: float | None
@@ -42,6 +51,7 @@ class ActivityDetail(ActivitySummary):
     start_longitude: float | None
     streams: dict[str, list]
     best_efforts: list[BestEffortItem]
+    hr_zones: list[HrZoneItem] | None = None
 
 
 class BestEffortItem(BaseModel):

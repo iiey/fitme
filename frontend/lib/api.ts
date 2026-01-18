@@ -70,6 +70,8 @@ export interface DashboardFilters {
   sport_type?: string[];
   start?: string;
   end?: string;
+  hr_window?: number;
+  power_window?: number;
 }
 
 export function useDashboard(athleteId: string | null, filters: DashboardFilters = {}) {
@@ -89,6 +91,8 @@ export interface ActivityFilters {
   offset?: number;
   start?: string;
   end?: string;
+  distance_min?: number;
+  distance_max?: number;
 }
 
 export function useActivities(athleteId: string | null, filters: ActivityFilters) {

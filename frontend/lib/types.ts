@@ -74,6 +74,15 @@ export interface BestEffortItem {
   time_s: number;
 }
 
+export interface HrZoneItem {
+  zone: number;
+  label: string;
+  lower_bpm: number;
+  upper_bpm: number | null;
+  seconds: number;
+  percentage: number;
+}
+
 export interface ActivityDetail extends ActivitySummary {
   description: string | null;
   max_speed_kmh: number | null;
@@ -87,6 +96,7 @@ export interface ActivityDetail extends ActivitySummary {
   start_longitude: number | null;
   streams: Record<string, (number | null)[]>;
   best_efforts: BestEffortItem[];
+  hr_zones: HrZoneItem[] | null;
 }
 
 export interface PaginatedActivities {
@@ -132,6 +142,7 @@ export interface Dashboard {
   peak_power: { durations: number[]; outputs: { duration_s: number; watts: number | null }[]; window_days: number } | null;
   training_load: { date: string; load: number }[];
   training_load_analysis: TrainingLoadAnalysis | null;
+  vo2max_trend: { date: string; vo2max: number }[];
   recent_milestones: Milestone[];
   gear_stats: GearItem[];
 }

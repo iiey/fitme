@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 
 import { ActivityHeatmap } from "@/components/charts/ActivityHeatmap";
 import { EChart } from "@/components/charts/EChart";
-import { barChart, donutChart, lineChart } from "@/components/charts/options";
+import { barChart, donutChart, hrZoneBarChart, lineChart, yearlyStatsChart } from "@/components/charts/options";
 import { TrainingLoadSection } from "@/components/charts/TrainingLoadSection";
 import { ImportDialog } from "@/components/import/ImportDialog";
 import { Card } from "@/components/ui/Card";
@@ -15,28 +15,60 @@ import { EmptyState, ErrorState, Spinner } from "@/components/ui/States";
 import { useDashboard, useMeta } from "@/lib/api";
 import { useAthleteContext } from "@/lib/athlete-context";
 import { formatDate, formatHours, formatNumber } from "@/lib/format";
+import { useIsDark } from "@/lib/use-is-dark";
+
+const WINDOW_OPTIONS = [
+  { value: 7, label: "7 days" },
+  { value: 14, label: "14 days" },
+  { value: 30, label: "30 days" },
+  { value: 60, label: "60 days" },
+  { value: 90, label: "90 days" },
+  { value: 120, label: "120 days" },
+  { value: 180, label: "180 days" },
+  { value: 365, label: "1 year" },
+];
+
+const HR_ZONE_INFO: Record<string, string> = {
+  Z1: "Recovery — very light effort, active recovery",
+  Z2: "Endurance — easy conversational pace, fat-burning base",
+  Z3: "Tempo — moderate effort, sustained pace",
+  Z4: "Threshold — hard effort near lactate threshold",
+  Z5: "VO2max — maximal effort, anaerobic capacity",
+};
+
+const POWER_DURATION_INFO: Record<string, string> = {
+  "5s": "Neuromuscular — peak sprint power",
+  "30s": "Anaerobic capacity — short burst power",
+  "1m": "Anaerobic power — sustained sprint",
+  "5m": "VO2max / MAP — maximal aerobic power",
+  "20m": "FTP estimate — functional threshold power",
+};
 
 export default function DashboardPage() {
   const { athleteId } = useAthleteContext();
   const { data: meta } = useMeta(athleteId);
+  const isDark = useIsDark();
   const [importOpen, setImportOpen] = useState(false);
   const [sportType, setSportType] = useState("");
   const [year, setYear] = useState("");
+  const [hrWindow, setHrWindow] = useState(30);
+  const [powerWindow, setPowerWindow] = useState(120);
 
   const filters = useMemo(
     () => ({
       sport_type: sportType ? [sportType] : undefined,
       start: year ? `${year}-01-01` : undefined,
       end: year ? `${year}-12-31T23:59:59` : undefined,
+      hr_window: hrWindow,
+      power_window: powerWindow,
     }),
-    [sportType, year],
+    [sportType, year, hrWindow, powerWindow],
   );
   const { data, error, isLoading } = useDashboard(athleteId, filters);
 
   const distanceUnit = meta?.distance_unit ?? "km";
   const availableYears = data?.available_years ?? [];
 
-  // No data at all → prompt to import.
   if (!isLoading && data?.empty) {
     return (
       <>
@@ -47,7 +79,7 @@ export default function DashboardPage() {
               onClick={() => setImportOpen(true)}
               className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
             >
-              ⬆️ Import data
+              Import data
             </button>
           }
         />
@@ -61,7 +93,7 @@ export default function DashboardPage() {
       <select
         value={sportType}
         onChange={(event) => setSportType(event.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none"
+        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
       >
         <option value="">All sports</option>
         {meta?.sport_types.map((option) => (
@@ -73,7 +105,7 @@ export default function DashboardPage() {
       <select
         value={year}
         onChange={(event) => setYear(event.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none"
+        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
       >
         <option value="">All time</option>
         {availableYears.map((y) => (
@@ -179,6 +211,7 @@ export default function DashboardPage() {
                 monthly.map((m) => m.distance),
                 "#fc4c02",
                 distanceUnit,
+                isDark,
               )}
               height={260}
             />
@@ -189,6 +222,7 @@ export default function DashboardPage() {
                 data.weekly_stats.map((w) => w.period.replace(/^\d+-/, "")),
                 data.weekly_stats.map((w) => Math.round((w.moving_time_s / 3600) * 10) / 10),
                 "#2563eb",
+                isDark,
               )}
               height={260}
             />
@@ -203,23 +237,117 @@ export default function DashboardPage() {
         </DeferredSection>
       )}
 
-      {/* Distributions */}
-      <DeferredSection height={260}>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {/* Yearly stats + HR zones + Peak power + By weekday */}
+      <DeferredSection height={340}>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
+          {data.monthly_stats.length > 0 && (
+            <Card title={`Yearly stats (${distanceUnit})`}>
+              <EChart
+                option={yearlyStatsChart(data.monthly_stats, distanceUnit, isDark)}
+                height={280}
+              />
+            </Card>
+          )}
+          {data.hr_zones && (
+            <Card
+              title={
+                <div className="flex items-center gap-2">
+                  <span>Heart-rate zones</span>
+                  <InfoTooltip text="Time spent in each HR zone. Z1=Recovery, Z2=Endurance, Z3=Tempo, Z4=Threshold, Z5=VO2max" />
+                </div>
+              }
+              action={
+                <WindowSelector value={hrWindow} onChange={setHrWindow} />
+              }
+            >
+              <EChart
+                option={hrZoneBarChart(
+                  data.hr_zones.zones.map((s) => Math.round((s / 3600) * 10) / 10),
+                  "h",
+                  isDark,
+                )}
+                height={220}
+              />
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                {Object.entries(HR_ZONE_INFO).map(([zone, desc]) => (
+                  <span key={zone} className="text-[11px] text-gray-400">
+                    <strong className="text-gray-500 dark:text-gray-300">{zone}</strong> {desc.split("—")[1]?.trim()}
+                  </span>
+                ))}
+              </div>
+            </Card>
+          )}
+          {data.peak_power && (
+            <Card
+              title={
+                <div className="flex items-center gap-2">
+                  <span>Peak power</span>
+                  <InfoTooltip text="Best average watts for each duration. 5s=Sprint, 30s=Anaerobic, 1m=Power, 5m=VO2max, 20m=FTP" />
+                </div>
+              }
+              action={
+                <WindowSelector value={powerWindow} onChange={setPowerWindow} />
+              }
+            >
+              <EChart
+                option={barChart(
+                  data.peak_power.outputs.map((o) => labelForDuration(o.duration_s)),
+                  data.peak_power.outputs.map((o) => o.watts ?? 0),
+                  "#ca8a04",
+                  "W",
+                  isDark,
+                )}
+                height={220}
+              />
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                {Object.entries(POWER_DURATION_INFO).map(([dur, desc]) => (
+                  <span key={dur} className="text-[11px] text-gray-400">
+                    <strong className="text-gray-500 dark:text-gray-300">{dur}</strong> {desc.split("—")[1]?.trim()}
+                  </span>
+                ))}
+              </div>
+            </Card>
+          )}
           <Card title="By weekday">
             <EChart
               option={barChart(
                 data.weekday_stats.map((d) => d.label),
                 data.weekday_stats.map((d) => d.count),
                 "#16a34a",
+                "",
+                isDark,
               )}
               height={220}
             />
+          </Card>
+        </div>
+      </DeferredSection>
+
+      {/* VO2Max trend + By time of day + Distance breakdown */}
+      <DeferredSection height={260}>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Card title="VO2Max over time">
+            {data.vo2max_trend && data.vo2max_trend.length > 0 ? (
+              <EChart
+                option={lineChart(
+                  data.vo2max_trend.map((p) => p.date.slice(5)),
+                  data.vo2max_trend.map((p) => p.vo2max),
+                  "#8b5cf6",
+                  isDark,
+                )}
+                height={220}
+              />
+            ) : (
+              <p className="flex h-[220px] items-center justify-center text-sm text-gray-400">
+                Not enough running data yet.
+              </p>
+            )}
           </Card>
           <Card title="By time of day">
             <EChart
               option={donutChart(
                 data.daytime_stats.map((d) => ({ name: d.label, value: d.count })),
+                isDark,
               )}
               height={220}
             />
@@ -230,6 +358,7 @@ export default function DashboardPage() {
                 data.distance_breakdown
                   .filter((d) => d.count > 0)
                   .map((d) => ({ name: d.label, value: d.count })),
+                isDark,
               )}
               height={220}
             />
@@ -237,43 +366,11 @@ export default function DashboardPage() {
         </div>
       </DeferredSection>
 
-      {/* HR zones + peak power */}
-      <DeferredSection height={260}>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {data.hr_zones && (
-            <Card title={`Heart-rate zones (last ${data.hr_zones.window_days} days)`}>
-              <EChart
-                option={barChart(
-                  ["Z1", "Z2", "Z3", "Z4", "Z5"],
-                  data.hr_zones.zones.map((s) => Math.round((s / 3600) * 10) / 10),
-                  "#dc2626",
-                  "h",
-                )}
-                height={220}
-              />
-            </Card>
-          )}
-          {data.peak_power && (
-            <Card title={`Peak power (last ${data.peak_power.window_days} days)`}>
-              <EChart
-                option={barChart(
-                  data.peak_power.outputs.map((o) => labelForDuration(o.duration_s)),
-                  data.peak_power.outputs.map((o) => o.watts ?? 0),
-                  "#ca8a04",
-                  "W",
-                )}
-                height={220}
-              />
-            </Card>
-          )}
-        </div>
-      </DeferredSection>
-
       {/* Recent activities + milestones */}
       <DeferredSection height={200}>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card title="Recent activities">
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-gray-100 dark:divide-gray-700">
               {data.recent_activities.map((activity) => (
                 <li key={activity.activity_id} className="flex items-center justify-between py-2">
                   <Link
@@ -288,7 +385,7 @@ export default function DashboardPage() {
             </ul>
           </Card>
           <Card title="Recent milestones">
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-gray-100 dark:divide-gray-700">
               {data.recent_milestones.map((milestone, index) => (
                 <li key={index} className="py-2">
                   <p className="text-sm font-medium">{milestone.title}</p>
@@ -309,4 +406,33 @@ export default function DashboardPage() {
 function labelForDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   return `${Math.round(seconds / 60)}m`;
+}
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="group relative cursor-help">
+      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+        ?
+      </span>
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-gray-100 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:bg-gray-700">
+        {text}
+      </span>
+    </span>
+  );
+}
+
+function WindowSelector({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
+    >
+      {WINDOW_OPTIONS.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
 }

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { EChart } from "@/components/charts/EChart";
 import { trainingLoadDetailChart } from "@/components/charts/options";
 import type { TrainingLoadAnalysis } from "@/lib/types";
+import { useIsDark } from "@/lib/use-is-dark";
 
 const STATUS_COLORS: Record<string, string> = {
   green: "text-green-600",
@@ -64,9 +65,11 @@ function MetricCard({
 function DetailModal({
   analysis,
   onClose,
+  isDark,
 }: {
   analysis: TrainingLoadAnalysis;
   onClose: () => void;
+  isDark: boolean;
 }) {
   return (
     <div
@@ -90,7 +93,7 @@ function DetailModal({
           </button>
         </header>
         <div className="p-5">
-          <EChart option={trainingLoadDetailChart(analysis)} height={400} />
+          <EChart option={trainingLoadDetailChart(analysis, isDark)} height={400} />
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             <MetricCard
               label="CTL (Fitness)"
@@ -132,6 +135,7 @@ export function TrainingLoadSection({
 }: {
   analysis: TrainingLoadAnalysis;
 }) {
+  const isDark = useIsDark();
   const [showDetail, setShowDetail] = useState(false);
 
   return (
@@ -207,7 +211,7 @@ export function TrainingLoadSection({
       </div>
 
       {showDetail && (
-        <DetailModal analysis={analysis} onClose={() => setShowDetail(false)} />
+        <DetailModal analysis={analysis} onClose={() => setShowDetail(false)} isDark={isDark} />
       )}
     </>
   );

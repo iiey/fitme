@@ -135,6 +135,7 @@ export const DashboardSchema = z.object({
     window_days: z.number(),
   }).nullable().optional(),
   training_load: z.array(z.object({ date: z.string(), load: z.number() })).optional(),
+  vo2max_trend: z.array(z.object({ date: z.string(), vo2max: z.number() })).optional(),
   training_load_analysis: z.object({
     ctl: z.number(),
     atl: z.number(),
@@ -161,6 +162,15 @@ export const DashboardSchema = z.object({
   gear_stats: z.array(GearItemSchema).optional(),
 });
 
+const HrZoneItemSchema = z.object({
+  zone: z.number(),
+  label: z.string(),
+  lower_bpm: z.number(),
+  upper_bpm: z.number().nullable(),
+  seconds: z.number(),
+  percentage: z.number(),
+});
+
 export const ActivityDetailSchema = ActivitySummarySchema.extend({
   description: z.string().nullable(),
   max_speed_kmh: z.number().nullable(),
@@ -178,6 +188,7 @@ export const ActivityDetailSchema = ActivitySummarySchema.extend({
     label: z.string(),
     time_s: z.number(),
   })),
+  hr_zones: z.array(HrZoneItemSchema).nullable().default(null),
 });
 
 export const ImportResultSchema = z.object({
