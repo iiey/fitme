@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app import repository
-from app.api.athletes import get_athlete_id
+from app.api.athletes import get_required_athlete_id as get_athlete_id
 from app.db import get_db
 
 router = APIRouter(prefix="/api/heatmap", tags=["heatmap"])

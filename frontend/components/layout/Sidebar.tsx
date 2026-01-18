@@ -30,7 +30,15 @@ export function Sidebar() {
   useEffect(() => {
     if (!meta) return;
     setAthletes(meta.athletes);
-    if (!athleteId && meta.athletes.length > 0) {
+    if (meta.athletes.length === 0) {
+      // All data was wiped — drop any persisted selection.
+      if (athleteId) setAthleteId(null);
+      return;
+    }
+    // Reset a missing or stale selection (e.g. an id cached in the browser
+    // after a db reset or importing a different export) to a valid athlete.
+    const exists = meta.athletes.some((a) => a.athlete_id === athleteId);
+    if (!athleteId || !exists) {
       setAthleteId(meta.athletes[0].athlete_id);
     }
   }, [meta, athleteId, setAthleteId, setAthletes]);

@@ -22,21 +22,35 @@ STRAVA_ATHLETE_URL = "https://www.strava.com/athletes/{athlete_id}"
 def get_athlete_id(
     athlete: str | None = Query(default=None),
     db: Session = Depends(get_db),
-) -> str:
-    """Resolve the active athlete_id from the query string or fall back to the most recent."""
+) -> str | None:
+    """Resolve the active athlete_id from the query string or fall back to the most recent.
+
+    An unknown ``athlete`` (e.g. an id cached in the browser after a database
+    reset or a fresh import of a different export) is treated like no selection
+    and falls back to the most recent athlete, so the UI can recover and
+    re-select a valid athlete instead of every endpoint failing with a 404.
+    """
     if athlete:
         profile = db.get(AthleteProfile, athlete)
-        if profile is None:
-            raise HTTPException(404, f"Athlete '{athlete}' not found")
-        return athlete
+        if profile is not None:
+            return athlete
     first = (
         db.execute(select(AthleteProfile).order_by(AthleteProfile.updated_on.desc()))
         .scalars()
         .first()
     )
     if first is None:
-        raise HTTPException(404, "No athletes found. Import data first.")
+        return None
     return first.athlete_id
+
+
+def get_required_athlete_id(
+    athlete_id: str | None = Depends(get_athlete_id),
+) -> str:
+    """Like ``get_athlete_id`` but raises 404 when no athlete exists."""
+    if athlete_id is None:
+        raise HTTPException(404, "No athletes found. Import data first.")
+    return athlete_id
 
 
 def _profile_to_dict(profile: AthleteProfile, activity_count: int) -> dict:

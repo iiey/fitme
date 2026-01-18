@@ -36,10 +36,26 @@ def _athlete_info(db: Session, athlete_id: str) -> AthleteInfo | None:
 @router.get("/api/meta", response_model=MetaResponse)
 def get_meta(
     db: Session = Depends(get_db),
-    athlete_id: str = Depends(get_athlete_id),
+    athlete_id: str | None = Depends(get_athlete_id),
 ) -> MetaResponse:
     athlete = get_athlete()
     unit_system = athlete.unit_system
+
+    if athlete_id is None:
+        return MetaResponse(
+            app_name=settings.app_name,
+            app_subtitle=settings.app_subtitle,
+            unit_system=unit_system,
+            distance_unit=distance_unit_label(unit_system),
+            elevation_unit=elevation_unit_label(unit_system),
+            sport_types=[],
+            activity_count=0,
+            first_activity=None,
+            last_activity=None,
+            athlete=None,
+            athletes=[],
+        )
+
     first, last = repository.date_range(db, athlete_id)
     used_sports = repository.distinct_sport_types(db, athlete_id)
 

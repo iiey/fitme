@@ -156,3 +156,18 @@ def test_dashboard_filters(client: TestClient):
     empty = client.get("/api/dashboard", params={"start": "2023-01-01", "end": "2023-12-31"}).json()
     assert empty["filtered_empty"] is True
     assert empty["available_years"] == [2024]
+
+
+def test_stale_athlete_falls_back_instead_of_404(client: TestClient):
+    # A stale athlete id (e.g. cached in the browser after a db reset or a fresh
+    # import of a different export) must not break the discovery/data endpoints:
+    # it falls back to the real athlete so the UI can recover.
+    meta = client.get("/api/meta", params={"athlete": "12345678"})
+    assert meta.status_code == 200, meta.text
+    body = meta.json()
+    assert [a["athlete_id"] for a in body["athletes"]] == ["42"]
+    assert body["athlete"]["athlete_id"] == "42"
+
+    dashboard = client.get("/api/dashboard", params={"athlete": "12345678"})
+    assert dashboard.status_code == 200, dashboard.text
+    assert dashboard.json()["empty"] is False

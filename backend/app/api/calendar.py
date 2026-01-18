@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app import repository
-from app.api.athletes import get_athlete_id
+from app.api.athletes import get_required_athlete_id as get_athlete_id
 from app.api.serializers import serialize_activity_summary
 from app.athlete import get_athlete
 from app.db import get_db

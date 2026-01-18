@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app import repository
-from app.api.athletes import get_athlete_id
+from app.api.athletes import get_required_athlete_id as get_athlete_id
 from app.athlete import get_athlete
 from app.db import get_db
 from app.domain.rewind import available_years, build_rewind

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -9,56 +10,41 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import SessionLocal, get_db
+from app.db import get_db
 from app.ingestion.importer import import_export
 from app.models import ImportRun
-from app.schemas import ImportRequest
+from app.schemas import ImportRequest, ImportResult
+
+logger = logging.getLogger("strastat.import")
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 
-# Only allow archive/zip uploads; activity files live inside the export zip.
 _ALLOWED_UPLOAD_SUFFIXES = {".zip"}
-# Guard against unbounded uploads (default 500 MB).
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 
 _import_lock = threading.Lock()
 
 
-def _run_import_in_background(source: str | Path, *, force: bool = False) -> None:
-    db = SessionLocal()
-    try:
-        import_export(db, source, force=force)
-    except Exception:
-        import logging
-
-        logging.getLogger("strastat.import").exception("Background import failed")
-    finally:
-        db.close()
-
-
-@router.post("")
-def run_import(payload: ImportRequest, db: Session = Depends(get_db)) -> dict:
+@router.post("", response_model=ImportResult)
+def run_import(payload: ImportRequest, db: Session = Depends(get_db)) -> ImportResult:
     if not _import_lock.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="An import is already running.")
     try:
-        thread = threading.Thread(
-            target=_background_import_wrapper,
-            args=(payload.source,),
-            kwargs={"force": payload.force},
-            daemon=True,
-        )
-        thread.start()
+        summary = import_export(db, payload.source, force=payload.force)
     except Exception:
+        logger.exception("Import failed")
+        raise HTTPException(status_code=500, detail="Import failed") from None
+    finally:
         _import_lock.release()
-        raise
-    return {"status": "started", "message": "Import running in the background."}
+    return ImportResult(**summary.as_dict())
 
 
-@router.post("/upload")
+@router.post("/upload", response_model=ImportResult)
 def upload_import(
     file: UploadFile = File(...),
-) -> dict:
-    """Accept a Strava export ``.zip`` upload, store it and import in the background."""
+    db: Session = Depends(get_db),
+) -> ImportResult:
+    """Accept a Strava export ``.zip`` upload, store it and run the import."""
     filename = file.filename or "export.zip"
     suffix = Path(filename).suffix.lower()
     if suffix not in _ALLOWED_UPLOAD_SUFFIXES:
@@ -87,21 +73,14 @@ def upload_import(
         raise HTTPException(status_code=409, detail="An import is already running.")
 
     try:
-        thread = threading.Thread(target=_background_import_wrapper, args=(target,), daemon=True)
-        thread.start()
+        summary = import_export(db, target, force=False)
     except Exception:
-        _import_lock.release()
+        logger.exception("Import failed for uploaded file")
         target.unlink(missing_ok=True)
-        raise
-
-    return {"status": "started", "message": "Import running in the background."}
-
-
-def _background_import_wrapper(source: str | Path, *, force: bool = False) -> None:
-    try:
-        _run_import_in_background(source, force=force)
+        raise HTTPException(status_code=500, detail="Import failed") from None
     finally:
         _import_lock.release()
+    return ImportResult(**summary.as_dict())
 
 
 @router.get("/runs")

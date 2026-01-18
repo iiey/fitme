@@ -69,7 +69,7 @@ export default function DashboardPage() {
   const distanceUnit = meta?.distance_unit ?? "km";
   const availableYears = data?.available_years ?? [];
 
-  if (!isLoading && data?.empty) {
+  if (data?.empty) {
     return (
       <>
         <EmptyState
@@ -137,10 +137,23 @@ export default function DashboardPage() {
   }
   if (error) {
     return (
-      <div className="space-y-6">
-        {header}
-        <ErrorState />
-      </div>
+      <>
+        <div className="space-y-6">
+          {header}
+          <EmptyState
+            message="Could not load dashboard data. Try importing a Strava export."
+            action={
+              <button
+                onClick={() => setImportOpen(true)}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+              >
+                Import data
+              </button>
+            }
+          />
+        </div>
+        {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
+      </>
     );
   }
   if (!data || data.filtered_empty) {

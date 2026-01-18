@@ -187,7 +187,7 @@ def _training_load(activities, athlete, anchor: datetime) -> list[dict]:
 @router.get("")
 def get_dashboard(
     db: Session = Depends(get_db),
-    athlete_id: str = Depends(get_athlete_id),
+    athlete_id: str | None = Depends(get_athlete_id),
     sport_type: list[str] | None = Query(default=None),
     start: datetime | None = None,
     end: datetime | None = None,
@@ -196,6 +196,9 @@ def get_dashboard(
 ) -> dict:
     athlete = get_athlete()
     unit_system = athlete.unit_system
+
+    if athlete_id is None:
+        return {"empty": True, "unit_system": unit_system, "available_years": []}
 
     available_years = repository.distinct_years(db, athlete_id)
     if not available_years:
