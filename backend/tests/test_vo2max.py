@@ -54,7 +54,7 @@ def test_trend_rejects_single_anomalous_spike():
     base = datetime(2024, 5, 1, 7, 0, 0)
     steady = [_run(base + timedelta(days=3 * i), 10_000, 3000, 160) for i in range(10)]
     baseline = vo2max_trend(steady, max_hr=190, resting_hr=50)[-1]["vo2max"]
-    # Inject one freak run (10 km in 35 min at the same HR — a downhill / GPS
+    # Inject one freak run (10 km in 35 min at the same HR - a downhill / GPS
     # artifact) once there is enough surrounding context.
     spiked = list(steady)
     spiked.insert(6, _run(base + timedelta(days=16), 10_000, 2100, 160))

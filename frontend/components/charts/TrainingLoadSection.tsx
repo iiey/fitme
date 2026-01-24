@@ -99,14 +99,14 @@ function DetailModal({
               label="CTL (Fitness)"
               value={String(analysis.ctl)}
               sub="42-day fitness trend"
-              tip="Chronic Training Load — exponentially weighted average of daily training load over 42 days. Higher = fitter baseline."
+              tip="Chronic Training Load - exponentially weighted average of daily training load over 42 days. Higher = fitter baseline."
               colorClass={STATUS_COLORS.neutral}
             />
             <MetricCard
               label="ATL (Fatigue)"
               value={String(analysis.atl)}
               sub="7-day fatigue level"
-              tip="Acute Training Load — exponentially weighted average over 7 days. Reflects recent training stress."
+              tip="Acute Training Load - exponentially weighted average over 7 days. Reflects recent training stress."
               colorClass={STATUS_COLORS.neutral}
             />
             <MetricCard
@@ -155,13 +155,13 @@ export function TrainingLoadSection({
             label="CTL (Fitness)"
             value={String(analysis.ctl)}
             sub="42-day fitness trend"
-            tip="Chronic Training Load — exponentially weighted average of daily training load over 42 days."
+            tip="Chronic Training Load - exponentially weighted average of daily training load over 42 days."
           />
           <MetricCard
             label="ATL (Fatigue)"
             value={String(analysis.atl)}
             sub="7-day fatigue level"
-            tip="Acute Training Load — exponentially weighted average over 7 days."
+            tip="Acute Training Load - exponentially weighted average over 7 days."
           />
           <MetricCard
             label="TSB (Form)"

@@ -128,7 +128,7 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
     const totalWeeks = Math.ceil(totalDays / 7);
     const rangeLabel =
       yearView === "rolling"
-        ? `${alignedStart.toISOString().slice(0, 10)} — ${alignedEnd.toISOString().slice(0, 10)}`
+        ? `${alignedStart.toISOString().slice(0, 10)} - ${alignedEnd.toISOString().slice(0, 10)}`
         : yearView;
 
     return {

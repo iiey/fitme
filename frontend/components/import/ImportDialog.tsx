@@ -129,7 +129,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
         {result && (
           <div className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-            Import complete — added <strong>{result.added}</strong>, updated{" "}
+            Import complete - added <strong>{result.added}</strong>, updated{" "}
             <strong>{result.updated}</strong>, skipped <strong>{result.skipped}</strong>.
           </div>
         )}

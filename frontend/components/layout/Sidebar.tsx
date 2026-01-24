@@ -30,7 +30,7 @@ export function Sidebar() {
     if (!meta) return;
     setAthletes(meta.athletes);
     if (meta.athletes.length === 0) {
-      // All data was wiped — drop any persisted selection.
+      // All data was wiped - drop any persisted selection.
       if (athleteId) setAthleteId(null);
       return;
     }

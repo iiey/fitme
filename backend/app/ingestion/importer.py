@@ -132,7 +132,7 @@ def import_export(db: Session, source: str | Path, *, force: bool = False) -> Im
                         parsed = _parse_file(data, ext)
                         if parsed is not None:
                             summary.files_parsed += 1
-                except Exception as exc:  # noqa: BLE001 — tolerate bad files, keep CSV row.
+                except Exception as exc:  # noqa: BLE001 - tolerate bad files, keep CSV row.
                     summary.parse_errors += 1
                     logger.warning("Failed to parse %s: %s", row.filename, exc)
 
@@ -331,7 +331,7 @@ def _upsert_athlete_profile(db: Session, reader: ExportReader) -> str:
     """Parse ``profile.csv`` and store the athlete identity. Returns athlete_id."""
     try:
         profile_row = reader.read_profile()
-    except Exception as exc:  # noqa: BLE001 — a malformed profile must not abort import.
+    except Exception as exc:  # noqa: BLE001 - a malformed profile must not abort import.
         logger.warning("Failed to parse profile.csv: %s", exc)
         return "1"
     if profile_row is None:

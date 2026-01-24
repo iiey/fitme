@@ -9,7 +9,7 @@ from datetime import date
 RUNNING_TYPES = {"Run", "Trail Run", "VirtualRun", "TrailRun"}
 
 # Trailing window (days) over which the displayed VO2max reflects the athlete's
-# best recent aerobic capacity — mirroring how sports watches report a slowly
+# best recent aerobic capacity - mirroring how sports watches report a slowly
 # evolving number rather than a per-run value.
 VO2MAX_WINDOW_DAYS = 42
 
@@ -75,7 +75,7 @@ def hr_adjusted_vo2max(
     At steady state the VO2 demanded by the running pace represents a fraction
     of VO2max equal to the fraction of heart-rate reserve being used. Dividing
     the pace's VO2 cost by that fraction recovers an estimate of full VO2max,
-    which — unlike the raw VDOT — does not collapse for easy runs.
+    which - unlike the raw VDOT - does not collapse for easy runs.
     """
     if not distance_m or not moving_time_s or not avg_hr or not max_hr or not resting_hr:
         return None
@@ -102,7 +102,7 @@ def _robust_envelope(window_desc: list[float]) -> float:
     ``window_desc`` is the window's estimates sorted high-to-low. We normally
     take the maximum, but when there is enough context and the top sample sits
     well above the second-highest, that top sample is treated as an artifact and
-    skipped — so one freak run cannot prop the curve up for weeks.
+    skipped - so one freak run cannot prop the curve up for weeks.
     """
     top = window_desc[0]
     if len(window_desc) >= _ANOMALY_MIN_SAMPLES and top > window_desc[1] * _ANOMALY_RATIO:

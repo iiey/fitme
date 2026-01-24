@@ -30,19 +30,19 @@ const WINDOW_OPTIONS = [
 ];
 
 const HR_ZONE_INFO: Record<string, string> = {
-  Z1: "Recovery — very light effort, active recovery",
-  Z2: "Endurance — easy conversational pace, fat-burning base",
-  Z3: "Tempo — moderate effort, sustained pace",
-  Z4: "Threshold — hard effort near lactate threshold",
-  Z5: "VO2max — maximal effort, anaerobic capacity",
+  Z1: "Recovery - very light effort, active recovery",
+  Z2: "Endurance - easy conversational pace, fat-burning base",
+  Z3: "Tempo - moderate effort, sustained pace",
+  Z4: "Threshold - hard effort near lactate threshold",
+  Z5: "VO2max - maximal effort, anaerobic capacity",
 };
 
 const POWER_DURATION_INFO: Record<string, string> = {
-  "5s": "Neuromuscular — peak sprint power",
-  "30s": "Anaerobic capacity — short burst power",
-  "1m": "Anaerobic power — sustained sprint",
-  "5m": "VO2max / MAP — maximal aerobic power",
-  "20m": "FTP estimate — functional threshold power",
+  "5s": "Neuromuscular - peak sprint power",
+  "30s": "Anaerobic capacity - short burst power",
+  "1m": "Anaerobic power - sustained sprint",
+  "5m": "VO2max / MAP - maximal aerobic power",
+  "20m": "FTP estimate - functional threshold power",
 };
 
 export default function DashboardPage() {

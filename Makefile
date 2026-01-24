@@ -1,4 +1,4 @@
-# StraStat — developer convenience targets.
+# StraStat - developer convenience targets.
 # Run `make help` to list available commands.
 
 # Use bash for recipes.

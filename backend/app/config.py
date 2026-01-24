@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     storage_dir: Path = STORAGE_DIR
     athlete_config_path: Path = BACKEND_ROOT / "config" / "athlete.yaml"
 
-    # CORS — the Next.js dev server origin(s).
+    # CORS - the Next.js dev server origin(s).
     cors_origins: list[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",

@@ -276,7 +276,7 @@ export default function ActivitiesPage() {
             Distance{hasDistanceFilter ? " ✕" : ""}
           </button>
 
-          {/* Date inputs — shown when expanded */}
+          {/* Date inputs - shown when expanded */}
           {showDateFilter && (
             <>
               <div className="flex items-center gap-1.5">
@@ -310,7 +310,7 @@ export default function ActivitiesPage() {
             </>
           )}
 
-          {/* Distance inputs — shown when expanded */}
+          {/* Distance inputs - shown when expanded */}
           {showDistanceFilter && (
             <>
               <div className="flex items-center gap-1.5">
@@ -353,7 +353,7 @@ export default function ActivitiesPage() {
           )}
         </div>
 
-        {/* Date presets — shown when expanded */}
+        {/* Date presets - shown when expanded */}
         {showDateFilter && (
           <div className="flex flex-wrap gap-2">
             {[
@@ -374,7 +374,7 @@ export default function ActivitiesPage() {
           </div>
         )}
 
-        {/* Distance presets — shown when expanded */}
+        {/* Distance presets - shown when expanded */}
         {showDistanceFilter && (
           <div className="flex flex-wrap gap-2">
             {[

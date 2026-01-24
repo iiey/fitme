@@ -1,4 +1,4 @@
-# StraStat — Backend (FastAPI)
+# StraStat - Backend (FastAPI)
 
 Self-hosted Strava statistics dashboard. This is the Python/FastAPI backend that
 ingests a **Strava bulk export** and serves aggregated statistics to the Next.js

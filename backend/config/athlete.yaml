@@ -2,7 +2,7 @@
 # These values cannot be derived from the Strava bulk export and are needed for
 # training-load (TSS/TRIMP), heart-rate / power zones and weight-relative power.
 
-# Date of birth (YYYY-MM-DD) — used for age-based max-heart-rate fallback.
+# Date of birth (YYYY-MM-DD) - used for age-based max-heart-rate fallback.
 birthday: "1990-01-01"
 # "M" or "F".
 sex: "M"

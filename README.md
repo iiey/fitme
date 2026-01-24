@@ -1,6 +1,6 @@
 # StraStat
 
-A self-hosted, single-user statistics dashboard for your Strava data — built from
+A self-hosted, single-user statistics dashboard for your Strava data - built from
 scratch with a **Python / FastAPI** backend and a **React / Next.js** frontend.
 Inspired by [statistics-for-strava](https://github.com/robiningelbrecht/statistics-for-strava),
 StraStat ingests your **Strava bulk export** (no live API needed) and turns it into
@@ -53,10 +53,10 @@ cd backend
 uv sync                         # create .venv + install deps (incl. dev) from uv.lock
 uv run alembic upgrade head     # create the database
 
-# Generate a synthetic sample export (or skip and use your own — see below).
+# Generate a synthetic sample export (or skip and use your own - see below).
 uv run python scripts/generate_sample_export.py
 
-# Import data — use the bundled sample, or your own Strava export zip/folder.
+# Import data - use the bundled sample, or your own Strava export zip/folder.
 uv run python -m app.cli import ../sample-data/strava-export
 
 uv run uvicorn app.main:app --reload --port 8000
@@ -84,7 +84,7 @@ npm run dev        # http://localhost:3000
      or `POST /api/import/upload` with the file as multipart form-data.
 
 **Re-imports are idempotent.** Running the import again on an updated export
-adds new activities, updates changed ones and skips the rest — so you can run it
+adds new activities, updates changed ones and skips the rest - so you can run it
 on a schedule without creating duplicates.
 
 The athlete's name and Strava profile link (bottom-left of the sidebar) are read
