@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
@@ -23,6 +24,14 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (initialised) return;
+    const params = new URLSearchParams(window.location.search);
+    const yearParam = parseInt(params.get("year") ?? "", 10);
+    const monthParam = parseInt(params.get("month") ?? "", 10);
+    if (yearParam && monthParam >= 1 && monthParam <= 12) {
+      setCurrent({ year: yearParam, month: monthParam });
+      setInitialised(true);
+      return;
+    }
     if (meta?.last_activity) {
       const last = new Date(meta.last_activity);
       setCurrent({ year: last.getFullYear(), month: last.getMonth() + 1 });
@@ -88,21 +97,33 @@ export default function CalendarPage() {
 
           {data.per_sport.length > 0 && (
             <Card title="By sport type">
-              <ul className="divide-y divide-gray-100">
-                {data.per_sport.map((sport) => (
-                  <li key={sport.sport_type} className="flex items-center justify-between py-2 text-sm">
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="inline-block h-3 w-3 rounded-full"
-                        style={{ backgroundColor: colorForSportType(sport.sport_type) }}
-                      />
-                      {sport.label}
-                    </span>
-                    <span className="text-gray-500">
-                      {sport.count} · {formatNumber(sport.distance, 1)} · {formatHours(sport.moving_time_s)}
-                    </span>
-                  </li>
-                ))}
+              <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                {data.per_sport.map((sport) => {
+                  const monthStr = String(month).padStart(2, "0");
+                  const from = `${year}-${monthStr}-01`;
+                  const to = `${year}-${monthStr}-${String(data.days_in_month).padStart(2, "0")}`;
+                  const href = `/activities?sport=${encodeURIComponent(sport.sport_type)}&from=${from}&to=${to}`;
+                  return (
+                    <li key={sport.sport_type}>
+                      <Link
+                        href={href}
+                        title={`View ${sport.label} activities in ${data.month_name} ${year}`}
+                        className="flex items-center justify-between rounded-md py-2 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="inline-block h-3 w-3 rounded-full"
+                            style={{ backgroundColor: colorForSportType(sport.sport_type) }}
+                          />
+                          <span className="font-medium text-brand hover:underline">{sport.label}</span>
+                        </span>
+                        <span className="text-gray-500">
+                          {sport.count} · {formatNumber(sport.distance, 1)} · {formatHours(sport.moving_time_s)}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </Card>
           )}

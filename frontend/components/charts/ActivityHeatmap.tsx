@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CalendarPoint } from "@/lib/types";
@@ -45,6 +46,7 @@ interface YearOption {
 
 export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
   const isDark = useIsDark();
+  const router = useRouter();
 
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -114,13 +116,14 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
     }
 
     // Build month headers - find the first week column for each month
-    const months: { label: string; col: number }[] = [];
+    const months: { label: string; col: number; year: number; month: number }[] = [];
     let lastMonth = -1;
     for (const cell of grid) {
       if (cell.row !== 0) continue; // only look at Monday row
+      const year = parseInt(cell.date.slice(0, 4), 10);
       const month = parseInt(cell.date.slice(5, 7), 10) - 1;
       if (month !== lastMonth) {
-        months.push({ label: MONTH_LABELS[month], col: cell.col });
+        months.push({ label: MONTH_LABELS[month], col: cell.col, year, month: month + 1 });
         lastMonth = month;
       }
     }
@@ -190,14 +193,26 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
             {monthHeaders.map((m, i) => {
               const nextCol = i + 1 < monthHeaders.length ? monthHeaders[i + 1].col : totalWeeks;
               const spanWeeks = nextCol - m.col;
+              const width = spanWeeks * (cellSize + cellGap);
+              if (spanWeeks < 2) {
+                return (
+                  <span
+                    key={`${m.label}-${m.col}`}
+                    style={{ width, flexShrink: 0 }}
+                  />
+                );
+              }
               return (
-                <span
+                <button
                   key={`${m.label}-${m.col}`}
-                  className="text-[10px] text-gray-400"
-                  style={{ width: spanWeeks * (cellSize + cellGap), flexShrink: 0 }}
+                  type="button"
+                  onClick={() => router.push(`/calendar?year=${m.year}&month=${m.month}`)}
+                  title={`View ${m.label} ${m.year} in Monthly View`}
+                  className="cursor-pointer text-left text-[10px] text-gray-400 transition-colors hover:text-brand hover:underline"
+                  style={{ width, flexShrink: 0 }}
                 >
-                  {spanWeeks >= 2 ? m.label : ""}
-                </span>
+                  {m.label}
+                </button>
               );
             })}
           </div>

@@ -72,6 +72,7 @@ export function lineChart(
   values: number[],
   color = "#fc4c02",
   dark = false,
+  yRange?: { min?: number; max?: number },
 ): EChartsOption {
   const t = themeColors(dark);
   return {
@@ -83,7 +84,12 @@ export function lineChart(
       textStyle: { color: t.tooltipText },
     },
     xAxis: { type: "category", data: categories, axisLabel: { fontSize: 10, color: t.axis } },
-    yAxis: { type: "value", axisLabel: { fontSize: 10, color: t.axis } },
+    yAxis: {
+      type: "value",
+      min: yRange?.min,
+      max: yRange?.max,
+      axisLabel: { fontSize: 10, color: t.axis },
+    },
     series: [
       {
         type: "line",
@@ -97,39 +103,223 @@ export function lineChart(
   };
 }
 
+// Curated [light, base] color pairs used to build vertical gradients so the
+// charts read as polished rather than flat primary colors.
+const GRADIENT_PALETTE: [string, string][] = [
+  ["#60a5fa", "#2563eb"], // blue
+  ["#34d399", "#059669"], // emerald
+  ["#fbbf24", "#d97706"], // amber
+  ["#f472b6", "#db2777"], // pink
+  ["#a78bfa", "#7c3aed"], // violet
+  ["#22d3ee", "#0891b2"], // cyan
+  ["#fb923c", "#ea580c"], // orange
+  ["#a3e635", "#65a30d"], // lime
+];
+
+function verticalGradient(light: string, base: string) {
+  return {
+    type: "linear" as const,
+    x: 0,
+    y: 0,
+    x2: 0,
+    y2: 1,
+    colorStops: [
+      { offset: 0, color: light },
+      { offset: 1, color: base },
+    ],
+  };
+}
+
+// Cold-to-hot ramp: low values render blue/cyan, high values orange/red.
+const HEAT_RAMP = [
+  "#3b82f6", // blue (cold)
+  "#22d3ee", // cyan
+  "#22c55e", // green
+  "#eab308", // yellow
+  "#f97316", // orange
+  "#ef4444", // red (hot)
+];
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const c = (n: number) => Math.round(n).toString(16).padStart(2, "0");
+  return `#${c(r)}${c(g)}${c(b)}`;
+}
+
+// Sample a colour along a ramp; ratio is clamped to [0, 1].
+function sampleRamp(ramp: string[], ratio: number): string {
+  const clamped = Math.min(1, Math.max(0, ratio));
+  const scaled = clamped * (ramp.length - 1);
+  const lo = Math.floor(scaled);
+  const hi = Math.min(ramp.length - 1, lo + 1);
+  const f = scaled - lo;
+  const [r1, g1, b1] = hexToRgb(ramp[lo]);
+  const [r2, g2, b2] = hexToRgb(ramp[hi]);
+  return rgbToHex(r1 + (r2 - r1) * f, g1 + (g2 - g1) * f, b1 + (b2 - b1) * f);
+}
+
+// Mix a colour toward white by `amount` (0 = unchanged, 1 = white).
+function lighten(hex: string, amount: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  return rgbToHex(
+    r + (255 - r) * amount,
+    g + (255 - g) * amount,
+    b + (255 - b) * amount,
+  );
+}
+
 export function donutChart(
   items: { name: string; value: number; color?: string }[],
   dark = false,
+  options: { unit?: string } = {},
 ): EChartsOption {
   const t = themeColors(dark);
+  const { unit = "" } = options;
+
   return {
     tooltip: {
       trigger: "item",
       backgroundColor: t.tooltipBg,
       borderColor: t.tooltipBorder,
       textStyle: { color: t.tooltipText },
-    },
-    legend: {
-      bottom: 0,
-      type: "scroll",
-      textStyle: { fontSize: 11, color: t.text },
-      pageTextStyle: { color: t.axis },
-      pageIconColor: t.axis,
-      pageIconInactiveColor: dark ? "#4b5563" : "#d1d5db",
+      formatter: (params: unknown) => {
+        const p = params as {
+          marker: string;
+          name: string;
+          value: number;
+          percent: number;
+        };
+        const suffix = unit ? ` ${unit}` : "";
+        return `${p.marker}<b>${p.name}</b><br/>${p.value.toLocaleString()}${suffix} (${p.percent}%)`;
+      },
     },
     series: [
       {
         type: "pie",
-        radius: ["45%", "70%"],
-        center: ["50%", "45%"],
+        radius: ["36%", "48%"],
+        center: ["50%", "50%"],
         avoidLabelOverlap: true,
-        itemStyle: { borderColor: t.surface, borderWidth: 2 },
-        label: { show: false },
-        data: items.map((item) => ({
-          name: item.name,
-          value: item.value,
-          itemStyle: item.color ? { color: item.color } : undefined,
-        })),
+        minAngle: 4,
+        padAngle: 2,
+        itemStyle: {
+          borderColor: t.surface,
+          borderWidth: 2,
+          borderRadius: 6,
+        },
+        label: {
+          show: true,
+          alignTo: "edge",
+          edgeDistance: 1,
+          formatter: "{title|{b}}\n{value|{d}%}",
+          rich: {
+            title: { fontSize: 10, fontWeight: 600, color: t.text, lineHeight: 14 },
+            value: { fontSize: 9, color: t.axis, lineHeight: 12 },
+          },
+        },
+        labelLine: {
+          length: 4,
+          length2: 8,
+          smooth: false,
+          lineStyle: { color: t.axis },
+        },
+        emphasis: {
+          scale: true,
+          scaleSize: 6,
+          itemStyle: { shadowBlur: 14, shadowColor: "rgba(0, 0, 0, 0.25)" },
+        },
+        data: items.map((item, i) => {
+          const [light, base] = GRADIENT_PALETTE[i % GRADIENT_PALETTE.length];
+          return {
+            name: item.name,
+            value: item.value,
+            itemStyle: { color: item.color ?? verticalGradient(light, base) },
+          };
+        }),
+      },
+    ],
+  };
+}
+
+export function weekdayAverageChart(
+  items: { label: string; distance: number; count: number }[],
+  unit = "km",
+  dark = false,
+): EChartsOption {
+  const t = themeColors(dark);
+  const categories = items.map((d) => d.label);
+  const averages = items.map((d) =>
+    d.count > 0 ? Math.round((d.distance / d.count) * 10) / 10 : 0,
+  );
+  const counts = items.map((d) => d.count);
+
+  // Colour each bar from cold (lowest average) to hot (highest average).
+  const maxAvg = Math.max(...averages);
+  const minAvg = Math.min(...averages);
+  const span = maxAvg - minAvg || 1;
+
+  return {
+    grid: { left: 45, right: 15, top: 30, bottom: 28 },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.tooltipBorder,
+      textStyle: { color: t.tooltipText },
+      formatter: (params: unknown) => {
+        const list = params as { dataIndex: number }[];
+        const i = Array.isArray(list) ? list[0]?.dataIndex ?? 0 : 0;
+        const n = counts[i];
+        return (
+          `<div style="font-weight:600;margin-bottom:4px">${categories[i]}</div>` +
+          `<div>Average: <b>${averages[i].toLocaleString()} ${unit}</b></div>` +
+          `<div style="color:${t.axis}">From ${n} ${n === 1 ? "activity" : "activities"}</div>`
+        );
+      },
+    },
+    xAxis: {
+      type: "category",
+      data: categories,
+      axisTick: { show: false },
+      axisLabel: { fontSize: 11, color: t.axis },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: { fontSize: 10, color: t.axis },
+      splitLine: { lineStyle: { color: dark ? "#2d333b" : "#f0f0f0" } },
+    },
+    series: [
+      {
+        type: "bar",
+        barWidth: "58%",
+        data: averages.map((value) => {
+          const base = sampleRamp(HEAT_RAMP, (value - minAvg) / span);
+          return {
+            value,
+            itemStyle: {
+              borderRadius: [5, 5, 0, 0],
+              color: verticalGradient(lighten(base, 0.3), base),
+            },
+          };
+        }),
+        label: {
+          show: true,
+          position: "top",
+          fontSize: 10,
+          fontWeight: 600,
+          color: t.text,
+          formatter: `{c} ${unit}`,
+        },
+        emphasis: {
+          itemStyle: { shadowBlur: 10, shadowColor: "rgba(0, 0, 0, 0.2)" },
+        },
       },
     ],
   };

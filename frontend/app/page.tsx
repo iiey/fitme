@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { ActivityHeatmap } from "@/components/charts/ActivityHeatmap";
 import { EChart } from "@/components/charts/EChart";
 import { EddingtonDetailModal } from "@/components/charts/EddingtonDetailModal";
-import { barChart, donutChart, hrZoneBarChart, lineChart, yearlyStatsChart } from "@/components/charts/options";
+import { barChart, donutChart, hrZoneBarChart, lineChart, weekdayAverageChart, yearlyStatsChart } from "@/components/charts/options";
 import { TrainingLoadSection } from "@/components/charts/TrainingLoadSection";
 import { ImportDialog } from "@/components/import/ImportDialog";
 import { Card } from "@/components/ui/Card";
@@ -337,13 +337,15 @@ export default function DashboardPage() {
               </div>
             </Card>
           )}
-          <Card title="By weekday (hours)">
+          <Card title={`Weekday (average ${distanceUnit})`}>
             <EChart
-              option={barChart(
-                data.weekday_stats.map((d) => d.label),
-                data.weekday_stats.map((d) => Math.round((d.moving_time_s / 3600) * 10) / 10),
-                "#16a34a",
-                "h",
+              option={weekdayAverageChart(
+                data.weekday_stats.map((d) => ({
+                  label: d.label,
+                  distance: d.distance,
+                  count: d.count,
+                })),
+                distanceUnit,
                 isDark,
               )}
               height={220}
@@ -363,6 +365,7 @@ export default function DashboardPage() {
                   data.vo2max_trend.map((p) => p.vo2max),
                   "#8b5cf6",
                   isDark,
+                  { min: 0, max: 100 },
                 )}
                 height={220}
               />
@@ -377,6 +380,7 @@ export default function DashboardPage() {
               option={donutChart(
                 data.daytime_stats.map((d) => ({ name: d.label, value: d.count })),
                 isDark,
+                { unit: "activities" },
               )}
               height={220}
             />
@@ -388,6 +392,7 @@ export default function DashboardPage() {
                   .filter((d) => d.count > 0)
                   .map((d) => ({ name: d.label, value: d.count })),
                 isDark,
+                { unit: "activities" },
               )}
               height={220}
             />
