@@ -30,7 +30,7 @@ def run_import(payload: ImportRequest, db: Session = Depends(get_db)) -> ImportR
     if not _import_lock.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="An import is already running.")
     try:
-        summary = import_export(db, payload.source, force=payload.force)
+        summary = import_export(db, payload.source, provider=payload.provider, force=payload.force)
     except Exception:
         logger.exception("Import failed")
         raise HTTPException(status_code=500, detail="Import failed") from None

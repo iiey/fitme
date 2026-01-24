@@ -77,6 +77,7 @@ class GearItem(BaseModel):
 
 class ImportRequest(BaseModel):
     source: str
+    provider: str = "strava"
     force: bool = False
 
 
@@ -84,6 +85,7 @@ class ImportResult(BaseModel):
     added: int
     updated: int
     skipped: int
+    deduped: int = 0
     gear_upserted: int
     files_parsed: int
     parse_errors: int

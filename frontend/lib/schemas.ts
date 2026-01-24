@@ -195,6 +195,7 @@ export const ImportResultSchema = z.object({
   added: z.number(),
   updated: z.number(),
   skipped: z.number(),
+  deduped: z.number(),
   gear_upserted: z.number(),
   files_parsed: z.number(),
   parse_errors: z.number(),

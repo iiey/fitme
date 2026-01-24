@@ -33,6 +33,7 @@ export interface ImportResult {
   added: number;
   updated: number;
   skipped: number;
+  deduped: number;
   gear_upserted: number;
   files_parsed: number;
   parse_errors: number;
