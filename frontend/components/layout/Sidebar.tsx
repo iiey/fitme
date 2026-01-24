@@ -15,7 +15,6 @@ const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "📊" },
   { href: "/activities", label: "Activities", icon: "📋" },
   { href: "/calendar", label: "Monthly View", icon: "🗓️" },
-  { href: "/eddington", label: "Eddington", icon: "📈" },
   { href: "/heatmap", label: "Heatmap", icon: "🗺️" },
   { href: "/milestones", label: "Milestones", icon: "🏆" },
   { href: "/rewind", label: "Rewind", icon: "⏪" },

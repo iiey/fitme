@@ -13,7 +13,7 @@ const DARK_TOOLTIP_BORDER = "#374151";
 const LIGHT_SURFACE = "#ffffff";
 const DARK_SURFACE = "#1c1e24";
 
-function themeColors(dark: boolean) {
+export function themeColors(dark: boolean) {
   return {
     text: dark ? DARK_TEXT : LIGHT_TEXT,
     axis: dark ? DARK_AXIS : LIGHT_AXIS,

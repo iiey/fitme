@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { ActivityHeatmap } from "@/components/charts/ActivityHeatmap";
 import { EChart } from "@/components/charts/EChart";
+import { EddingtonDetailModal } from "@/components/charts/EddingtonDetailModal";
 import { barChart, donutChart, hrZoneBarChart, lineChart, yearlyStatsChart } from "@/components/charts/options";
 import { TrainingLoadSection } from "@/components/charts/TrainingLoadSection";
 import { ImportDialog } from "@/components/import/ImportDialog";
@@ -49,6 +50,7 @@ export default function DashboardPage() {
   const { data: meta } = useMeta(athleteId);
   const isDark = useIsDark();
   const [importOpen, setImportOpen] = useState(false);
+  const [eddingtonOpen, setEddingtonOpen] = useState(false);
   const [sportType, setSportType] = useState("");
   const [year, setYear] = useState("");
   const [hrWindow, setHrWindow] = useState(30);
@@ -202,7 +204,20 @@ export default function DashboardPage() {
             </div>
             <p className="mt-1 text-xs text-gray-400">Longest: {data.streaks.longest} days</p>
           </Card>
-          <Card title="Eddington" className="lg:col-span-2">
+          <Card
+            title="Eddington"
+            className="lg:col-span-2"
+            action={
+              data.eddington.length > 0 ? (
+                <button
+                  onClick={() => setEddingtonOpen(true)}
+                  className="text-sm font-medium text-brand hover:underline"
+                >
+                  View details
+                </button>
+              ) : undefined
+            }
+          >
             <div className="flex flex-wrap gap-4">
               {data.eddington.length === 0 && (
                 <p className="text-sm text-gray-400">Not enough distance data yet.</p>
@@ -425,6 +440,10 @@ export default function DashboardPage() {
           </Card>
         </div>
       </DeferredSection>
+
+      {eddingtonOpen && (
+        <EddingtonDetailModal athleteId={athleteId} onClose={() => setEddingtonOpen(false)} />
+      )}
     </div>
   );
 }
