@@ -270,7 +270,25 @@ export interface Rewind {
   unit: string;
   summary: { count: number; distance: number; elevation_m: number; moving_time_s: number };
   totals_per_month: { month: string; distance: number; count: number; moving_time_s: number }[];
-  moving_time_per_sport: { sport_type: string; label: string; moving_time_s: number }[];
+  per_sport: { sport_type: string; label: string; moving_time_s: number; distance: number }[];
+  achievements: {
+    highlights: {
+      label: string;
+      icon: string;
+      value: number;
+      unit: string;
+      activity_id: string;
+      name: string;
+      date: string;
+    }[];
+    personal_records: {
+      distance_m: number;
+      label: string;
+      time_s: number;
+      activity_id: string;
+      date: string;
+    }[];
+  };
   start_times: number[];
   locations: { lat: number; lng: number; sport_type: string }[];
   biggest_activity: {

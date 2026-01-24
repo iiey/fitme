@@ -21,9 +21,10 @@ def get_rewind(
 ) -> dict:
     athlete = get_athlete()
     activities = repository.all_activities(db, athlete_id)
+    best_efforts = repository.best_efforts_for_athlete(db, athlete_id)
     years = available_years(activities)
     return {
         "available_years": years,
         "selected_year": year,
-        "rewind": build_rewind(activities, year, athlete.unit_system, days),
+        "rewind": build_rewind(activities, year, athlete.unit_system, days, best_efforts),
     }

@@ -142,6 +142,16 @@ def best_efforts_for_activity_types(
     return list(db.execute(stmt).scalars().all())
 
 
+def best_efforts_for_athlete(db: Session, athlete_id: str) -> list[BestEffort]:
+    """All best-effort records for an athlete (across every activity type)."""
+    stmt = (
+        select(BestEffort)
+        .join(Activity, BestEffort.activity_id == Activity.activity_id)
+        .where(Activity.athlete_id == athlete_id)
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
 def list_gear(db: Session, athlete_id: str) -> list[Gear]:
     return list(
         db.execute(

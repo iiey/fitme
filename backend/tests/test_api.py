@@ -171,3 +171,21 @@ def test_stale_athlete_falls_back_instead_of_404(client: TestClient):
     dashboard = client.get("/api/dashboard", params={"athlete": "12345678"})
     assert dashboard.status_code == 200, dashboard.text
     assert dashboard.json()["empty"] is False
+
+
+def test_rewind_exposes_per_sport_and_achievements(client: TestClient):
+    data = client.get("/api/rewind").json()["rewind"]
+
+    # Per-sport breakdown carries both metrics so the UI can toggle distance/hours.
+    assert data["per_sport"], "expected at least one sport"
+    sport = data["per_sport"][0]
+    assert {"sport_type", "label", "moving_time_s", "distance"} <= sport.keys()
+
+    achievements = data["achievements"]
+    assert "highlights" in achievements
+    assert "personal_records" in achievements
+    labels = {h["label"] for h in achievements["highlights"]}
+    assert "Longest distance" in labels
+    longest = next(h for h in achievements["highlights"] if h["label"] == "Longest distance")
+    assert longest["activity_id"]
+    assert longest["value"] > 0

@@ -215,7 +215,7 @@ export default function ActivitiesPage() {
             setSearch(event.target.value);
             set({ page: "" });
           }}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
         />
       </div>
 
@@ -226,7 +226,7 @@ export default function ActivitiesPage() {
           <select
             value={sportFilter}
             onChange={(event) => set({ sport: event.target.value, page: "" })}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
           >
             <option value="">All sports</option>
             {meta?.sport_types.map((option) => (

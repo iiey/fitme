@@ -30,10 +30,11 @@ export function barChart(
   color = "#fc4c02",
   unit = "",
   dark = false,
+  showLabels = false,
 ): EChartsOption {
   const t = themeColors(dark);
   return {
-    grid: { left: 50, right: 15, top: 15, bottom: 50 },
+    grid: { left: 50, right: 15, top: showLabels ? 28 : 15, bottom: 50 },
     tooltip: {
       trigger: "axis",
       valueFormatter: (v) => `${Number(v).toLocaleString()} ${unit}`,
@@ -47,7 +48,22 @@ export function barChart(
       axisLabel: { fontSize: 10, rotate: categories.length > 12 ? 45 : 0, color: t.axis },
     },
     yAxis: { type: "value", axisLabel: { fontSize: 10, color: t.axis } },
-    series: [{ type: "bar", data: values, itemStyle: { color, borderRadius: [3, 3, 0, 0] } }],
+    series: [
+      {
+        type: "bar",
+        data: values,
+        itemStyle: { color, borderRadius: [3, 3, 0, 0] },
+        label: showLabels
+          ? {
+              show: true,
+              position: "top",
+              fontSize: 10,
+              color: t.text,
+              formatter: unit ? `{c} ${unit}` : "{c}",
+            }
+          : undefined,
+      },
+    ],
   };
 }
 

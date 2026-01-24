@@ -3,10 +3,11 @@ from __future__ import annotations
 import calendar as _calendar
 from datetime import date, datetime, timedelta
 
+from app.domain.best_efforts import DISTANCE_LABELS
 from app.domain.stats import longest_daily_streak, totals_per_sport_type
 from app.domain.units import distance_for_unit, distance_unit_label
 from app.enums import ActivityType, SportType
-from app.models import Activity
+from app.models import Activity, BestEffort
 
 # Fun-equivalent constants.
 KCAL_PER_PIZZA_SLICE = 285
@@ -54,18 +55,104 @@ def _totals_per_month(activities: list[Activity], unit_system: str) -> list[dict
     return list(buckets.values())
 
 
-def _moving_time_per_sport(activities: list[Activity]) -> list[dict]:
+def _per_sport(activities: list[Activity], unit_system: str) -> list[dict]:
+    """Per-sport totals carrying both distance (athlete unit) and moving time,
+    so the UI can switch the breakdown between the two metrics."""
     totals = totals_per_sport_type(activities)
     rows = [
         {
             "sport_type": sport_type,
             "label": SportType.from_strava(sport_type).label,
             "moving_time_s": totals[sport_type].moving_time_s,
+            "distance": round(distance_for_unit(totals[sport_type].distance_m, unit_system), 1),
         }
         for sport_type in totals
     ]
     rows.sort(key=lambda row: row["moving_time_s"], reverse=True)
     return rows
+
+
+_HEADLINE_PR_DISTANCES = [400, 1000, 5000, 10000, 21097, 42195]
+
+
+def _best_achievements(
+    activities: list[Activity],
+    best_efforts: list[BestEffort],
+    unit_system: str,
+) -> dict:
+    """Highlight the standout efforts within the scoped window.
+
+    Combines single-activity highlights (longest, most climbing, longest, most
+    calories) with the fastest times over standard distances (personal records
+    for the window), so the user gets a quick "year in sport" style recap.
+    """
+    if not activities:
+        return {"highlights": [], "personal_records": []}
+
+    distance_unit = distance_unit_label(unit_system)
+    highlights: list[dict] = []
+
+    def add(label: str, icon: str, activity: Activity, value: float, unit: str) -> None:
+        highlights.append(
+            {
+                "label": label,
+                "icon": icon,
+                "value": value,
+                "unit": unit,
+                "activity_id": activity.activity_id,
+                "name": activity.name,
+                "date": activity.start_date_time.date().isoformat(),
+            }
+        )
+
+    longest = max(activities, key=lambda a: a.distance_m or 0.0)
+    if longest.distance_m:
+        add(
+            "Longest distance",
+            "📏",
+            longest,
+            round(distance_for_unit(longest.distance_m, unit_system), 1),
+            distance_unit,
+        )
+    climb = max(activities, key=lambda a: a.elevation_m or 0.0)
+    if climb.elevation_m:
+        add("Biggest climb", "⛰️", climb, round(climb.elevation_m, 0), "m")
+    longest_time = max(activities, key=lambda a: a.moving_time_s or 0)
+    if longest_time.moving_time_s:
+        add(
+            "Longest duration",
+            "⏱️",
+            longest_time,
+            longest_time.moving_time_s,
+            "duration",
+        )
+    most_cal = max(activities, key=lambda a: a.calories or 0)
+    if most_cal.calories:
+        add("Most calories", "🔥", most_cal, most_cal.calories, "kcal")
+
+    scoped_ids = {a.activity_id for a in activities}
+    fastest: dict[int, BestEffort] = {}
+    for effort in best_efforts:
+        if effort.activity_id not in scoped_ids:
+            continue
+        if effort.distance_m not in _HEADLINE_PR_DISTANCES:
+            continue
+        current = fastest.get(effort.distance_m)
+        if current is None or effort.time_s < current.time_s:
+            fastest[effort.distance_m] = effort
+
+    personal_records = [
+        {
+            "distance_m": distance_m,
+            "label": DISTANCE_LABELS.get(distance_m, f"{distance_m} m"),
+            "time_s": round(fastest[distance_m].time_s),
+            "activity_id": fastest[distance_m].activity_id,
+            "date": fastest[distance_m].start_date_time.date().isoformat(),
+        }
+        for distance_m in sorted(fastest)
+    ]
+
+    return {"highlights": highlights, "personal_records": personal_records}
 
 
 def _start_times(activities: list[Activity]) -> list[int]:
@@ -155,6 +242,7 @@ def build_rewind(
     year: int | None,
     unit_system: str,
     days: int | None = None,
+    best_efforts: list[BestEffort] | None = None,
 ) -> dict:
     scoped = _filter_days(activities, days) if days else _filter_year(activities, year)
     total_distance = sum(a.distance_m for a in scoped)
@@ -172,7 +260,8 @@ def build_rewind(
             "moving_time_s": total_moving,
         },
         "totals_per_month": _totals_per_month(scoped, unit_system),
-        "moving_time_per_sport": _moving_time_per_sport(scoped),
+        "per_sport": _per_sport(scoped, unit_system),
+        "achievements": _best_achievements(scoped, best_efforts or [], unit_system),
         "start_times": _start_times(scoped),
         "locations": _locations(scoped),
         "biggest_activity": _biggest_activity(scoped, unit_system),

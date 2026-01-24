@@ -18,6 +18,8 @@ const config: Config = {
           DEFAULT: "var(--surface)",
           muted: "var(--surface-muted)",
         },
+        background: "var(--background)",
+        foreground: "var(--foreground)",
       },
     },
   },
