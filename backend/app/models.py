@@ -17,6 +17,16 @@ class Activity(Base):
     activity_id: Mapped[str] = mapped_column(String, primary_key=True)
     athlete_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
+    # Provenance. ``source`` is the provider the activity came from (e.g.
+    # ``strava``, ``garmin``); ``external_id`` is that provider's native id.
+    # For Strava the primary key ``activity_id`` stays equal to ``external_id``
+    # for backward compatibility; other providers are namespaced (see importer).
+    source: Mapped[str] = mapped_column(String, nullable=False, default="strava")
+    external_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Content fingerprint identifying the same physical activity across
+    # providers, derived from immutable properties (see app.domain.dedup).
+    dedup_key: Mapped[str | None] = mapped_column(String, nullable=True)
+
     start_date_time: Mapped[datetime] = mapped_column(DateTime, index=True)
     sport_type: Mapped[str] = mapped_column(String, index=True)
     activity_type: Mapped[str] = mapped_column(String, index=True)
@@ -70,6 +80,16 @@ class Activity(Base):
         Index("ix_activity_type_start", "activity_type", "start_date_time"),
         Index("ix_activity_sport_start", "sport_type", "start_date_time"),
         Index("ix_activity_athlete_start", "athlete_id", "start_date_time"),
+        # Fast cross-source duplicate lookup by content fingerprint.
+        Index("ix_activity_athlete_dedup", "athlete_id", "dedup_key"),
+        # A provider's native id is unique per athlete and per provider.
+        Index(
+            "uq_activity_source_external",
+            "athlete_id",
+            "source",
+            "external_id",
+            unique=True,
+        ),
     )
 
 
