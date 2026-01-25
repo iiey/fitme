@@ -21,7 +21,12 @@ from app.domain.streams_analysis import (
     peak_power_outputs,
     time_in_hr_zones,
 )
-from app.domain.training_load import daily_training_load, training_load_analysis
+from app.domain.training_load import (
+    activity_intensity,
+    activity_training_load,
+    daily_training_load,
+    training_load_analysis,
+)
 from app.domain.units import distance_for_unit, elevation_for_unit
 from app.domain.vo2max import vo2max_trend
 from app.enums import ActivityType, SportType
@@ -34,6 +39,7 @@ WEEKLY_STATS_WEEKS = 26
 HR_ZONES_WINDOW_DAYS = 30
 PEAK_POWER_WINDOW_DAYS = 120
 TRAINING_LOAD_WINDOW_DAYS = 90
+TRAINING_LOAD_ANALYSIS_DAYS = 90
 CALENDAR_WINDOW_DAYS = 365
 
 
@@ -184,6 +190,29 @@ def _training_load(activities, athlete, anchor: datetime) -> list[dict]:
     return [{"date": day.isoformat(), "load": load} for day, load in sorted(load_by_day.items())]
 
 
+def _training_load_analysis(activities, athlete, anchor: datetime) -> dict:
+    """CTL/ATL/TSB analysis enriched with each day's activities.
+
+    The per-day activity list powers the dashboard's hover panel, letting the
+    user jump from a point on the fitness curve straight to that day's rides.
+    """
+    analysis = training_load_analysis(
+        activities, athlete, anchor.date(), display_days=TRAINING_LOAD_ANALYSIS_DAYS
+    )
+
+    activities_by_day: dict[str, list[dict]] = defaultdict(list)
+    for activity in activities:
+        day = activity.start_date_time.date().isoformat()
+        summary = serialize_activity_summary(activity).model_dump()
+        summary["load"] = round(activity_training_load(activity, athlete))
+        summary["intensity"] = activity_intensity(activity, athlete)
+        activities_by_day[day].append(summary)
+
+    for entry in analysis["series"]:
+        entry["activities"] = activities_by_day.get(entry["date"], [])
+    return analysis
+
+
 @router.get("")
 def get_dashboard(
     db: Session = Depends(get_db),
@@ -282,7 +311,7 @@ def get_dashboard(
                 athlete.resting_heart_rate,
             ): "vo2max_trend",
             pool.submit(
-                training_load_analysis, activities, athlete, anchor.date()
+                _training_load_analysis, activities, athlete, anchor
             ): "training_load_analysis",
             pool.submit(discover_milestones, activities, best_efforts, unit_system): "milestones",
             pool.submit(stats.longest_daily_streak, activities): "longest_streak",

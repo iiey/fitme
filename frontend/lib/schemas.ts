@@ -155,6 +155,7 @@ export const DashboardSchema = z.object({
       ctl: z.number(),
       atl: z.number(),
       tsb: z.number(),
+      activities: z.array(ActivitySummarySchema.extend({ load: z.number(), intensity: z.number() })).optional(),
     })),
     display_days: z.number(),
   }).nullable().optional(),

@@ -1,4 +1,4 @@
-import type { EChartsOption } from "echarts";
+import type { EChartsOption, MarkAreaComponentOption } from "echarts";
 
 import type { TrainingLoadAnalysis } from "@/lib/types";
 
@@ -176,6 +176,12 @@ function lighten(hex: string, amount: number): string {
   );
 }
 
+// Build an rgba() string from a hex colour and an alpha in [0, 1].
+function hexA(hex: string, alpha: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function donutChart(
   items: { name: string; value: number; color?: string }[],
   dark = false,
@@ -325,141 +331,227 @@ export function weekdayAverageChart(
   };
 }
 
+// ── Training-load (fitness/fatigue/form) chart ──
+
+export const FITNESS_COLOR = "#3b82f6"; // blue
+export const FATIGUE_COLOR = "#a855f7"; // purple
+
+// intervals.icu-style Form (TSB) zones, ordered fresh → fatigued. `from` is the
+// inclusive lower bound; the band runs up to `to`.
+export const FORM_ZONES = [
+  { label: "Transition", color: "#f59e0b", from: 20, to: Infinity, note: "Very rested - fitness starts to fade" },
+  { label: "Fresh", color: "#3b82f6", from: 5, to: 20, note: "Rested and ready to race" },
+  { label: "Grey zone", color: "#9ca3af", from: -10, to: 5, note: "Maintaining - neither building nor resting" },
+  { label: "Optimal", color: "#22c55e", from: -30, to: -10, note: "The sweet spot for building fitness" },
+  { label: "High risk", color: "#ef4444", from: -Infinity, to: -30, note: "Overtraining risk - ease off" },
+] as const;
+
+export type FormZone = (typeof FORM_ZONES)[number];
+
+export function formZoneFor(tsb: number): FormZone {
+  return FORM_ZONES.find((zone) => tsb >= zone.from && tsb < zone.to) ?? FORM_ZONES[2];
+}
+
 export function trainingLoadDetailChart(analysis: TrainingLoadAnalysis, dark = false): EChartsOption {
   const t = themeColors(dark);
-  const dates = analysis.series.map((s) => s.date.slice(5));
+  const labels = analysis.series.map((s) => s.date.slice(5));
+  const fullDates = analysis.series.map((s) => s.date);
   const loads = analysis.series.map((s) => s.load);
-  const ctls = analysis.series.map((s) => s.ctl);
-  const atls = analysis.series.map((s) => s.atl);
-  const tsbs = analysis.series.map((s) => s.tsb);
+  const ctls = analysis.series.map((s) => Math.round(s.ctl));
+  const atls = analysis.series.map((s) => Math.round(s.atl));
+  const tsbs = analysis.series.map((s) => Math.round(s.tsb));
 
   const tsbMin = Math.min(...tsbs, -35);
   const tsbMax = Math.max(...tsbs, 25);
+  const formMin = Math.floor(tsbMin - 5);
+  const formMax = Math.ceil(tsbMax + 5);
+
+  const splitLineColor = dark ? "#2a2f37" : "#eef0f3";
+  const bandAlpha = dark ? 0.18 : 0.13;
+
+  // Horizontal coloured bands behind the Form line, clamped to the visible range.
+  const formBands = FORM_ZONES.map((zone) => [
+    {
+      yAxis: zone.to === Infinity ? formMax : Math.min(zone.to, formMax),
+      itemStyle: { color: hexA(zone.color, bandAlpha) },
+    },
+    { yAxis: zone.from === -Infinity ? formMin : Math.max(zone.from, formMin) },
+  ]);
+
+  const dot = (color: string) =>
+    `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${color};margin-right:6px"></span>`;
 
   return {
     grid: [
-      { left: 50, right: 50, top: 40, bottom: "38%" },
-      { left: 50, right: 50, top: "70%", bottom: 40 },
+      { left: 52, right: 56, top: 30, height: "42%" },
+      { left: 52, right: 56, top: "66%", bottom: 62 },
     ],
     legend: {
-      top: 5,
-      data: ["CTL (Fitness)", "ATL (Fatigue)", "TSB (Form)", "Daily Load"],
+      top: 2,
+      left: "center",
+      data: ["Fitness", "Fatigue", "Daily load"],
       textStyle: { fontSize: 11, color: t.text },
+      itemWidth: 14,
+      itemHeight: 8,
     },
     tooltip: {
       trigger: "axis",
-      axisPointer: { type: "cross" },
+      axisPointer: { type: "line", lineStyle: { color: t.axis, width: 1 } },
       backgroundColor: t.tooltipBg,
       borderColor: t.tooltipBorder,
-      textStyle: { color: t.tooltipText },
+      textStyle: { color: t.tooltipText, fontSize: 12 },
+      formatter: (params: unknown) => {
+        const list = params as { dataIndex: number }[];
+        const i = Array.isArray(list) ? list[0]?.dataIndex ?? 0 : 0;
+        const zone = formZoneFor(tsbs[i]);
+        return (
+          `<div style="font-weight:600;margin-bottom:4px">${fullDates[i]}</div>` +
+          `<div style="margin:2px 0">${dot(FITNESS_COLOR)}Fitness <b>${ctls[i]}</b></div>` +
+          `<div style="margin:2px 0">${dot(FATIGUE_COLOR)}Fatigue <b>${atls[i]}</b></div>` +
+          `<div style="margin:2px 0">${dot(zone.color)}Form <b>${tsbs[i]}</b> ` +
+          `<span style="color:${t.axis}">${zone.label}</span></div>` +
+          `<div style="margin:2px 0">${dot("#94a3b8")}Load <b>${loads[i]}</b></div>`
+        );
+      },
     },
     axisPointer: { link: [{ xAxisIndex: [0, 1] }] },
     dataZoom: [
+      { type: "inside", xAxisIndex: [0, 1] },
       {
         type: "slider",
         xAxisIndex: [0, 1],
         bottom: 8,
-        height: 20,
-        startValue: Math.max(0, dates.length - 42),
-        endValue: dates.length - 1,
+        height: 16,
+        borderColor: "transparent",
+        backgroundColor: dark ? "#1f242b" : "#f1f3f5",
+        fillerColor: dark ? "rgba(59,130,246,0.18)" : "rgba(59,130,246,0.12)",
+        handleStyle: { color: FITNESS_COLOR },
+        moveHandleStyle: { color: FITNESS_COLOR },
+        dataBackground: { lineStyle: { color: t.axis }, areaStyle: { color: hexA(FITNESS_COLOR, 0.1) } },
+        textStyle: { color: t.axis, fontSize: 9 },
       },
     ],
     xAxis: [
       {
         type: "category",
-        data: dates,
+        data: labels,
         gridIndex: 0,
+        boundaryGap: true,
         axisLabel: { show: false },
         axisTick: { show: false },
+        axisLine: { lineStyle: { color: splitLineColor } },
       },
       {
         type: "category",
-        data: dates,
+        data: labels,
         gridIndex: 1,
-        axisLabel: { fontSize: 10, color: t.axis },
+        boundaryGap: true,
+        axisLabel: { fontSize: 9, color: t.axis, hideOverlap: true },
+        axisTick: { show: false },
+        axisLine: { lineStyle: { color: splitLineColor } },
       },
     ],
     yAxis: [
       {
         type: "value",
-        name: "Load (CTL/ATL)",
         gridIndex: 0,
         position: "left",
         axisLabel: { fontSize: 10, color: t.axis },
-        nameTextStyle: { fontSize: 10, color: t.axis },
+        splitLine: { lineStyle: { color: splitLineColor } },
       },
       {
         type: "value",
-        name: "Form (TSB)",
         gridIndex: 0,
         position: "right",
-        min: Math.floor(tsbMin - 5),
-        max: Math.ceil(tsbMax + 5),
+        min: 0,
         axisLabel: { fontSize: 10, color: t.axis },
-        nameTextStyle: { fontSize: 10, color: t.axis },
         splitLine: { show: false },
       },
       {
         type: "value",
-        name: "Daily Load",
+        name: "Form",
+        nameTextStyle: { fontSize: 10, color: t.axis, align: "left" },
         gridIndex: 1,
+        position: "left",
+        min: formMin,
+        max: formMax,
         axisLabel: { fontSize: 10, color: t.axis },
-        nameTextStyle: { fontSize: 10, color: t.axis },
+        splitLine: { show: false },
       },
     ],
+    visualMap: {
+      show: false,
+      type: "piecewise",
+      seriesIndex: 3,
+      dimension: 1,
+      pieces: [
+        { gt: 20, color: "#f59e0b" },
+        { gt: 5, lte: 20, color: "#3b82f6" },
+        { gt: -10, lte: 5, color: "#9ca3af" },
+        { gt: -30, lte: -10, color: "#22c55e" },
+        { lte: -30, color: "#ef4444" },
+      ],
+    },
     series: [
       {
-        name: "CTL (Fitness)",
+        name: "Fitness",
         type: "line",
         data: ctls,
         xAxisIndex: 0,
         yAxisIndex: 0,
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: "#2563eb", width: 2 },
-        itemStyle: { color: "#2563eb" },
+        symbol: "circle",
+        symbolSize: 7,
+        z: 5,
+        lineStyle: { color: FITNESS_COLOR, width: 2.5 },
+        itemStyle: { color: FITNESS_COLOR },
+        areaStyle: {
+          color: verticalGradient(hexA(FITNESS_COLOR, 0.28), hexA(FITNESS_COLOR, 0.01)),
+        },
       },
       {
-        name: "ATL (Fatigue)",
+        name: "Fatigue",
         type: "line",
         data: atls,
         xAxisIndex: 0,
         yAxisIndex: 0,
         smooth: true,
         showSymbol: false,
-        lineStyle: { color: "#16a34a", width: 2 },
-        itemStyle: { color: "#16a34a" },
+        symbol: "circle",
+        symbolSize: 7,
+        z: 6,
+        lineStyle: { color: FATIGUE_COLOR, width: 2 },
+        itemStyle: { color: FATIGUE_COLOR },
       },
       {
-        name: "TSB (Form)",
-        type: "line",
-        data: tsbs,
+        name: "Daily load",
+        type: "bar",
+        data: loads,
         xAxisIndex: 0,
         yAxisIndex: 1,
-        smooth: true,
-        showSymbol: false,
-        lineStyle: { color: "#f59e0b", width: 2 },
-        itemStyle: { color: "#f59e0b" },
-        markLine: {
-          silent: true,
-          symbol: "none",
-          lineStyle: { type: "dashed", width: 1 },
-          label: { fontSize: 9, position: "end" },
-          data: [
-            { yAxis: 15, lineStyle: { color: "#16a34a" }, label: { formatter: "Taper sweet-spot (+15)" } },
-            { yAxis: -10, lineStyle: { color: "#6b7280" }, label: { formatter: "Build zone (−10)" } },
-            { yAxis: -30, lineStyle: { color: "#dc2626" }, label: { formatter: "Over-fatigued (−30)" } },
-          ],
+        z: 2,
+        barWidth: "55%",
+        itemStyle: {
+          color: dark ? "rgba(148,163,184,0.40)" : "rgba(148,163,184,0.50)",
+          borderRadius: [2, 2, 0, 0],
         },
       },
       {
-        name: "Daily Load",
-        type: "bar",
-        data: loads,
+        name: "Form",
+        type: "line",
+        data: tsbs,
         xAxisIndex: 1,
         yAxisIndex: 2,
-        itemStyle: { color: "#fc4c02", borderRadius: [2, 2, 0, 0] },
-        barWidth: "60%",
+        smooth: true,
+        showSymbol: false,
+        symbol: "circle",
+        symbolSize: 7,
+        lineStyle: { width: 2.5 },
+        markArea: {
+          silent: true,
+          data: formBands as MarkAreaComponentOption["data"],
+        },
       },
     ],
   };

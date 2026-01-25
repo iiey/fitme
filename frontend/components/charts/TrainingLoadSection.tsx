@@ -1,17 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { EChart } from "@/components/charts/EChart";
-import { trainingLoadDetailChart } from "@/components/charts/options";
-import type { TrainingLoadAnalysis } from "@/lib/types";
+import {
+  FATIGUE_COLOR,
+  FITNESS_COLOR,
+  FORM_ZONES,
+  formZoneFor,
+  trainingLoadDetailChart,
+} from "@/components/charts/options";
+import {
+  colorForActivityType,
+  formatActivityPace,
+  formatDate,
+  formatDuration,
+  formatNumber,
+} from "@/lib/format";
+import type { TrainingLoadActivity, TrainingLoadAnalysis, TrainingLoadPoint } from "@/lib/types";
 import { useIsDark } from "@/lib/use-is-dark";
 
 const STATUS_COLORS: Record<string, string> = {
-  green: "text-green-600",
-  red: "text-red-600",
-  yellow: "text-yellow-600",
-  orange: "text-orange-500",
+  green: "text-green-600 dark:text-green-400",
+  red: "text-red-600 dark:text-red-400",
+  yellow: "text-yellow-600 dark:text-yellow-400",
+  orange: "text-orange-500 dark:text-orange-400",
   neutral: "text-gray-900 dark:text-gray-100",
 };
 
@@ -62,157 +76,269 @@ function MetricCard({
   );
 }
 
-function DetailModal({
-  analysis,
-  onClose,
-  isDark,
-}: {
-  analysis: TrainingLoadAnalysis;
-  onClose: () => void;
-  isDark: boolean;
-}) {
+function MiniStat({ color, label, value }: { color: string; label: string; value: number }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+      <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+      <span>{label}</span>
+      <span className="font-semibold text-gray-800 dark:text-gray-100">{value}</span>
+    </span>
+  );
+}
+
+function ActivityRow({
+  activity,
+  distanceUnit,
+}: {
+  activity: TrainingLoadActivity;
+  distanceUnit: string;
+}) {
+  const distance = distanceUnit === "mi" ? activity.distance_mi : activity.distance_km;
+  return (
+    <Link
+      href={`/activities/${activity.activity_id}`}
+      className="group flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md px-2 py-1.5 hover:bg-surface dark:hover:bg-gray-800"
     >
-      <div className="card w-full max-w-5xl overflow-hidden">
-        <header className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
-          <h2 className="text-lg font-semibold">
-            Training Load Analysis ({analysis.display_days}-day history)
-          </h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </header>
-        <div className="p-5">
-          <EChart option={trainingLoadDetailChart(analysis, isDark)} height={400} />
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <MetricCard
-              label="CTL (Fitness)"
-              value={String(analysis.ctl)}
-              sub="42-day fitness trend"
-              tip="Chronic Training Load - exponentially weighted average of daily training load over 42 days. Higher = fitter baseline."
-              colorClass={STATUS_COLORS.neutral}
-            />
-            <MetricCard
-              label="ATL (Fatigue)"
-              value={String(analysis.atl)}
-              sub="7-day fatigue level"
-              tip="Acute Training Load - exponentially weighted average over 7 days. Reflects recent training stress."
-              colorClass={STATUS_COLORS.neutral}
-            />
-            <MetricCard
-              label="TSB (Form)"
-              value={String(analysis.tsb)}
-              sub={analysis.tsb_status}
-              tip="Training Stress Balance = CTL − ATL. Positive means fresh, negative means fatigued. Best race form at +10 to +25."
-              colorClass={STATUS_COLORS[analysis.tsb_color] ?? STATUS_COLORS.neutral}
-            />
-            <MetricCard
-              label="A:C Ratio"
-              value={String(analysis.ac_ratio)}
-              sub={analysis.ac_status}
-              tip="Acute-to-Chronic ratio (ATL/CTL). Optimal range 0.8–1.3. Above 1.3 = injury risk, below 0.8 = under-training."
-              colorClass={STATUS_COLORS[analysis.ac_color] ?? STATUS_COLORS.neutral}
-            />
-          </div>
+      <span
+        className="h-2.5 w-2.5 shrink-0 rounded-full"
+        style={{ background: colorForActivityType(activity.activity_type) }}
+      />
+      <span className="font-medium text-brand group-hover:underline">{activity.name}</span>
+      <span className="text-xs text-gray-400">{activity.sport_label}</span>
+      <span className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+        <span>{formatDuration(activity.moving_time_s)}</span>
+        {distance > 0 && (
+          <span>
+            {formatNumber(distance, 1)} {distanceUnit}
+          </span>
+        )}
+        <span className="font-semibold text-gray-700 dark:text-gray-200">Load {activity.load}</span>
+        {activity.intensity > 0 && <span>{activity.intensity}%</span>}
+        {activity.average_heart_rate != null && <span>{activity.average_heart_rate} bpm</span>}
+        <span>{formatActivityPace(activity)}</span>
+      </span>
+    </Link>
+  );
+}
+
+function DayPanel({ point, distanceUnit }: { point: TrainingLoadPoint; distanceUnit: string }) {
+  const zone = formZoneFor(Math.round(point.tsb));
+  const activities = point.activities ?? [];
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-surface-muted p-3 dark:border-gray-700">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2 dark:border-gray-700">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {formatDate(point.date, "EEE, d MMM yyyy")}
+          </span>
+          <MiniStat color={FITNESS_COLOR} label="Fitness" value={Math.round(point.ctl)} />
+          <MiniStat color={FATIGUE_COLOR} label="Fatigue" value={Math.round(point.atl)} />
+          <MiniStat color={zone.color} label="Form" value={Math.round(point.tsb)} />
         </div>
+        <span
+          className="rounded-full px-2 py-0.5 text-xs font-medium"
+          style={{ background: `${zone.color}22`, color: zone.color }}
+        >
+          {zone.label}
+        </span>
+      </div>
+      <div className="mt-1">
+        {activities.length === 0 ? (
+          <p className="px-2 py-2 text-sm text-gray-400">Rest day - no activities logged.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+            {activities.map((activity) => (
+              <li key={activity.activity_id}>
+                <ActivityRow activity={activity} distanceUnit={distanceUnit} />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
 }
 
+function HowToRead() {
+  return (
+    <details className="rounded-lg border border-gray-200 dark:border-gray-700">
+      <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-gray-700 hover:text-brand dark:text-gray-200">
+        How to read this chart
+      </summary>
+      <div className="space-y-2 px-3 pb-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+        <p>
+          <strong>
+            <span style={{ color: FITNESS_COLOR }} className="font-semibold">
+              Blue line
+            </span>{" "}
+            (Fitness/CTL)
+          </strong>
+          {" "}- <em>42-day</em> trend showing your aerobic capacity
+          <br/>
+          <strong>
+            <span style={{ color: FATIGUE_COLOR }} className="font-semibold">
+              Purple line
+            </span>{" "}
+            (Fatigue/ATL)
+          </strong>
+          {" "}- <em>7-day</em> stress level from recent workouts
+          <br/>
+          <strong>Goal:</strong> Keep purple <em>above</em> blue to build fitness, then rest to recover.
+        </p>
+        <p>
+          <strong>Form (TSB) = Fitness − Fatigue</strong>
+          <br/>
+          ✓ <strong>Optimal zone:</strong> You're gaining fitness
+          <br/>
+          ✓ <strong>Fresh zone:</strong> Ready to race
+          <br/>
+          ✗ <strong>High-risk zone:</strong> Risk of overtraining - <em>avoid staying long</em>
+          <br/>
+          <strong>Key:</strong> Include <em>rest weeks</em> to recover and peak before goal events. Too much monotony = injury risk.
+        </p>
+      </div>
+    </details>
+  );
+}
+
 export function TrainingLoadSection({
   analysis,
+  distanceUnit = "km",
 }: {
   analysis: TrainingLoadAnalysis;
+  distanceUnit?: string;
 }) {
   const isDark = useIsDark();
-  const [showDetail, setShowDetail] = useState(false);
+  const series = analysis.series;
+  const lastIndex = Math.max(0, series.length - 1);
+  const [activeIndex, setActiveIndex] = useState(lastIndex);
+
+  // Reset the hovered day when the underlying window changes (filters/athlete).
+  useEffect(() => {
+    setActiveIndex(Math.max(0, series.length - 1));
+  }, [series.length]);
+
+  const labels = useMemo(() => series.map((s) => s.date.slice(5)), [series]);
+  const option = useMemo(() => trainingLoadDetailChart(analysis, isDark), [analysis, isDark]);
+
+  const handleAxisPointer = useCallback(
+    (params: unknown) => {
+      const payload = params as {
+        axesInfo?: { axisDim?: string; value?: number | string }[];
+      };
+      const xAxis = payload.axesInfo?.find((axis) => axis.axisDim === "x");
+      if (!xAxis || xAxis.value == null) return;
+      const index =
+        typeof xAxis.value === "number" ? xAxis.value : labels.indexOf(String(xAxis.value));
+      if (index < 0 || index >= series.length) return;
+      setActiveIndex(index);
+    },
+    [labels, series.length],
+  );
+
+  const onEvents = useMemo(
+    () => ({
+      updateAxisPointer: handleAxisPointer,
+      globalout: () => setActiveIndex(Math.max(0, series.length - 1)),
+    }),
+    [handleAxisPointer, series.length],
+  );
+
+  if (series.length === 0) return null;
+
+  const activePoint = series[Math.min(activeIndex, lastIndex)];
 
   return (
-    <>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+    <div className="card space-y-4 p-4">
+      <header className="flex flex-wrap items-start justify-between gap-2">
+        <div>
           <h2 className="card-title">Training Load Analysis</h2>
-          <button
-            onClick={() => setShowDetail(true)}
-            className="text-sm font-medium text-brand hover:underline"
+          <p className="mt-0.5 text-xs text-gray-400">
+            Fitness, fatigue and form over the last {analysis.display_days} days
+          </p>
+        </div>
+      </header>
+
+      <EChart option={option} height={460} onEvents={onEvents} />
+
+      {/* Form zone legend (matches the coloured bands on the lower chart) */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {FORM_ZONES.map((zone) => (
+          <span
+            key={zone.label}
+            className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400"
           >
-            View details
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <MetricCard
-            label="CTL (Fitness)"
-            value={String(analysis.ctl)}
-            sub="42-day fitness trend"
-            tip="Chronic Training Load - exponentially weighted average of daily training load over 42 days."
-          />
-          <MetricCard
-            label="ATL (Fatigue)"
-            value={String(analysis.atl)}
-            sub="7-day fatigue level"
-            tip="Acute Training Load - exponentially weighted average over 7 days."
-          />
-          <MetricCard
-            label="TSB (Form)"
-            value={String(analysis.tsb)}
-            sub={analysis.tsb_status}
-            tip="Training Stress Balance = CTL − ATL. Positive = fresh, negative = fatigued."
-            colorClass={STATUS_COLORS[analysis.tsb_color] ?? STATUS_COLORS.neutral}
-          />
-          <MetricCard
-            label="A:C Ratio"
-            value={String(analysis.ac_ratio)}
-            sub={analysis.ac_status}
-            tip="Acute-to-Chronic ratio. Optimal 0.8–1.3."
-            colorClass={STATUS_COLORS[analysis.ac_color] ?? STATUS_COLORS.neutral}
-          />
-          <MetricCard
-            label="Rest Days"
-            value={`${analysis.rest_days} / 7`}
-            sub="Rest days in last 7 days"
-          />
-          <MetricCard
-            label="Monotony"
-            value={String(analysis.monotony)}
-            sub={analysis.monotony < 1.5 ? "Good training variety" : analysis.monotony < 2 ? "Moderate variety" : "Low variety – risk"}
-            tip="Standard deviation of last 7 days of load divided by the mean. Below 1.5 = good variety. Above 2.0 = injury risk."
-            colorClass={
-              analysis.monotony < 1.5
-                ? STATUS_COLORS.green
-                : analysis.monotony < 2
-                  ? STATUS_COLORS.yellow
-                  : STATUS_COLORS.red
-            }
-          />
-          <MetricCard
-            label="Weekly Strain"
-            value={String(analysis.strain)}
-            sub="Overall weekly training stress"
-            tip="Weekly load × monotony. High strain with high monotony increases overtraining risk."
-          />
-          <MetricCard
-            label="Weekly TRIMP"
-            value={String(analysis.weekly_trimp)}
-            sub="Last 7 days training load"
-            tip="Sum of daily training load (TRIMP/TSS) over the last 7 days."
-          />
-        </div>
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: zone.color }} />
+            <span className="font-medium text-gray-600 dark:text-gray-300">{zone.label}</span>
+            <span className="hidden text-gray-400 sm:inline">- {zone.note}</span>
+          </span>
+        ))}
       </div>
 
-      {showDetail && (
-        <DetailModal analysis={analysis} onClose={() => setShowDetail(false)} isDark={isDark} />
-      )}
-    </>
+      {/* Activities for the day under the cursor - click to open the activity */}
+      <DayPanel point={activePoint} distanceUnit={distanceUnit} />
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <MetricCard
+          label="CTL (Fitness)"
+          value={String(analysis.ctl)}
+          sub="42-day fitness trend"
+          tip="Chronic Training Load - exponentially weighted average of daily training load over 42 days."
+        />
+        <MetricCard
+          label="ATL (Fatigue)"
+          value={String(analysis.atl)}
+          sub="7-day fatigue level"
+          tip="Acute Training Load - exponentially weighted average over 7 days."
+        />
+        <MetricCard
+          label="TSB (Form)"
+          value={String(analysis.tsb)}
+          sub={analysis.tsb_status}
+          tip="Training Stress Balance = CTL − ATL. Positive = fresh, negative = fatigued."
+          colorClass={STATUS_COLORS[analysis.tsb_color] ?? STATUS_COLORS.neutral}
+        />
+        <MetricCard
+          label="A:C Ratio"
+          value={String(analysis.ac_ratio)}
+          sub={analysis.ac_status}
+          tip="Acute-to-Chronic ratio. Optimal 0.8–1.3."
+          colorClass={STATUS_COLORS[analysis.ac_color] ?? STATUS_COLORS.neutral}
+        />
+        <MetricCard
+          label="Rest Days"
+          value={`${analysis.rest_days} / 7`}
+          sub="Rest days in last 7 days"
+        />
+        <MetricCard
+          label="Monotony"
+          value={String(analysis.monotony)}
+          sub={analysis.monotony < 1.5 ? "Good training variety" : analysis.monotony < 2 ? "Moderate variety" : "Low variety – risk"}
+          tip="Standard deviation of last 7 days of load divided by the mean. Below 1.5 = good variety. Above 2.0 = injury risk."
+          colorClass={
+            analysis.monotony < 1.5
+              ? STATUS_COLORS.green
+              : analysis.monotony < 2
+                ? STATUS_COLORS.yellow
+                : STATUS_COLORS.red
+          }
+        />
+        <MetricCard
+          label="Weekly Strain"
+          value={String(analysis.strain)}
+          sub="Overall weekly training stress"
+          tip="Weekly load × monotony. High strain with high monotony increases overtraining risk."
+        />
+        <MetricCard
+          label="Weekly TRIMP"
+          value={String(analysis.weekly_trimp)}
+          sub="Last 7 days training load"
+          tip="Sum of daily training load (TRIMP/TSS) over the last 7 days."
+        />
+      </div>
+
+      <HowToRead />
+    </div>
   );
 }

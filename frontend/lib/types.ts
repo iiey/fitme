@@ -148,6 +148,20 @@ export interface Dashboard {
   gear_stats: GearItem[];
 }
 
+export interface TrainingLoadActivity extends ActivitySummary {
+  load: number;
+  intensity: number;
+}
+
+export interface TrainingLoadPoint {
+  date: string;
+  load: number;
+  ctl: number;
+  atl: number;
+  tsb: number;
+  activities?: TrainingLoadActivity[];
+}
+
 export interface TrainingLoadAnalysis {
   ctl: number;
   atl: number;
@@ -161,7 +175,7 @@ export interface TrainingLoadAnalysis {
   monotony: number;
   strain: number;
   weekly_trimp: number;
-  series: { date: string; load: number; ctl: number; atl: number; tsb: number }[];
+  series: TrainingLoadPoint[];
   display_days: number;
 }
 

@@ -12,9 +12,11 @@ const ReactECharts = dynamic(() => import("echarts-for-react/lib/core"), {
 export function EChart({
   option,
   height = 300,
+  onEvents,
 }: {
   option: EChartsOption;
   height?: number;
+  onEvents?: Record<string, (params: unknown) => void>;
 }) {
   return (
     <ErrorBoundary>
@@ -24,6 +26,7 @@ export function EChart({
         style={{ height }}
         notMerge
         lazyUpdate
+        onEvents={onEvents}
         opts={{ renderer: "canvas" }}
       />
     </ErrorBoundary>

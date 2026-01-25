@@ -269,8 +269,8 @@ export default function DashboardPage() {
 
       {/* Training load analysis */}
       {data.training_load_analysis && (
-        <DeferredSection height={160}>
-          <TrainingLoadSection analysis={data.training_load_analysis} />
+        <DeferredSection height={720}>
+          <TrainingLoadSection analysis={data.training_load_analysis} distanceUnit={distanceUnit} />
         </DeferredSection>
       )}
 
