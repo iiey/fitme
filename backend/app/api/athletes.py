@@ -12,6 +12,7 @@ from app.models import (
     BestEffort,
     Gear,
     ImportRun,
+    SourceIdentity,
 )
 
 router = APIRouter(prefix="/api/athletes", tags=["athletes"])
@@ -100,5 +101,6 @@ def delete_athlete(athlete_id: str, db: Session = Depends(get_db)) -> None:
     db.execute(delete(Activity).where(Activity.athlete_id == athlete_id))
     db.execute(delete(Gear).where(Gear.athlete_id == athlete_id))
     db.execute(delete(ImportRun).where(ImportRun.athlete_id == athlete_id))
+    db.execute(delete(SourceIdentity).where(SourceIdentity.athlete_id == athlete_id))
     db.delete(profile)
     db.commit()

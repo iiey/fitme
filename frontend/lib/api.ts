@@ -6,7 +6,8 @@ import type {
   Dashboard,
   EddingtonResponse,
   HeatmapResponse,
-  ImportResult,
+  ImportPreview,
+  ImportRunStatus,
   Meta,
   MilestonesResponse,
   MonthResponse,
@@ -16,7 +17,8 @@ import type {
 import {
   ActivityDetailSchema,
   DashboardSchema,
-  ImportResultSchema,
+  ImportPreviewSchema,
+  ImportRunStatusSchema,
   MetaSchema,
   PaginatedActivitiesSchema,
 } from "./schemas";
@@ -26,6 +28,23 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+}
+
+/**
+ * Extract a human-readable message from an error response. FastAPI returns
+ * ``{"detail": "..."}``; we surface that ``detail`` rather than the raw JSON
+ * envelope, falling back to the body text or a default message.
+ */
+async function readErrorDetail(response: Response, fallback: string): Promise<string> {
+  const body = await response.text();
+  if (!body) return fallback;
+  try {
+    const parsed = JSON.parse(body);
+    if (parsed && typeof parsed.detail === "string") return parsed.detail;
+  } catch {
+    // Body is not JSON - fall through to returning it verbatim.
+  }
+  return body;
 }
 
 function validated<T>(schema: ZodType) {
@@ -138,33 +157,48 @@ export function useRewind(athleteId: string | null, year: number | null, days: n
 export async function deleteAthlete(athleteId: string): Promise<void> {
   const response = await fetch(`/api/athletes/${athleteId}`, { method: "DELETE" });
   if (!response.ok) {
-    const detail = await response.text();
-    throw new ApiError(response.status, detail || "Delete failed");
+    throw new ApiError(response.status, await readErrorDetail(response, "Delete failed"));
   }
 }
 
-export async function uploadExport(file: File): Promise<ImportResult> {
+export async function previewImport(input: {
+  file?: File;
+  source?: string;
+}): Promise<ImportPreview> {
   const form = new FormData();
-  form.append("file", file);
-  const response = await fetch("/api/import/upload", { method: "POST", body: form });
+  if (input.file) form.append("file", input.file);
+  if (input.source) form.append("source", input.source);
+  const response = await fetch("/api/import/preview", { method: "POST", body: form });
   if (!response.ok) {
-    const detail = await response.text();
-    throw new ApiError(response.status, detail || "Upload failed");
+    throw new ApiError(response.status, await readErrorDetail(response, "Preview failed"));
   }
-  return ImportResultSchema.parse(await response.json());
+  return ImportPreviewSchema.parse(await response.json());
 }
 
-export async function importFromPath(source: string): Promise<ImportResult> {
+export async function startImport(
+  source: string,
+  athleteId?: string | null,
+): Promise<ImportRunStatus> {
   const response = await fetch("/api/import", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ source }),
+    body: JSON.stringify({ source, athlete_id: athleteId ?? null }),
   });
   if (!response.ok) {
-    const detail = await response.text();
-    throw new ApiError(response.status, detail || "Import failed");
+    throw new ApiError(response.status, await readErrorDetail(response, "Import failed"));
   }
-  return ImportResultSchema.parse(await response.json());
+  return ImportRunStatusSchema.parse(await response.json());
+}
+
+export async function getImportRun(id: number): Promise<ImportRunStatus> {
+  const response = await fetch(`/api/import/runs/${id}`);
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      await readErrorDetail(response, "Failed to fetch import status"),
+    );
+  }
+  return ImportRunStatusSchema.parse(await response.json());
 }
 
 export function revalidateAll() {

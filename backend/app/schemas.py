@@ -77,18 +77,59 @@ class GearItem(BaseModel):
 
 class ImportRequest(BaseModel):
     source: str
-    provider: str = "strava"
+    # ``None`` lets the importer auto-detect the provider from the archive
+    # contents (Strava ``activities.csv`` vs Garmin ``DI_CONNECT`` export).
+    provider: str | None = None
     force: bool = False
+    # When set, merge the import into this existing athlete instead of the
+    # provider's own account (``None`` keeps the export's own athlete).
+    athlete_id: str | None = None
 
 
-class ImportResult(BaseModel):
-    added: int
-    updated: int
-    skipped: int
+class ImportPreview(BaseModel):
+    """Inspection of an export before importing, used to choose the athlete.
+
+    Lets the dialog show what was detected and offer "import as a new athlete"
+    vs "merge into an existing athlete", with a suggested target when the
+    provider account was merged before or the name matches an existing athlete.
+    """
+
+    # Server-side token to pass back to the import call (stored upload path or
+    # the provided server path).
+    source: str
+    provider: str  # strava | garmin
+    athlete_name: str | None = None
+    # The provider's own athlete id (Strava athlete id / Garmin userProfileId).
+    source_athlete_id: str | None = None
+    activity_count: int = 0
+    # Whether the provider's own athlete already exists locally (a re-import).
+    is_existing_athlete: bool = False
+    # Pre-selected merge target (a *different* existing athlete) when one is
+    # confidently suggested, else ``None`` (default to a new athlete).
+    suggested_athlete_id: str | None = None
+    suggested_athlete_name: str | None = None
+
+
+class ImportRunStatus(BaseModel):
+    """Live status of a background import, polled by the client."""
+
+    id: int
+    status: str  # running | ok | error
+    source: str | None = None
+    added: int = 0
+    updated: int = 0
+    skipped: int = 0
     deduped: int = 0
-    gear_upserted: int
-    files_parsed: int
-    parse_errors: int
+    gear_upserted: int = 0
+    files_parsed: int = 0
+    parse_errors: int = 0
+    # ``total`` is the number of activities to process (known once the export is
+    # read); ``processed`` counts those handled so far. Both drive the progress
+    # bar. ``message`` carries an error description when ``status == "error"``.
+    total: int | None = None
+    processed: int = 0
+    finished_at: datetime | None = None
+    message: str | None = None
 
 
 class AthleteListItem(BaseModel):

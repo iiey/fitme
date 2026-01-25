@@ -29,7 +29,10 @@ export interface AthleteInfo {
   profile_url: string | null;
 }
 
-export interface ImportResult {
+export interface ImportRunStatus {
+  id: number;
+  status: string; // running | ok | error
+  source: string | null;
   added: number;
   updated: number;
   skipped: number;
@@ -37,6 +40,21 @@ export interface ImportResult {
   gear_upserted: number;
   files_parsed: number;
   parse_errors: number;
+  total: number | null;
+  processed: number;
+  finished_at: string | null;
+  message: string | null;
+}
+
+export interface ImportPreview {
+  source: string;
+  provider: string; // strava | garmin
+  athlete_name: string | null;
+  source_athlete_id: string | null;
+  activity_count: number;
+  is_existing_athlete: boolean;
+  suggested_athlete_id: string | null;
+  suggested_athlete_name: string | null;
 }
 
 export interface SportTypeOption {

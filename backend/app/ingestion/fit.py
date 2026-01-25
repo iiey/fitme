@@ -44,6 +44,38 @@ def _get(frame, *names):
     return None
 
 
+def peek_activity_start(content: bytes) -> datetime | None:
+    """Cheaply return an activity FIT's start time (naive UTC), else ``None``.
+
+    Reads only the ``file_id`` message (to confirm ``type == activity``) and the
+    first ``record`` timestamp, then stops - far faster than a full parse. Used
+    to match Garmin's per-upload FIT files to their activity summaries by start
+    time without parsing every monitoring/wellness file in the archive. Returns
+    ``None`` for non-activity files or anything that fails to read.
+    """
+    import fitdecode
+
+    try:
+        with fitdecode.FitReader(io.BytesIO(content)) as reader:
+            is_activity = False
+            for frame in reader:
+                if not isinstance(frame, fitdecode.FitDataMessage):
+                    continue
+                if frame.name == "file_id":
+                    if str(_get(frame, "type")) != "activity":
+                        return None
+                    is_activity = True
+                elif is_activity and frame.name == "record":
+                    timestamp = _get(frame, "timestamp")
+                    if isinstance(timestamp, datetime):
+                        if timestamp.tzinfo is not None:
+                            timestamp = timestamp.astimezone(timezone.utc)
+                        return timestamp.replace(tzinfo=None)
+    except Exception:  # noqa: BLE001 - unreadable file is simply not matched.
+        return None
+    return None
+
+
 def parse_fit(content: bytes) -> ParsedActivityFile:
     import fitdecode
 

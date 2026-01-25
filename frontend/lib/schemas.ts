@@ -192,7 +192,10 @@ export const ActivityDetailSchema = ActivitySummarySchema.extend({
   hr_zones: z.array(HrZoneItemSchema).nullable().default(null),
 });
 
-export const ImportResultSchema = z.object({
+export const ImportRunStatusSchema = z.object({
+  id: z.number(),
+  status: z.string(),
+  source: z.string().nullable(),
   added: z.number(),
   updated: z.number(),
   skipped: z.number(),
@@ -200,4 +203,19 @@ export const ImportResultSchema = z.object({
   gear_upserted: z.number(),
   files_parsed: z.number(),
   parse_errors: z.number(),
+  total: z.number().nullable(),
+  processed: z.number(),
+  finished_at: z.string().nullable(),
+  message: z.string().nullable(),
+});
+
+export const ImportPreviewSchema = z.object({
+  source: z.string(),
+  provider: z.string(),
+  athlete_name: z.string().nullable(),
+  source_athlete_id: z.string().nullable(),
+  activity_count: z.number(),
+  is_existing_athlete: z.boolean(),
+  suggested_athlete_id: z.string().nullable(),
+  suggested_athlete_name: z.string().nullable(),
 });

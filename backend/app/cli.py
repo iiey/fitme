@@ -10,7 +10,13 @@ from app.ingestion.importer import import_export
 def _cmd_import(args: argparse.Namespace) -> int:
     init_db()
     with SessionLocal() as db:
-        summary = import_export(db, args.source, provider=args.provider, force=args.force)
+        summary = import_export(
+            db,
+            args.source,
+            provider=args.provider,
+            force=args.force,
+            target_athlete_id=args.athlete,
+        )
     print(
         "Import complete: "
         f"added={summary.added} updated={summary.updated} skipped={summary.skipped} "
@@ -34,11 +40,18 @@ def build_parser() -> argparse.ArgumentParser:
     import_parser.add_argument("source", help="Path to export .zip or extracted folder")
     import_parser.add_argument(
         "--provider",
-        default="strava",
-        help="Source provider for these activities (default: strava)",
+        default=None,
+        help="Source provider label (default: auto-detect strava vs garmin)",
     )
     import_parser.add_argument(
-        "--force", action="store_true", help="Re-parse and update even unchanged activities"
+        "--athlete",
+        default=None,
+        help="Merge into this existing athlete id (default: the export's own)",
+    )
+    import_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-parse and update even unchanged activities",
     )
     import_parser.set_defaults(func=_cmd_import)
 

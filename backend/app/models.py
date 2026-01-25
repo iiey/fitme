@@ -28,6 +28,12 @@ class Activity(Base):
     dedup_key: Mapped[str | None] = mapped_column(String, nullable=True)
 
     start_date_time: Mapped[datetime] = mapped_column(DateTime, index=True)
+    # Stable UTC start used for cross-source de-duplication. ``start_date_time``
+    # is the athlete's *local* wall-clock (for weekday/time-of-day display),
+    # which differs by timezone between providers; ``start_utc`` is the same
+    # instant in UTC, so the same workout fingerprints identically regardless of
+    # which provider (or file type) it came from.
+    start_utc: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     sport_type: Mapped[str] = mapped_column(String, index=True)
     activity_type: Mapped[str] = mapped_column(String, index=True)
 
@@ -163,6 +169,31 @@ class AthleteProfile(Base):
     state: Mapped[str | None] = mapped_column(String, nullable=True)
     country: Mapped[str | None] = mapped_column(String, nullable=True)
     sex: Mapped[str | None] = mapped_column(String, nullable=True)
+    updated_on: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class SourceIdentity(Base):
+    """Maps a provider's athlete id to our canonical ``athlete_id``.
+
+    Strava and Garmin assign independent account ids to the same person, so
+    there is no automatic way to know two exports belong together. When the user
+    chooses to merge an import into an existing athlete, that decision is
+    recorded here keyed on ``(source, source_athlete_id)`` so every later import
+    of the same provider account resolves to the same canonical athlete without
+    asking again.
+    """
+
+    __tablename__ = "source_identity"
+
+    # The provider (``strava`` | ``garmin`` | ...).
+    source: Mapped[str] = mapped_column(String, primary_key=True)
+    # The provider's own athlete id (Strava athlete id / Garmin userProfileId).
+    source_athlete_id: Mapped[str] = mapped_column(String, primary_key=True)
+    # The canonical athlete these activities are stored under.
+    athlete_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_on: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )

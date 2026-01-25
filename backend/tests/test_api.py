@@ -189,3 +189,51 @@ def test_rewind_exposes_per_sport_and_achievements(client: TestClient):
     longest = next(h for h in achievements["highlights"] if h["label"] == "Longest distance")
     assert longest["activity_id"]
     assert longest["value"] > 0
+
+
+def test_import_preview_suggests_name_match(client: TestClient, tmp_path: Path):
+    # A second export for a *different* account but the SAME athlete name should
+    # be previewed with a suggested merge into the seeded athlete (id 42).
+    export = tmp_path / "second"
+    (export / "activities").mkdir(parents=True, exist_ok=True)
+    (export / "activities" / "9.gpx").write_text(GPX, encoding="utf-8")
+    header = [
+        "Activity ID",
+        "Activity Date",
+        "Activity Name",
+        "Activity Type",
+        "Elapsed Time",
+        "Moving Time",
+        "Distance",
+        "Filename",
+    ]
+    row = [
+        "9",
+        "Apr 2, 2024, 6:00:00 AM",
+        "Run",
+        "Run",
+        "600",
+        "600",
+        "2000",
+        "activities/9.gpx",
+    ]
+    with (export / "activities.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(header)
+        writer.writerow(row)
+    with (export / "profile.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["Athlete ID", "First Name", "Last Name"])
+        writer.writerow(["777", "Test", "User"])
+
+    resp = client.post("/api/import/preview", data={"source": str(export)})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["provider"] == "strava"
+    assert body["athlete_name"] == "Test User"
+    assert body["source_athlete_id"] == "777"
+    assert body["activity_count"] == 1
+    assert body["is_existing_athlete"] is False
+    # Matching name → suggested merge into the seeded athlete.
+    assert body["suggested_athlete_id"] == "42"
+    assert body["suggested_athlete_name"] == "Test User"

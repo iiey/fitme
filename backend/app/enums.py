@@ -137,6 +137,24 @@ class SportType(str, Enum):
         }
         return aliases.get(normalized.lower(), cls.WORKOUT)
 
+    @classmethod
+    def from_garmin(cls, activity_type: str | None, sport_type: str | None = None) -> SportType:
+        """Resolve a Garmin ``activityType``/``sportType`` to a sport.
+
+        Garmin uses snake_case activity types (``trail_running``,
+        ``strength_training``); the broad upper-case ``sportType`` (``RUNNING``)
+        is a coarser fallback. Unknown values default to WORKOUT.
+        """
+        if activity_type:
+            mapped = _GARMIN_SPORT_MAP.get(activity_type.strip().lower())
+            if mapped is not None:
+                return mapped
+        if sport_type:
+            mapped = _GARMIN_SPORT_TYPE_MAP.get(sport_type.strip().upper())
+            if mapped is not None:
+                return mapped
+        return cls.WORKOUT
+
     @property
     def activity_type(self) -> ActivityType:
         return _SPORT_TO_ACTIVITY.get(self, ActivityType.OTHER)
@@ -269,6 +287,104 @@ _SPORT_TO_ACTIVITY: dict[SportType, ActivityType] = {
     # Adaptive.
     SportType.HAND_CYCLE: ActivityType.ADAPTIVE_INCLUSIVE_SPORTS,
     SportType.WHEELCHAIR: ActivityType.ADAPTIVE_INCLUSIVE_SPORTS,
+}
+
+# Garmin Connect ``activityType`` (fine-grained, snake_case) -> Strava sport.
+_GARMIN_SPORT_MAP: dict[str, SportType] = {
+    # Run.
+    "running": SportType.RUN,
+    "street_running": SportType.RUN,
+    "track_running": SportType.RUN,
+    "trail_running": SportType.TRAIL_RUN,
+    "treadmill_running": SportType.VIRTUAL_RUN,
+    "indoor_running": SportType.VIRTUAL_RUN,
+    "virtual_run": SportType.VIRTUAL_RUN,
+    "obstacle_run": SportType.RUN,
+    # Ride.
+    "cycling": SportType.RIDE,
+    "road_biking": SportType.RIDE,
+    "mountain_biking": SportType.MOUNTAIN_BIKE_RIDE,
+    "gravel_cycling": SportType.GRAVEL_RIDE,
+    "cyclocross": SportType.MOUNTAIN_BIKE_RIDE,
+    "indoor_cycling": SportType.VIRTUAL_RIDE,
+    "virtual_ride": SportType.VIRTUAL_RIDE,
+    "e_bike_fitness": SportType.E_BIKE_RIDE,
+    "e_bike_mountain": SportType.E_MOUNTAIN_BIKE_RIDE,
+    # Walk / hike.
+    "walking": SportType.WALK,
+    "casual_walking": SportType.WALK,
+    "speed_walking": SportType.WALK,
+    "hiking": SportType.HIKE,
+    "mountaineering": SportType.HIKE,
+    # Water.
+    "swimming": SportType.SWIM,
+    "lap_swimming": SportType.SWIM,
+    "open_water_swimming": SportType.SWIM,
+    "rowing": SportType.ROWING,
+    "indoor_rowing": SportType.ROWING,
+    "kayaking": SportType.KAYAKING,
+    "stand_up_paddleboarding": SportType.STAND_UP_PADDLING,
+    "surfing": SportType.SURFING,
+    "windsurfing": SportType.WIND_SURF,
+    "whitewater_rafting": SportType.CANOEING,
+    # Winter.
+    "resort_skiing": SportType.ALPINE_SKI,
+    "resort_skiing_snowboarding": SportType.ALPINE_SKI,
+    "backcountry_skiing": SportType.BACK_COUNTRY_SKI,
+    "cross_country_skiing": SportType.NORDIC_SKI,
+    "skate_skiing": SportType.NORDIC_SKI,
+    "snowboarding": SportType.SNOWBOARD,
+    "snowshoeing": SportType.SNOWSHOE,
+    "ice_skating": SportType.ICE_SKATE,
+    # Skating.
+    "inline_skating": SportType.INLINE_SKATE,
+    "skateboarding": SportType.SKATEBOARD,
+    # Racquet & paddle.
+    "tennis": SportType.TENNIS,
+    "table_tennis": SportType.TABLE_TENNIS,
+    "badminton": SportType.BADMINTON,
+    "squash": SportType.SQUASH,
+    "racquetball": SportType.RACQUET_BALL,
+    "pickleball": SportType.PICKLE_BALL,
+    "padel": SportType.PADEL,
+    # Fitness.
+    "strength_training": SportType.WEIGHT_TRAINING,
+    "indoor_cardio": SportType.WORKOUT,
+    "cardio": SportType.WORKOUT,
+    "fitness_equipment": SportType.WORKOUT,
+    "hiit": SportType.HIIT,
+    "elliptical": SportType.ELLIPTICAL,
+    "stair_climbing": SportType.STAIR_STEPPER,
+    "indoor_climbing": SportType.ROCK_CLIMBING,
+    "bouldering": SportType.ROCK_CLIMBING,
+    # Mind & body.
+    "yoga": SportType.YOGA,
+    "pilates": SportType.PILATES,
+    "breathwork": SportType.YOGA,
+    "meditation": SportType.YOGA,
+    # Outdoor.
+    "rock_climbing": SportType.ROCK_CLIMBING,
+    "golf": SportType.GOLF,
+    "sailing": SportType.SAIL,
+    # Team.
+    "soccer": SportType.SOCCER,
+    "basketball": SportType.BASKETBALL,
+    "volleyball": SportType.VOLLEYBALL,
+}
+
+# Garmin ``sportType`` (broad, upper-case) -> Strava sport, used as a fallback.
+_GARMIN_SPORT_TYPE_MAP: dict[str, SportType] = {
+    "RUNNING": SportType.RUN,
+    "CYCLING": SportType.RIDE,
+    "WALKING": SportType.WALK,
+    "STEPS": SportType.WALK,
+    "HIKING": SportType.HIKE,
+    "SWIMMING": SportType.SWIM,
+    "HIIT": SportType.HIIT,
+    "FITNESS_EQUIPMENT": SportType.WORKOUT,
+    "TRAINING": SportType.WORKOUT,
+    "MULTISPORT": SportType.WORKOUT,
+    "WINTER_SPORTS": SportType.SNOWBOARD,
 }
 
 _BEST_EFFORT_SPORTS = {

@@ -43,6 +43,16 @@ class CsvActivityRow:
     average_power: int | None
     max_power: int | None
     calories: int | None
+    # Optional fields populated by summary-only sources (e.g. the Garmin
+    # export, which has no per-activity file). The Strava CSV reader leaves
+    # these ``None`` and derives them from the linked GPX/TCX/FIT instead.
+    start_latitude: float | None = None
+    start_longitude: float | None = None
+    device_name: str | None = None
+    normalized_power: float | None = None
+    # Stable UTC start, used for cross-source de-duplication. Strava's CSV
+    # "Activity Date" is already UTC; Garmin sets this from ``startTimeGmt``.
+    start_utc: datetime | None = None
     raw: dict = field(default_factory=dict)
 
     def parsed_date(self) -> datetime | None:
@@ -190,11 +200,12 @@ class ExportReader:
                 "1",
                 "yes",
             )
+            activity_date = _pick(row, "Activity Date") or ""
             out.append(
                 CsvActivityRow(
                     activity_id=str(activity_id).strip(),
                     name=_pick(row, "Activity Name") or "",
-                    activity_date_raw=_pick(row, "Activity Date") or "",
+                    activity_date_raw=activity_date,
                     sport_type_raw=_pick(row, "Activity Type") or "",
                     description=_pick(row, "Activity Description"),
                     filename=_pick(row, "Filename"),
@@ -213,10 +224,20 @@ class ExportReader:
                     average_power=_to_int(_pick(row, "Average Watts")),
                     max_power=_to_int(_pick(row, "Max Watts")),
                     calories=_to_int(_pick(row, "Calories")),
+                    # Strava "Activity Date" is recorded in UTC.
+                    start_utc=parse_csv_date(activity_date),
                     raw=row,
                 )
             )
         return out
+
+    def count_activities(self) -> int:
+        """Number of activities in the export (for the import preview)."""
+        return len(self.read_activities_csv())
+
+    def read_activity_rows(self) -> list[CsvActivityRow]:
+        """Importer-facing alias (parallels ``GarminExportReader``)."""
+        return self.read_activities_csv()
 
     def read_profile(self) -> AthleteProfileRow | None:
         """Parse ``profile.csv`` if present, tolerating header variations."""
