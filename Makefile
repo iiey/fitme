@@ -1,4 +1,4 @@
-# StraStat - developer convenience targets.
+# FitMe - developer convenience targets.
 # Run `make help` to list available commands.
 
 # Use bash for recipes.
@@ -56,7 +56,7 @@ seed: migrate sample-data ## Migrate, generate sample data and import it.
 
 .PHONY: db-reset
 db-reset: ## Wipe the database and uploaded exports.
-	rm -f $(BACKEND)/storage/strastat.db $(BACKEND)/storage/strastat.db-shm $(BACKEND)/storage/strastat.db-wal
+	rm -f $(BACKEND)/storage/fitme.db $(BACKEND)/storage/fitme.db-shm $(BACKEND)/storage/fitme.db-wal
 	rm -rf $(BACKEND)/storage/uploads/*
 	@echo "Database and uploads wiped. Run 'make seed' to re-populate."
 

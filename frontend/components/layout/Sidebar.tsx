@@ -49,7 +49,7 @@ export function Sidebar() {
         <div className="flex items-center gap-2">
           <span className="text-2xl">🏃</span>
           <span className="text-xl font-bold tracking-tight">
-            Stra<span className="text-brand">Stat</span>
+            Fit<span className="text-brand">Me</span>
           </span>
         </div>
         <ThemeToggle />

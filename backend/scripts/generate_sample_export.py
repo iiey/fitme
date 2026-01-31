@@ -82,7 +82,7 @@ def _gpx_track(
     gpx_type = {"Run": "running", "Ride": "cycling", "Walk": "walking"}.get(sport, "running")
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<gpx version="1.1" creator="StraStat sample generator" '
+        '<gpx version="1.1" creator="FitMe sample generator" '
         'xmlns="http://www.topografix.com/GPX/1/1" '
         'xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">\n'
         f"<trk><type>{gpx_type}</type><trkseg>\n" + "\n".join(points) + "\n</trkseg></trk></gpx>\n"

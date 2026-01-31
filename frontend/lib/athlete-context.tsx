@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { AthleteListItem } from "./types";
 
-const STORAGE_KEY = "strastat-athlete-id";
+const STORAGE_KEY = "fitme-athlete-id";
 
 interface AthleteContextValue {
   athleteId: string | null;

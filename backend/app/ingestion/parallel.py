@@ -25,7 +25,7 @@ from app.ingestion.gpx import parse_gpx
 from app.ingestion.parsed import ParsedActivityFile
 from app.ingestion.tcx import parse_tcx
 
-logger = logging.getLogger("strastat.import")
+logger = logging.getLogger("fitme.import")
 
 # A unit of parse work: (key, file_bytes, extension).
 ParseItem = tuple[str, bytes, str]

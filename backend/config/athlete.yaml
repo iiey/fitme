@@ -1,4 +1,4 @@
-# StraStat athlete configuration.
+# FitMe athlete configuration.
 # These values cannot be derived from the Strava bulk export and are needed for
 # training-load (TSS/TRIMP), heart-rate / power zones and weight-relative power.
 

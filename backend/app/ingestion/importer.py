@@ -33,7 +33,7 @@ from app.models import (
     SourceIdentity,
 )
 
-logger = logging.getLogger("strastat.import")
+logger = logging.getLogger("fitme.import")
 
 # A reader over a bulk export: the Strava CSV reader or the Garmin summary
 # reader. Both expose ``read_activity_rows`` / ``read_profile`` /

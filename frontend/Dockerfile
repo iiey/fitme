@@ -1,4 +1,4 @@
-# StraStat frontend image (Next.js standalone).
+# FitMe frontend image (Next.js standalone).
 FROM node:22-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./

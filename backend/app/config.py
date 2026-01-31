@@ -13,21 +13,21 @@ STORAGE_DIR = BACKEND_ROOT / "storage"
 class Settings(BaseSettings):
     """Application configuration, overridable via environment variables.
 
-    All variables are prefixed with ``STRASTAT_`` (e.g. ``STRASTAT_DATABASE_URL``).
+    All variables are prefixed with ``FITME_`` (e.g. ``FITME_DATABASE_URL``).
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="STRASTAT_",
+        env_prefix="FITME_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
-    app_name: str = "StraStat"
+    app_name: str = "FitMe"
     app_subtitle: str = "Statistics for your Strava data"
 
     # Database (SQLite by default; single-user self-hosted).
-    database_url: str = f"sqlite:///{STORAGE_DIR / 'strastat.db'}"
+    database_url: str = f"sqlite:///{STORAGE_DIR / 'fitme.db'}"
 
     # Storage locations.
     storage_dir: Path = STORAGE_DIR

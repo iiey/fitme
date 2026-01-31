@@ -4,7 +4,7 @@ Revision ID: baseline
 Revises:
 Create Date: 2026-06-22 18:32:21.569361
 
-The single, consolidated schema for StraStat. Earlier incremental migrations
+The single, consolidated schema for FitMe. Earlier incremental migrations
 were squashed into this one baseline, so a fresh database is created in a single
 step. ``alembic upgrade head`` builds the full schema; the app also creates any
 missing tables via ``create_all`` on startup (``auto_create_tables``).

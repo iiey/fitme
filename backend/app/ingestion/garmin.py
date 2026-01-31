@@ -7,7 +7,7 @@ the athlete identity in ``DI-Connect-User/user_profile.json``, and the raw
 per-activity ``.fit`` files in a *nested* ``DI-Connect-Uploaded-Files`` zip whose
 members are named by upload-file id rather than activity id.
 
-Because the JSON summaries already carry every metric StraStat stores, this
+Because the JSON summaries already carry every metric FitMe stores, this
 reader is *summary-driven*: it emits one :class:`CsvActivityRow` per activity so
 the existing importer pipeline (identity, cross-source de-duplication, upsert)
 can drive a Garmin export exactly like a Strava one.
@@ -20,7 +20,7 @@ for Garmin imports too. Activities without a matching FIT (or without GPS, e.g.
 indoor strength) fall back to the summary's distance, time, HR, power and start
 coordinate.
 
-All Garmin units are converted to StraStat's SI base units here:
+All Garmin units are converted to FitMe's SI base units here:
 
 * distance / elevation are stored in **centimetres** -> divide by 100 for metres,
 * durations are stored in **milliseconds** -> divide by 1000 for seconds,

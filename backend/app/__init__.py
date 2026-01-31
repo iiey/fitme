@@ -1,1 +1,1 @@
-"""StraStat backend application package."""
+"""FitMe backend application package."""

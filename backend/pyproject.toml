@@ -1,7 +1,7 @@
 [project]
-name = "strastat-backend"
+name = "fitme-backend"
 version = "0.1.0"
-description = "StraStat - self-hosted Strava statistics dashboard (FastAPI backend)"
+description = "FitMe - self-hosted Strava statistics dashboard (FastAPI backend)"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

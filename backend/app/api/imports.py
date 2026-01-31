@@ -18,7 +18,7 @@ from app.ingestion.importer import import_export
 from app.models import AthleteProfile, ImportRun, SourceIdentity
 from app.schemas import ImportPreview, ImportRequest, ImportRunStatus
 
-logger = logging.getLogger("strastat.import")
+logger = logging.getLogger("fitme.import")
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 

@@ -2,10 +2,10 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: strastat-backend
+    container_name: fitme-backend
     environment:
       # Override defaults here if needed (see backend/app/config.py).
-      - STRASTAT_DATABASE_URL=sqlite:////app/storage/strastat.db
+      - FITME_DATABASE_URL=sqlite:////app/storage/fitme.db
     volumes:
       - ./backend/storage:/app/storage
       - ./backend/config:/app/config
@@ -22,7 +22,7 @@ services:
   frontend:
     build:
       context: ./frontend
-    container_name: strastat-frontend
+    container_name: fitme-frontend
     environment:
       # The frontend proxies /api/* to this URL (server-side).
       - BACKEND_URL=http://backend:8000

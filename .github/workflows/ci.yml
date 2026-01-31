@@ -43,5 +43,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t strastat-backend:ci ./backend
-      - run: docker build -t strastat-frontend:ci ./frontend
+      - run: docker build -t fitme-backend:ci ./backend
+      - run: docker build -t fitme-frontend:ci ./frontend

@@ -1,4 +1,4 @@
-# StraStat backend image (uv-native, reproducible from uv.lock).
+# FitMe backend image (uv-native, reproducible from uv.lock).
 FROM python:3.12-slim
 
 # Bring in the uv binary.

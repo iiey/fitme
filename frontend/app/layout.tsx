@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { AthleteProvider } from "@/lib/athlete-context";
 
 export const metadata: Metadata = {
-  title: "StraStat",
+  title: "FitMe",
   description: "Self-hosted statistics for your Strava data",
 };
 

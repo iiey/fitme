@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 # Use an isolated in-memory database for the test session.
-os.environ.setdefault("STRASTAT_DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("FITME_DATABASE_URL", "sqlite:///:memory:")
 
 
 @pytest.fixture

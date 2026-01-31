@@ -332,7 +332,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
             </p>
             <p className="mt-3 rounded-lg bg-surface-muted px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
               Large Garmin exports take a little while. You can close this and keep
-              using StraStat - the import continues in the background and your
+              using FitMe - the import continues in the background and your
               activities appear gradually.
             </p>
           </div>

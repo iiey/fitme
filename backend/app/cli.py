@@ -33,7 +33,7 @@ def _cmd_init_db(_: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="strastat", description="StraStat backend CLI")
+    parser = argparse.ArgumentParser(prog="fitme", description="FitMe backend CLI")
     sub = parser.add_subparsers(dest="command", required=True)
 
     import_parser = sub.add_parser("import", help="Import a bulk export (zip or folder)")

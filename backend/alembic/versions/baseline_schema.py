@@ -4,7 +4,7 @@ Revision ID: baseline
 Revises:
 Create Date: 2026-06-22 18:32:21.569361
 
-The single, consolidated schema for StraStat. Earlier incremental migrations
+The single, consolidated schema for FitMe. Earlier incremental migrations
 were squashed into this one baseline, so a fresh database is created in a single
 step. ``alembic upgrade head`` builds the full schema; the app also creates any
 missing tables via ``create_all`` on startup (``auto_create_tables``).
@@ -89,13 +89,17 @@ def upgrade() -> None:
             batch_op.f("ix_activity_start_date_time"), ["start_date_time"], unique=False
         )
         batch_op.create_index(
-            batch_op.f("ix_activity_streams_are_imported"), ["streams_are_imported"], unique=False
+            batch_op.f("ix_activity_streams_are_imported"),
+            ["streams_are_imported"],
+            unique=False,
         )
         batch_op.create_index(
             "ix_activity_type_start", ["activity_type", "start_date_time"], unique=False
         )
         batch_op.create_index(
-            "uq_activity_source_external", ["athlete_id", "source", "external_id"], unique=True
+            "uq_activity_source_external",
+            ["athlete_id", "source", "external_id"],
+            unique=True,
         )
 
     op.create_table(
@@ -141,11 +145,15 @@ def upgrade() -> None:
             batch_op.f("ix_best_effort_activity_type"), ["activity_type"], unique=False
         )
         batch_op.create_index(
-            "ix_best_effort_lookup", ["activity_type", "distance_m", "time_s"], unique=False
+            "ix_best_effort_lookup",
+            ["activity_type", "distance_m", "time_s"],
+            unique=False,
         )
         batch_op.create_index(batch_op.f("ix_best_effort_sport_type"), ["sport_type"], unique=False)
         batch_op.create_index(
-            batch_op.f("ix_best_effort_start_date_time"), ["start_date_time"], unique=False
+            batch_op.f("ix_best_effort_start_date_time"),
+            ["start_date_time"],
+            unique=False,
         )
 
     op.create_table(
