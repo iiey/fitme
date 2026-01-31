@@ -149,6 +149,7 @@ export interface PeriodTotals extends Totals {
 
 export interface LabeledTotals extends Totals {
   label: string;
+  average_heart_rate?: number | null;
 }
 
 export interface Dashboard {
@@ -162,7 +163,7 @@ export interface Dashboard {
   monthly_stats: PeriodTotals[];
   yearly_stats: PeriodTotals[];
   activity_calendar: CalendarPoint[];
-  streaks: { current: number; longest: number };
+  streaks: { current: number; longest: number; current_start: string | null };
   eddington: EddingtonSummary[];
   weekday_stats: LabeledTotals[];
   daytime_stats: LabeledTotals[];
@@ -257,7 +258,11 @@ export interface MonthResponse {
   totals: { count: number; distance: number; elevation: number; moving_time_s: number };
   per_sport: { sport_type: string; label: string; count: number; distance: number; moving_time_s: number }[];
   days: MonthDay[];
-  activities: ActivitySummary[];
+  activities: CalendarActivity[];
+}
+
+export interface CalendarActivity extends ActivitySummary {
+  load: number;
 }
 
 export interface MonthDay {
@@ -267,6 +272,8 @@ export interface MonthDay {
   count: number;
   distance: number;
   moving_time_s: number;
+  elevation: number;
+  calories: number;
   sport_types: string[];
 }
 

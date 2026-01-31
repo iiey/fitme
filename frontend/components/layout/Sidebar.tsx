@@ -26,25 +26,28 @@ export function Sidebar() {
   const { athleteId, setAthleteId, athletes, setAthletes } = useAthleteContext();
   const { data: meta } = useMeta(athleteId);
   const [importOpen, setImportOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!meta) return;
     setAthletes(meta.athletes);
     if (meta.athletes.length === 0) {
-      // All data was wiped - drop any persisted selection.
       if (athleteId) setAthleteId(null);
       return;
     }
-    // Reset a missing or stale selection (e.g. an id cached in the browser
-    // after a db reset or importing a different export) to a valid athlete.
     const exists = meta.athletes.some((a) => a.athlete_id === athleteId);
     if (!athleteId || !exists) {
       setAthleteId(meta.athletes[0].athlete_id);
     }
   }, [meta, athleteId, setAthleteId, setAthletes]);
 
-  return (
-    <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 lg:flex">
+  // Close mobile nav on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const sidebarContent = (
+    <>
       <div className="flex items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2">
           <span className="text-2xl">🏃</span>
@@ -52,7 +55,17 @@ export function Sidebar() {
             Fit<span className="text-brand">Me</span>
           </span>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
         {NAV_ITEMS.map((item) => {
@@ -90,7 +103,52 @@ export function Sidebar() {
         />
       </div>
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 lg:hidden">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🏃</span>
+          <span className="text-lg font-bold tracking-tight">
+            Fit<span className="text-brand">Me</span>
+          </span>
+        </div>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+        >
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile slide-out sidebar */}
+      <aside
+        className={clsx(
+          "fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-gray-200 bg-white transition-transform duration-300 dark:border-gray-700 dark:bg-gray-900 lg:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 lg:flex">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
 

@@ -321,6 +321,12 @@ def get_dashboard(
 
     longest_streak = results["longest_streak"]
     milestones = results["milestones"]
+    current_streak = stats.current_daily_streak(activities, anchor.date())
+    weekday_hr = stats.weekday_average_hr(activities)
+
+    weekday_stats_raw: list[dict] = results["weekday_stats"]  # type: ignore[assignment]
+    for entry in weekday_stats_raw:
+        entry["average_heart_rate"] = weekday_hr.get(entry["label"])
 
     return {
         "empty": False,
@@ -337,11 +343,12 @@ def get_dashboard(
         "yearly_stats": results["yearly_stats"],
         "activity_calendar": results["activity_calendar"],
         "streaks": {
-            "current": stats.current_daily_streak(activities, anchor.date()),
+            "current": current_streak.length if current_streak else 0,
             "longest": longest_streak.length if longest_streak else 0,
+            "current_start": current_streak.start.isoformat() if current_streak else None,
         },
         "eddington": results["eddington"],
-        "weekday_stats": results["weekday_stats"],
+        "weekday_stats": weekday_stats_raw,
         "daytime_stats": results["daytime_stats"],
         "distance_breakdown": results["distance_breakdown"],
         "hr_zones": results["hr_zones"],

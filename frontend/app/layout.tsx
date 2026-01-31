@@ -17,8 +17,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AthleteProvider>
           <div className="flex min-h-screen">
             <Sidebar />
-            <main className="flex-1 overflow-x-hidden px-4 py-6 md:px-8 lg:ml-64">
-              <div className="mx-auto w-full max-w-7xl">{children}</div>
+            <main className="flex-1 overflow-x-hidden px-3 pb-6 pt-16 sm:px-4 md:px-6 lg:ml-64 lg:px-8 lg:pt-6 xl:px-10">
+              <div className="w-full">{children}</div>
             </main>
           </div>
         </AthleteProvider>

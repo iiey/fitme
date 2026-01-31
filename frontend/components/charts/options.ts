@@ -59,7 +59,7 @@ export function barChart(
               position: "top",
               fontSize: 10,
               color: t.text,
-              formatter: unit ? `{c} ${unit}` : "{c}",
+              formatter: "{c}",
             }
           : undefined,
       },
@@ -210,7 +210,7 @@ export function donutChart(
     series: [
       {
         type: "pie",
-        radius: ["36%", "48%"],
+        radius: ["40%", "64%"],
         center: ["50%", "50%"],
         avoidLabelOverlap: true,
         minAngle: 4,
@@ -223,7 +223,7 @@ export function donutChart(
         label: {
           show: true,
           alignTo: "edge",
-          edgeDistance: 1,
+          edgeDistance: 6,
           formatter: "{title|{b}}\n{value|{d}%}",
           rich: {
             title: { fontSize: 10, fontWeight: 600, color: t.text, lineHeight: 14 },
@@ -231,8 +231,8 @@ export function donutChart(
           },
         },
         labelLine: {
-          length: 4,
-          length2: 8,
+          length: 6,
+          length2: 6,
           smooth: false,
           lineStyle: { color: t.axis },
         },
@@ -255,7 +255,7 @@ export function donutChart(
 }
 
 export function weekdayAverageChart(
-  items: { label: string; distance: number; count: number }[],
+  items: { label: string; distance: number; count: number; averageHr?: number | null }[],
   unit = "km",
   dark = false,
 ): EChartsOption {
@@ -265,6 +265,7 @@ export function weekdayAverageChart(
     d.count > 0 ? Math.round((d.distance / d.count) * 10) / 10 : 0,
   );
   const counts = items.map((d) => d.count);
+  const hrs = items.map((d) => d.averageHr ?? null);
 
   // Colour each bar from cold (lowest average) to hot (highest average).
   const maxAvg = Math.max(...averages);
@@ -283,11 +284,15 @@ export function weekdayAverageChart(
         const list = params as { dataIndex: number }[];
         const i = Array.isArray(list) ? list[0]?.dataIndex ?? 0 : 0;
         const n = counts[i];
-        return (
+        const hr = hrs[i];
+        let html =
           `<div style="font-weight:600;margin-bottom:4px">${categories[i]}</div>` +
-          `<div>Average: <b>${averages[i].toLocaleString()} ${unit}</b></div>` +
-          `<div style="color:${t.axis}">From ${n} ${n === 1 ? "activity" : "activities"}</div>`
-        );
+          `<div>Average: <b>${averages[i].toLocaleString()} ${unit}</b></div>`;
+        if (hr != null) {
+          html += `<div>Avg HR: <b>${hr} bpm</b></div>`;
+        }
+        html += `<div style="color:${t.axis}">From ${n} ${n === 1 ? "activity" : "activities"}</div>`;
+        return html;
       },
     },
     xAxis: {
@@ -321,7 +326,7 @@ export function weekdayAverageChart(
           fontSize: 10,
           fontWeight: 600,
           color: t.text,
-          formatter: `{c} ${unit}`,
+          formatter: "{c}",
         },
         emphasis: {
           itemStyle: { shadowBlur: 10, shadowColor: "rgba(0, 0, 0, 0.2)" },
@@ -623,6 +628,12 @@ export function yearlyStatsChart(
 
   const years = Array.from(byYear.keys()).sort((a, b) => b - a);
 
+  // Only show the last 5 years by default; older ones are toggled off.
+  const selected: Record<string, boolean> = {};
+  for (let i = 0; i < years.length; i++) {
+    selected[String(years[i])] = i < 5;
+  }
+
   const series: EChartsOption["series"] = years.map((year, i) => {
     const months = byYear.get(year)!.sort((a, b) => a.month - b.month);
     const cumulative = new Array(12).fill(null) as (number | null)[];
@@ -682,6 +693,7 @@ export function yearlyStatsChart(
       textStyle: { fontSize: 12, color: t.text },
       itemWidth: 16,
       itemHeight: 8,
+      selected,
     },
     xAxis: {
       type: "category",

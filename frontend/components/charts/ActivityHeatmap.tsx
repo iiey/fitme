@@ -163,12 +163,13 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
     return () => ro.disconnect();
   }, [measure]);
 
-  const dayLabelWidth = 28;
+  const dayLabelWidth = 36;
   const availableWidth = containerWidth - dayLabelWidth;
   const cellPlusGap = availableWidth > 0 ? availableWidth / totalWeeks : 14;
   const cellGap = Math.max(1, Math.min(3, Math.floor(cellPlusGap * 0.2)));
-  const cellSize = Math.max(4, cellPlusGap - cellGap);
-  const headerHeight = 16;
+  const cellWidth = Math.max(4, cellPlusGap - cellGap);
+  const cellHeight = Math.max(4, Math.min(cellWidth, 14));
+  const headerHeight = 22;
 
   return (
     <div ref={containerRef}>
@@ -193,7 +194,7 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
             {monthHeaders.map((m, i) => {
               const nextCol = i + 1 < monthHeaders.length ? monthHeaders[i + 1].col : totalWeeks;
               const spanWeeks = nextCol - m.col;
-              const width = spanWeeks * (cellSize + cellGap);
+              const width = spanWeeks * (cellWidth + cellGap);
               if (spanWeeks < 2) {
                 return (
                   <span
@@ -208,7 +209,7 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
                   type="button"
                   onClick={() => router.push(`/calendar?year=${m.year}&month=${m.month}`)}
                   title={`View ${m.label} ${m.year} in Monthly View`}
-                  className="cursor-pointer text-left text-[10px] text-gray-400 transition-colors hover:text-brand hover:underline"
+                  className="cursor-pointer text-left text-sm font-medium text-gray-500 transition-colors hover:text-brand hover:underline dark:text-gray-400"
                   style={{ width, flexShrink: 0 }}
                 >
                   {m.label}
@@ -227,8 +228,8 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
               {DAY_LABELS.map((label, i) => (
                 <span
                   key={label}
-                  className="text-[10px] leading-none text-gray-400"
-                  style={{ height: cellSize, display: "flex", alignItems: "center" }}
+                  className="text-xs leading-none text-gray-500 dark:text-gray-400"
+                  style={{ height: cellHeight, display: "flex", alignItems: "center" }}
                 >
                   {i % 2 === 0 ? label : ""}
                 </span>
@@ -239,7 +240,7 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
             <div
               className="grid grid-flow-col"
               style={{
-                gridTemplateRows: `repeat(7, ${cellSize}px)`,
+                gridTemplateRows: `repeat(7, ${cellHeight}px)`,
                 gap: cellGap,
                 flex: 1,
               }}
@@ -248,12 +249,13 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
                 <div
                   key={cell.date}
                   title={`${cell.date}: ${cell.load > 0 ? `Load ${cell.load}` : "No activity"} (${cell.count} activit${cell.count === 1 ? "y" : "ies"})`}
-                  className="rounded-[2px]"
+                  className={`rounded-[2px] ${cell.count > 0 ? "cursor-pointer ring-brand/50 transition-shadow hover:ring-2" : ""}`}
                   style={{
-                    width: cellSize,
-                    height: cellSize,
+                    width: cellWidth,
+                    height: cellHeight,
                     backgroundColor: colorForLoad(cell.load, maxLoad, isDark),
                   }}
+                  onClick={cell.count > 0 ? () => router.push(`/activities?from=${cell.date}&to=${cell.date}`) : undefined}
                 />
               ))}
             </div>

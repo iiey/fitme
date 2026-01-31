@@ -54,6 +54,7 @@ export default function DashboardPage() {
   const [year, setYear] = useState("");
   const [hrWindow, setHrWindow] = useState(30);
   const [powerWindow, setPowerWindow] = useState(120);
+  const [weeklyMetric, setWeeklyMetric] = useState<"hours" | "km">("hours");
 
   const filters = useMemo(
     () => ({
@@ -201,7 +202,11 @@ export default function DashboardPage() {
               <span className="stat-value text-brand dark:text-brand">{data.streaks.current}</span>
               <span className="text-sm text-gray-500">days</span>
             </div>
-            <p className="mt-1 text-xs text-gray-400">Longest: {data.streaks.longest} days</p>
+            <p className="mt-1 text-xs text-gray-400">
+              {data.streaks.current_start
+                ? `Since: ${data.streaks.current_start}`
+                : `Longest: ${data.streaks.longest} days`}
+            </p>
           </Card>
           <Card
             title="Eddington"
@@ -242,21 +247,60 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card title={`Monthly distance (${distanceUnit})`}>
             <EChart
-              option={barChart(
-                monthly.map((m) => m.period),
-                monthly.map((m) => m.distance),
-                "#3b82f6",
-                distanceUnit,
-                isDark,
-              )}
+              option={(() => {
+                const opt = barChart(
+                  monthly.map((m) => m.period),
+                  monthly.map((m) => m.distance),
+                  "#3b82f6",
+                  distanceUnit,
+                  isDark,
+                  true,
+                );
+                const counts = monthly.map((m) => m.count);
+                opt.tooltip = {
+                  ...opt.tooltip as object,
+                  trigger: "axis",
+                  formatter: (params: unknown) => {
+                    const list = params as { dataIndex: number; axisValueLabel: string }[];
+                    const i = Array.isArray(list) ? list[0]?.dataIndex ?? 0 : 0;
+                    const label = Array.isArray(list) ? list[0]?.axisValueLabel ?? "" : "";
+                    const n = counts[i];
+                    return (
+                      `<div style="font-weight:600;margin-bottom:4px">${label}</div>` +
+                      `<div>${n} ${n === 1 ? "activity" : "activities"}</div>`
+                    );
+                  },
+                };
+                return opt;
+              })()}
               height={260}
             />
           </Card>
-          <Card title="Weekly moving time (hours)">
+          <Card
+            title="Weekly moving"
+            action={
+              <div className="flex rounded-md border border-gray-300 text-xs dark:border-gray-600">
+                <button
+                  onClick={() => setWeeklyMetric("hours")}
+                  className={`rounded-l-md px-2.5 py-1 ${weeklyMetric === "hours" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+                >
+                  Hours
+                </button>
+                <button
+                  onClick={() => setWeeklyMetric("km")}
+                  className={`rounded-r-md px-2.5 py-1 ${weeklyMetric === "km" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+                >
+                  {distanceUnit.toUpperCase()}
+                </button>
+              </div>
+            }
+          >
             <EChart
               option={lineChart(
                 data.weekly_stats.map((w) => w.period.replace(/^\d+-/, "")),
-                data.weekly_stats.map((w) => Math.round((w.moving_time_s / 3600) * 10) / 10),
+                weeklyMetric === "hours"
+                  ? data.weekly_stats.map((w) => Math.round((w.moving_time_s / 3600) * 10) / 10)
+                  : data.weekly_stats.map((w) => Math.round(w.distance * 10) / 10),
                 "#2563eb",
                 isDark,
               )}
@@ -336,6 +380,7 @@ export default function DashboardPage() {
                   label: d.label,
                   distance: d.distance,
                   count: d.count,
+                  averageHr: d.average_heart_rate,
                 })),
                 distanceUnit,
                 isDark,

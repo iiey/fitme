@@ -149,18 +149,39 @@ def longest_daily_streak(activities: list[Activity]) -> Streak | None:
     return best
 
 
-def current_daily_streak(activities: list[Activity], reference: date | None = None) -> int:
-    """Number of consecutive active days ending today (or yesterday)."""
+def current_daily_streak(
+    activities: list[Activity], reference: date | None = None
+) -> Streak | None:
+    """Consecutive active days ending today (or yesterday) as a Streak."""
     active_days = {a.start_date_time.date() for a in activities}
     if not active_days:
-        return 0
+        return None
     today = reference or datetime.utcnow().date()
     cursor = today if today in active_days else today - timedelta(days=1)
+    if cursor not in active_days:
+        return None
+    end = cursor
     streak = 0
     while cursor in active_days:
         streak += 1
         cursor -= timedelta(days=1)
-    return streak
+    start = cursor + timedelta(days=1)
+    return Streak(streak, start, end)
+
+
+def weekday_average_hr(activities: list[Activity]) -> dict[str, float | None]:
+    """Average heart rate per weekday, None if no HR data for that day."""
+    hr_sum: dict[int, float] = defaultdict(float)
+    hr_count: dict[int, int] = defaultdict(int)
+    for a in activities:
+        if a.average_heart_rate:
+            idx = a.start_date_time.weekday()
+            hr_sum[idx] += a.average_heart_rate
+            hr_count[idx] += 1
+    return {
+        WEEKDAY_LABELS[i]: (round(hr_sum[i] / hr_count[i]) if hr_count[i] > 0 else None)
+        for i in range(7)
+    }
 
 
 @dataclass
@@ -169,6 +190,8 @@ class CalendarDay:
     count: int = 0
     distance_m: float = 0.0
     moving_time_s: int = 0
+    elevation_m: float = 0.0
+    calories: int = 0
     training_load: int = 0
     sport_types: set[str] = field(default_factory=set)
 
@@ -182,5 +205,7 @@ def calendar_days(activities: list[Activity]) -> dict[date, CalendarDay]:
         entry.count += 1
         entry.distance_m += activity.distance_m or 0.0
         entry.moving_time_s += activity.moving_time_s or 0
+        entry.elevation_m += activity.elevation_m or 0.0
+        entry.calories += activity.calories or 0
         entry.sport_types.add(activity.sport_type)
     return days

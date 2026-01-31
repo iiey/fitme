@@ -75,7 +75,7 @@ export const PaginatedActivitiesSchema = z.object({
 });
 
 const PeriodTotalsSchema = TotalsSchema.extend({ period: z.string() });
-const LabeledTotalsSchema = TotalsSchema.extend({ label: z.string() });
+const LabeledTotalsSchema = TotalsSchema.extend({ label: z.string(), average_heart_rate: z.number().nullable().optional() });
 
 const CalendarPointSchema = z.object({
   date: z.string(),
@@ -123,7 +123,7 @@ export const DashboardSchema = z.object({
   monthly_stats: z.array(PeriodTotalsSchema).optional(),
   yearly_stats: z.array(PeriodTotalsSchema).optional(),
   activity_calendar: z.array(CalendarPointSchema).optional(),
-  streaks: z.object({ current: z.number(), longest: z.number() }).optional(),
+  streaks: z.object({ current: z.number(), longest: z.number(), current_start: z.string().nullable().optional() }).optional(),
   eddington: z.array(EddingtonSummarySchema).optional(),
   weekday_stats: z.array(LabeledTotalsSchema).optional(),
   daytime_stats: z.array(LabeledTotalsSchema).optional(),

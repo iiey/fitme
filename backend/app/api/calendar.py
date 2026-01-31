@@ -12,6 +12,7 @@ from app.api.serializers import serialize_activity_summary
 from app.athlete import get_athlete
 from app.db import get_db
 from app.domain.stats import calendar_days
+from app.domain.training_load import activity_training_load
 from app.domain.units import distance_for_unit, elevation_for_unit
 from app.enums import SportType
 
@@ -56,6 +57,10 @@ def get_month(
                     round(distance_for_unit(entry.distance_m, unit_system), 1) if entry else 0.0
                 ),
                 "moving_time_s": entry.moving_time_s if entry else 0,
+                "elevation": (
+                    round(elevation_for_unit(entry.elevation_m, unit_system), 0) if entry else 0
+                ),
+                "calories": entry.calories if entry else 0,
                 "sport_types": sorted(entry.sport_types) if entry else [],
             }
         )
@@ -98,5 +103,11 @@ def get_month(
             )
         ],
         "days": day_cells,
-        "activities": [serialize_activity_summary(a).model_dump() for a in activities],
+        "activities": [
+            {
+                **serialize_activity_summary(a).model_dump(),
+                "load": round(activity_training_load(a, athlete)),
+            }
+            for a in activities
+        ],
     }
