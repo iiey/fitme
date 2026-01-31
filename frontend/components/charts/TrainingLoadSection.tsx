@@ -250,35 +250,7 @@ export function TrainingLoadSection({
   const activePoint = series[Math.min(activeIndex, lastIndex)];
 
   return (
-    <div className="card space-y-4 p-4">
-      <header className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 className="card-title">Training Load Analysis</h2>
-          <p className="mt-0.5 text-xs text-gray-400">
-            Fitness, fatigue and form over the last {analysis.display_days} days
-          </p>
-        </div>
-      </header>
-
-      <EChart option={option} height={460} onEvents={onEvents} />
-
-      {/* Form zone legend (matches the coloured bands on the lower chart) */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        {FORM_ZONES.map((zone) => (
-          <span
-            key={zone.label}
-            className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400"
-          >
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: zone.color }} />
-            <span className="font-medium text-gray-600 dark:text-gray-300">{zone.label}</span>
-            <span className="hidden text-gray-400 sm:inline">- {zone.note}</span>
-          </span>
-        ))}
-      </div>
-
-      {/* Activities for the day under the cursor - click to open the activity */}
-      <DayPanel point={activePoint} distanceUnit={distanceUnit} />
-
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <MetricCard
           label="CTL (Fitness)"
@@ -338,7 +310,28 @@ export function TrainingLoadSection({
         />
       </div>
 
-      <HowToRead />
+      <div className="card space-y-4 p-4">
+        <EChart option={option} height={460} onEvents={onEvents} />
+
+        {/* Form zone legend (matches the coloured bands on the lower chart) */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {FORM_ZONES.map((zone) => (
+            <span
+              key={zone.label}
+              className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400"
+            >
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: zone.color }} />
+              <span className="font-medium text-gray-600 dark:text-gray-300">{zone.label}</span>
+              <span className="hidden text-gray-400 sm:inline">- {zone.note}</span>
+            </span>
+          ))}
+        </div>
+
+        <HowToRead />
+
+        {/* Activities for the hovered day — placed last so height changes don't shift the chart */}
+        <DayPanel point={activePoint} distanceUnit={distanceUnit} />
+      </div>
     </div>
   );
 }

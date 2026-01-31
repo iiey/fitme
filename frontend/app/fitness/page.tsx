@@ -39,8 +39,8 @@ export default function FitnessPage() {
   const header = (
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold">Fitness</h1>
-        <p className="text-sm text-gray-500">Training load, fitness &amp; fatigue trends</p>
+        <h1 className="text-2xl font-bold">Training Load Analysis</h1>
+        <p className="text-sm text-gray-500">Fitness, fatigue and form trends</p>
       </div>
       {filterControls}
     </header>
