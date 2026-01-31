@@ -69,3 +69,38 @@ def _zone_index(hr: float, zone_lower_bounds: list[int]) -> int:
         if hr >= lower:
             zone = index
     return min(zone, 4)
+
+
+def time_in_pace_zones(streams: dict[str, list], zone_boundaries: list[float]) -> list[int]:
+    """Seconds spent in each of the 5 pace zones for one activity.
+
+    *zone_boundaries* holds 4 pace values (s/km) in descending order,
+    defining the cutoffs between zones 1-2, 2-3, 3-4, and 4-5.
+    """
+    time_s = streams.get(StreamType.TIME.value) or []
+    velocity = streams.get(StreamType.VELOCITY.value) or []
+    zones = [0] * 5
+    if not time_s or not velocity:
+        return zones
+
+    n = min(len(time_s), len(velocity))
+    for i in range(1, n):
+        v = velocity[i]
+        if v is None or v <= 0:
+            continue
+        pace_s_km = 1000.0 / v
+        delta = max(0, time_s[i] - time_s[i - 1])
+        zones[_pace_zone_index(pace_s_km, zone_boundaries)] += delta
+    return zones
+
+
+def _pace_zone_index(pace_s_km: float, boundaries: list[float]) -> int:
+    """Map a pace (s/km) to a 0-based zone index (5 zones).
+
+    *boundaries* are 4 values in descending order (slowest to fastest).
+    Slower pace (higher s/km) maps to a lower zone index.
+    """
+    for i, bound in enumerate(boundaries):
+        if pace_s_km > bound:
+            return i
+    return 4

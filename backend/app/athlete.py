@@ -22,6 +22,8 @@ class AthleteConfig(BaseModel):
     unit_system: str = "metric"
     heart_rate_zones: list[float] = Field(default_factory=lambda: [0.60, 0.70, 0.80, 0.90])
     power_zones: list[float] = Field(default_factory=lambda: [0.55, 0.75, 0.90, 1.05, 1.20, 1.50])
+    threshold_pace: int | None = None
+    pace_zones: list[float] = Field(default_factory=lambda: [1.29, 1.14, 1.06, 0.99])
 
     @property
     def age(self) -> int | None:
@@ -55,6 +57,12 @@ class AthleteConfig(BaseModel):
         if not self.ftp:
             return None
         return [round(frac * self.ftp) for frac in self.power_zones]
+
+    def pace_zone_boundaries(self) -> list[float] | None:
+        """Absolute pace boundaries (s/km) between the 5 pace zones, descending."""
+        if not self.threshold_pace:
+            return None
+        return [round(frac * self.threshold_pace) for frac in self.pace_zones]
 
 
 def _load_from_disk(path: Path) -> AthleteConfig:

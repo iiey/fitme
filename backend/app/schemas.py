@@ -38,6 +38,15 @@ class HrZoneItem(BaseModel):
     percentage: float
 
 
+class PaceZoneItem(BaseModel):
+    zone: int
+    label: str
+    slow_pace: float | None
+    fast_pace: float | None
+    seconds: int
+    percentage: float
+
+
 class ActivityDetail(ActivitySummary):
     description: str | None
     max_speed_kmh: float | None
@@ -52,6 +61,7 @@ class ActivityDetail(ActivitySummary):
     streams: dict[str, list]
     best_efforts: list[BestEffortItem]
     hr_zones: list[HrZoneItem] | None = None
+    pace_zones: list[PaceZoneItem] | None = None
 
 
 class BestEffortItem(BaseModel):

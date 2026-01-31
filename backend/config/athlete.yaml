@@ -27,6 +27,17 @@ heart_rate_zones:
   - 0.80
   - 0.90
 
+# Threshold pace in seconds per km (e.g. 300 = 5:00/km). Used for pace zones.
+threshold_pace: 300
+
+# Pace zone boundaries as fractions of threshold pace (5-zone model).
+# Zone 1 (Recovery) is slowest, Zone 5 (Speed) is fastest.
+pace_zones:
+  - 1.29
+  - 1.14
+  - 1.06
+  - 0.99
+
 # Power zone boundaries as a fraction of FTP (Coggan 7-zone model upper bounds).
 power_zones:
   - 0.55

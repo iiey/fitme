@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 from app.domain.best_efforts import DISTANCE_LABELS
-from app.domain.streams_analysis import time_in_hr_zones
+from app.domain.streams_analysis import time_in_hr_zones, time_in_pace_zones
 from app.domain.units import m_to_km, m_to_mi, ms_to_kmh
 from app.enums import SportType
 from app.models import Activity, Gear
-from app.schemas import ActivityDetail, ActivitySummary, BestEffortItem, GearItem, HrZoneItem
+from app.schemas import (
+    ActivityDetail,
+    ActivitySummary,
+    BestEffortItem,
+    GearItem,
+    HrZoneItem,
+    PaceZoneItem,
+)
 
 
 def _pace_seconds_per_km(activity: Activity) -> float | None:
@@ -74,11 +81,39 @@ def _build_hr_zones(
     return items
 
 
+_PACE_ZONE_LABELS = ["Recovery", "Aerobic", "Tempo", "Sub-Threshold", "VO2 Max"]
+
+
+def _build_pace_zones(
+    streams: dict[str, list], zone_boundaries: list[float] | None
+) -> list[PaceZoneItem] | None:
+    if not zone_boundaries or len(zone_boundaries) < 4:
+        return None
+    seconds = time_in_pace_zones(streams, zone_boundaries)
+    total = sum(seconds)
+    if total == 0:
+        return None
+    items: list[PaceZoneItem] = []
+    for i in range(5):
+        items.append(
+            PaceZoneItem(
+                zone=i + 1,
+                label=_PACE_ZONE_LABELS[i],
+                slow_pace=zone_boundaries[i - 1] if i > 0 else None,
+                fast_pace=zone_boundaries[i] if i < 4 else None,
+                seconds=seconds[i],
+                percentage=round(100 * seconds[i] / total, 1),
+            )
+        )
+    return items
+
+
 def serialize_activity_detail(
     activity: Activity,
     streams: dict[str, list],
     best_efforts: list[tuple[int, float]],
     hr_zone_bounds: list[int] | None = None,
+    pace_zone_bounds: list[float] | None = None,
 ) -> ActivityDetail:
     summary = serialize_activity_summary(activity)
     return ActivityDetail(
@@ -107,6 +142,7 @@ def serialize_activity_detail(
             for distance_m, time_s in best_efforts
         ],
         hr_zones=_build_hr_zones(streams, hr_zone_bounds),
+        pace_zones=_build_pace_zones(streams, pace_zone_bounds),
     )
 
 

@@ -18,7 +18,7 @@ import {
   formatDuration,
   formatNumber,
 } from "@/lib/format";
-import type { ActivityDetail, HrZoneItem } from "@/lib/types";
+import type { ActivityDetail, HrZoneItem, PaceZoneItem } from "@/lib/types";
 
 const RouteMap = dynamic(() => import("@/components/map/RouteMap"), { ssr: false });
 
@@ -95,6 +95,52 @@ function HrZones({ zones }: { zones: HrZoneItem[] }) {
               Zone {z.zone}
               <span className="ml-1.5 font-normal text-gray-400 text-xs">
                 {z.upper_bpm ? `${z.lower_bpm}–${z.upper_bpm}` : `> ${z.lower_bpm}`} bpm
+              </span>
+            </div>
+            <div className="text-xs text-gray-400">{z.label}</div>
+          </div>
+          <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.max((z.percentage / maxPct) * 100, 1)}%`,
+                backgroundColor: ZONE_COLORS[z.zone - 1],
+              }}
+            />
+          </div>
+          <div className="w-16 text-right text-sm tabular-nums">
+            {formatDuration(z.seconds)}
+          </div>
+          <div className="w-10 text-right text-sm font-medium tabular-nums">
+            {z.percentage}%
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatZonePace(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function PaceZones({ zones }: { zones: PaceZoneItem[] }) {
+  const maxPct = Math.max(...zones.map((z) => z.percentage), 1);
+  return (
+    <div className="space-y-2.5">
+      {[...zones].reverse().map((z) => (
+        <div key={z.zone} className="flex items-center gap-3">
+          <div className="w-32 shrink-0">
+            <div className="text-sm font-semibold">
+              Zone {z.zone}
+              <span className="ml-1.5 font-normal text-gray-400 text-xs">
+                {z.fast_pace == null
+                  ? `< ${formatZonePace(z.slow_pace!)} /km`
+                  : z.slow_pace == null
+                    ? `> ${formatZonePace(z.fast_pace)} /km`
+                    : `${formatZonePace(z.fast_pace)}–${formatZonePace(z.slow_pace)} /km`}
               </span>
             </div>
             <div className="text-xs text-gray-400">{z.label}</div>
@@ -207,11 +253,11 @@ export default function ActivityDetailPage({
         </div>
       )}
 
-      {/* Speed + Elevation row */}
-      {(activity.streams.velocity_smooth || activity.streams.altitude) && (
+      {/* Pace + Pace Zones row */}
+      {(activity.streams.velocity_smooth || (activity.pace_zones && activity.pace_zones.length > 0)) && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {activity.streams.velocity_smooth && (
-            <Card title="Speed">
+            <Card title="Pace">
               <div className="mb-4 grid grid-cols-2 gap-3">
                 <StatCard label="Average" value={formatActivityPace(activity)} />
                 <StatCard
@@ -230,6 +276,23 @@ export default function ActivityDetailPage({
               />
             </Card>
           )}
+          {activity.pace_zones && activity.pace_zones.length > 0 && (
+            <Card
+              title={
+                <span title={"Joe Friel, The Triathlete's Training Bible\n\nZones = % of Functional Threshold Pace (FTP):\n  Z1 Recovery:       FTP × 1.29  (>129%)\n  Z2 Aerobic:        FTP × 1.14  (114–129%)\n  Z3 Tempo:          FTP × 1.06  (106–113%)\n  Z4 Sub-Threshold:  FTP × 0.99  (99–105%)\n  Z5 VO2 Max:        FTP × 0.95  (<99%)"}>
+                  Pace Zones
+                </span>
+              }
+            >
+              <PaceZones zones={activity.pace_zones} />
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Elevation + Power row */}
+      {(activity.streams.altitude || hasPower) && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {activity.streams.altitude && (
             <Card title="Elevation">
               <div className="mb-4 grid grid-cols-2 gap-3">
@@ -245,27 +308,21 @@ export default function ActivityDetailPage({
               />
             </Card>
           )}
-        </div>
-      )}
-
-      {/* Power section */}
-      {hasPower && (
-        <Card title="Power">
-          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard label="Average" value={`${activity.average_power} W`} />
-            <StatCard label="Max" value={activity.max_power ? `${activity.max_power} W` : "-"} />
-            <StatCard
-              label="Normalized"
-              value={activity.normalized_power ? `${formatNumber(activity.normalized_power, 0)} W` : "-"}
-            />
-          </div>
-          {activity.streams.watts && (
-            <EChart
-              option={streamChart(distanceStream, activity.streams.watts, "#ca8a04", "W")}
-              height={220}
-            />
+          {hasPower && (
+            <Card title="Power">
+              <div className="mb-4 grid grid-cols-2 gap-3">
+                <StatCard label="Average" value={`${activity.average_power} W`} />
+                <StatCard label="Max" value={activity.max_power ? `${activity.max_power} W` : "-"} />
+              </div>
+              {activity.streams.watts && (
+                <EChart
+                  option={streamChart(distanceStream, activity.streams.watts, "#ca8a04", "W")}
+                  height={220}
+                />
+              )}
+            </Card>
           )}
-        </Card>
+        </div>
       )}
 
       {/* Cadence section */}

@@ -102,6 +102,15 @@ export interface HrZoneItem {
   percentage: number;
 }
 
+export interface PaceZoneItem {
+  zone: number;
+  label: string;
+  slow_pace: number | null;
+  fast_pace: number | null;
+  seconds: number;
+  percentage: number;
+}
+
 export interface ActivityDetail extends ActivitySummary {
   description: string | null;
   max_speed_kmh: number | null;
@@ -116,6 +125,7 @@ export interface ActivityDetail extends ActivitySummary {
   streams: Record<string, (number | null)[]>;
   best_efforts: BestEffortItem[];
   hr_zones: HrZoneItem[] | null;
+  pace_zones: PaceZoneItem[] | null;
 }
 
 export interface PaginatedActivities {

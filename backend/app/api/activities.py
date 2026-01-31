@@ -103,5 +103,9 @@ def get_activity(
     best_efforts = [(e.distance_m, e.time_s) for e in efforts]
     athlete = get_athlete()
     return serialize_activity_detail(
-        activity, streams, best_efforts, hr_zone_bounds=athlete.hr_zone_boundaries()
+        activity,
+        streams,
+        best_efforts,
+        hr_zone_bounds=athlete.hr_zone_boundaries(),
+        pace_zone_bounds=athlete.pace_zone_boundaries(),
     )

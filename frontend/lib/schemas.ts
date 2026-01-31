@@ -172,6 +172,15 @@ const HrZoneItemSchema = z.object({
   percentage: z.number(),
 });
 
+const PaceZoneItemSchema = z.object({
+  zone: z.number(),
+  label: z.string(),
+  slow_pace: z.number().nullable(),
+  fast_pace: z.number().nullable(),
+  seconds: z.number(),
+  percentage: z.number(),
+});
+
 export const ActivityDetailSchema = ActivitySummarySchema.extend({
   description: z.string().nullable(),
   max_speed_kmh: z.number().nullable(),
@@ -190,6 +199,7 @@ export const ActivityDetailSchema = ActivitySummarySchema.extend({
     time_s: z.number(),
   })),
   hr_zones: z.array(HrZoneItemSchema).nullable().default(null),
+  pace_zones: z.array(PaceZoneItemSchema).nullable().default(null),
 });
 
 export const ImportRunStatusSchema = z.object({
