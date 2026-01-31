@@ -14,15 +14,15 @@ const MONTH_LABELS = [
 ];
 
 const COLORS = [
-  "#d4d8de",
-  "#7bc96f",
+  "#ebedf0",
+  "#9be9a8",
   "#40c463",
   "#30a14e",
   "#216e39",
 ];
 
 const DARK_COLORS = [
-  "#2d333b",
+  "#161b22",
   "#0e4429",
   "#006d32",
   "#26a641",

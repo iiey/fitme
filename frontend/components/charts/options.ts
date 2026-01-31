@@ -27,7 +27,7 @@ export function themeColors(dark: boolean) {
 export function barChart(
   categories: string[],
   values: number[],
-  color = "#fc4c02",
+  color = "#3b82f6",
   unit = "",
   dark = false,
   showLabels = false,
@@ -70,7 +70,7 @@ export function barChart(
 export function lineChart(
   categories: string[],
   values: number[],
-  color = "#fc4c02",
+  color = "#3b82f6",
   dark = false,
   yRange?: { min?: number; max?: number },
 ): EChartsOption {

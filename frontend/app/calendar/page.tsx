@@ -158,7 +158,7 @@ function CalendarGrid({ days, firstWeekday }: { days: MonthDay[]; firstWeekday: 
                 "flex min-h-[64px] flex-col rounded-lg border p-1.5 text-xs",
                 active ? "border-brand/30" : "border-gray-100",
               )}
-              style={active ? { backgroundColor: `rgba(252, 76, 2, ${0.08 + intensity * 0.25})` } : undefined}
+              style={active ? { backgroundColor: `rgba(59, 130, 246, ${0.08 + intensity * 0.25})` } : undefined}
               title={active ? `${day.count} activities · ${formatNumber(day.distance, 1)}` : undefined}
             >
               <span className="font-semibold text-gray-500">{day.day}</span>

@@ -121,7 +121,7 @@ function AthleteSwitcher({
   const active = athletes.find((a) => a.athlete_id === activeId);
 
   if (athletes.length === 0) {
-    return <p className="px-3 py-2 text-xs text-gray-400">Self-hosted · Strava export</p>;
+    return <p className="px-3 py-2 text-xs text-gray-400">Self-hosted · FitMe</p>;
   }
 
   const initials = (name: string | null) =>

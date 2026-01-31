@@ -151,7 +151,7 @@ function eddingtonChartOption(result: EddingtonResult, unit: string, dark: boole
         name: "Days completed",
         type: "bar",
         data: counts,
-        itemStyle: { color: "#fc4c02", borderRadius: [2, 2, 0, 0] },
+        itemStyle: { color: "#3b82f6", borderRadius: [2, 2, 0, 0] },
       },
       {
         name: "Eddington line (y = x)",
@@ -198,8 +198,8 @@ function historyChartOption(result: EddingtonResult, dark: boolean): EChartsOpti
         step: "end",
         data: result.history.map((item) => item.number),
         showSymbol: false,
-        lineStyle: { color: "#fc4c02", width: 2 },
-        areaStyle: { color: "#fc4c02", opacity: 0.1 },
+        lineStyle: { color: "#3b82f6", width: 2 },
+        areaStyle: { color: "#3b82f6", opacity: 0.1 },
       },
     ],
   };

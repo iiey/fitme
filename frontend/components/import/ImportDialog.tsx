@@ -202,7 +202,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                   {file ? file.name : "Drop your export_*.zip here or click to choose"}
                 </p>
                 <p className="mt-1 text-xs text-gray-400">
-                  A Strava bulk export or a Garmin &ldquo;Export Your Data&rdquo; archive
+                  A bulk export (.zip) from Strava or Garmin
                 </p>
               </div>
             ) : (

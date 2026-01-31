@@ -7,7 +7,7 @@ import { AthleteProvider } from "@/lib/athlete-context";
 
 export const metadata: Metadata = {
   title: "FitMe",
-  description: "Self-hosted statistics for your Strava data",
+  description: "Self-hosted fitness statistics",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

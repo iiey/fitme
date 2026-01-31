@@ -11,8 +11,8 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#fc4c02",
-          dark: "#d63e00",
+          DEFAULT: "#3b82f6",
+          dark: "#2563eb",
         },
         surface: {
           DEFAULT: "var(--surface)",

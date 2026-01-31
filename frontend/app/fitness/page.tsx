@@ -58,7 +58,7 @@ export default function FitnessPage() {
     return (
       <div className="space-y-6">
         {header}
-        <EmptyState message="Could not load fitness data. Try importing a Strava export." />
+        <EmptyState message="Could not load fitness data. Try importing your data." />
       </div>
     );
   }

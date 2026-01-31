@@ -74,7 +74,7 @@ export default function DashboardPage() {
     return (
       <>
         <EmptyState
-          message="No activities yet. Import a Strava export to get started."
+          message="No activities yet. Import your data to get started."
           action={
             <button
               onClick={() => setImportOpen(true)}
@@ -142,7 +142,7 @@ export default function DashboardPage() {
         <div className="space-y-6">
           {header}
           <EmptyState
-            message="Could not load dashboard data. Try importing a Strava export."
+            message="Could not load dashboard data. Try importing your data."
             action={
               <button
                 onClick={() => setImportOpen(true)}
@@ -198,7 +198,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card title="Current streak" className="lg:col-span-1">
             <div className="flex items-baseline gap-2">
-              <span className="stat-value text-brand">{data.streaks.current}</span>
+              <span className="stat-value text-brand dark:text-brand">{data.streaks.current}</span>
               <span className="text-sm text-gray-500">days</span>
             </div>
             <p className="mt-1 text-xs text-gray-400">Longest: {data.streaks.longest} days</p>
@@ -245,7 +245,7 @@ export default function DashboardPage() {
               option={barChart(
                 monthly.map((m) => m.period),
                 monthly.map((m) => m.distance),
-                "#fc4c02",
+                "#3b82f6",
                 distanceUnit,
                 isDark,
               )}

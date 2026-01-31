@@ -36,7 +36,7 @@ export default function RewindPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Strava Rewind</h1>
+          <h1 className="text-2xl font-bold">FitMe Rewind</h1>
           <p className="text-sm text-gray-500">A fun look back at your year in motion</p>
         </div>
         <select
@@ -67,7 +67,7 @@ export default function RewindPage() {
             option={barChart(
               rewind.totals_per_month.map((m) => m.month),
               rewind.totals_per_month.map((m) => m.distance),
-              "#fc4c02",
+              "#3b82f6",
               distanceUnit,
               isDark,
             )}
@@ -103,7 +103,7 @@ export default function RewindPage() {
                     ? s.distance
                     : Math.round((s.moving_time_s / 3600) * 10) / 10,
                 ),
-              sportMetric === "distance" ? "#fc4c02" : "#2563eb",
+              sportMetric === "distance" ? "#3b82f6" : "#2563eb",
               sportMetric === "distance" ? distanceUnit : "h",
               isDark,
               true,
@@ -127,7 +127,7 @@ export default function RewindPage() {
           <EChart
             option={donutChart(
               [
-                { name: "Active", value: rewind.active_vs_rest.active_days, color: "#fc4c02" },
+                { name: "Active", value: rewind.active_vs_rest.active_days, color: "#3b82f6" },
                 { name: "Rest", value: rewind.active_vs_rest.rest_days, color: "#e5e7eb" },
               ],
               isDark,
@@ -145,7 +145,7 @@ export default function RewindPage() {
 function metricTabClass(active: boolean): string {
   return `rounded-md px-2.5 py-1 font-medium transition-colors ${
     active
-      ? "bg-white text-brand shadow-sm dark:bg-gray-700 dark:text-foreground"
+      ? "bg-white text-brand shadow-sm dark:bg-gray-700 dark:text-brand"
       : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
   }`;
 }

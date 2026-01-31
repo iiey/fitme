@@ -16,7 +16,7 @@ function FitBounds({ bounds }: { bounds: LatLngBoundsExpression }) {
 
 export default function RouteMap({
   polyline,
-  color = "#fc4c02",
+  color = "#3b82f6",
   height = 320,
 }: {
   polyline: string;

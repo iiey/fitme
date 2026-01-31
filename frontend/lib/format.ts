@@ -66,7 +66,7 @@ export function formatDateTime(iso: string): string {
 
 // Distinct, stable colours per broad activity type for charts and maps.
 const ACTIVITY_TYPE_COLORS: Record<string, string> = {
-  Ride: "#fc4c02",
+  Ride: "#f59e0b",
   Run: "#2563eb",
   Walk: "#16a34a",
   WaterSports: "#0891b2",
@@ -86,10 +86,10 @@ export function colorForActivityType(activityType: string): string {
 }
 
 const SPORT_TYPE_COLORS: Record<string, string> = {
-  Ride: "#fc4c02",
+  Ride: "#f59e0b",
   Run: "#2563eb",
   Walk: "#16a34a",
-  GravelRide: "#ea580c",
+  GravelRide: "#d97706",
   MountainBikeRide: "#b45309",
   TrailRun: "#1d4ed8",
 };
