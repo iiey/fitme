@@ -267,7 +267,12 @@ function CalendarGrid({
                       : undefined
                   }
                 >
-                  <span className="mb-0.5 text-[10px] font-semibold text-gray-500">{day.day}</span>
+                  <Link
+                    href={`/activities?from=${day.date}&to=${day.date}`}
+                    className="mb-0.5 text-lg font-bold text-gray-400 transition-colors hover:text-brand"
+                  >
+                    {day.day}
+                  </Link>
                   {dayActs.slice(0, 3).map((act) => {
                     const dist = unitSystem === "imperial" ? act.distance_mi : act.distance_km;
                     return (
