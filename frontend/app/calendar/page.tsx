@@ -62,7 +62,7 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Monthly View</h1>
+          <h1 className="text-2xl font-bold">Calendar</h1>
           <p className="text-sm text-gray-500">Monthly stats with an interactive calendar</p>
         </div>
         <div className="flex items-center gap-2">

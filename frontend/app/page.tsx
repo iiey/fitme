@@ -7,7 +7,6 @@ import { ActivityHeatmap } from "@/components/charts/ActivityHeatmap";
 import { EChart } from "@/components/charts/EChart";
 import { EddingtonDetailModal } from "@/components/charts/EddingtonDetailModal";
 import { barChart, donutChart, hrZoneBarChart, lineChart, weekdayAverageChart, yearlyStatsChart } from "@/components/charts/options";
-import { TrainingLoadSection } from "@/components/charts/TrainingLoadSection";
 import { ImportDialog } from "@/components/import/ImportDialog";
 import { Card } from "@/components/ui/Card";
 import { DeferredSection } from "@/components/ui/DeferredSection";
@@ -266,13 +265,6 @@ export default function DashboardPage() {
           </Card>
         </div>
       </DeferredSection>
-
-      {/* Training load analysis */}
-      {data.training_load_analysis && (
-        <DeferredSection height={720}>
-          <TrainingLoadSection analysis={data.training_load_analysis} distanceUnit={distanceUnit} />
-        </DeferredSection>
-      )}
 
       {/* HR zones + Peak power + By weekday */}
       <DeferredSection height={340}>
