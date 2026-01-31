@@ -47,6 +47,11 @@ class PaceZoneItem(BaseModel):
     percentage: float
 
 
+class HrCurvePoint(BaseModel):
+    duration_s: int
+    bpm: int
+
+
 class ActivityDetail(ActivitySummary):
     description: str | None
     max_speed_kmh: float | None
@@ -62,6 +67,7 @@ class ActivityDetail(ActivitySummary):
     best_efforts: list[BestEffortItem]
     hr_zones: list[HrZoneItem] | None = None
     pace_zones: list[PaceZoneItem] | None = None
+    hr_curve: list[HrCurvePoint] | None = None
 
 
 class BestEffortItem(BaseModel):

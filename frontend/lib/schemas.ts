@@ -200,6 +200,10 @@ export const ActivityDetailSchema = ActivitySummarySchema.extend({
   })),
   hr_zones: z.array(HrZoneItemSchema).nullable().default(null),
   pace_zones: z.array(PaceZoneItemSchema).nullable().default(null),
+  hr_curve: z
+    .array(z.object({ duration_s: z.number(), bpm: z.number() }))
+    .nullable()
+    .default(null),
 });
 
 export const ImportRunStatusSchema = z.object({

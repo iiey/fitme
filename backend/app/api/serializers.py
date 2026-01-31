@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from app.domain.best_efforts import DISTANCE_LABELS
-from app.domain.streams_analysis import time_in_hr_zones, time_in_pace_zones
+from app.domain.streams_analysis import (
+    mean_max_hr_curve,
+    time_in_hr_zones,
+    time_in_pace_zones,
+)
 from app.domain.units import m_to_km, m_to_mi, ms_to_kmh
 from app.enums import SportType
 from app.models import Activity, Gear
@@ -10,6 +14,7 @@ from app.schemas import (
     ActivitySummary,
     BestEffortItem,
     GearItem,
+    HrCurvePoint,
     HrZoneItem,
     PaceZoneItem,
 )
@@ -108,6 +113,13 @@ def _build_pace_zones(
     return items
 
 
+def _build_hr_curve(streams: dict[str, list]) -> list[HrCurvePoint] | None:
+    curve = mean_max_hr_curve(streams)
+    if not curve:
+        return None
+    return [HrCurvePoint(duration_s=duration_s, bpm=bpm) for duration_s, bpm in curve]
+
+
 def serialize_activity_detail(
     activity: Activity,
     streams: dict[str, list],
@@ -143,6 +155,7 @@ def serialize_activity_detail(
         ],
         hr_zones=_build_hr_zones(streams, hr_zone_bounds),
         pace_zones=_build_pace_zones(streams, pace_zone_bounds),
+        hr_curve=_build_hr_curve(streams),
     )
 
 

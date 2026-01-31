@@ -145,6 +145,11 @@ export interface PaceZoneItem {
   percentage: number;
 }
 
+export interface HrCurvePoint {
+  duration_s: number;
+  bpm: number;
+}
+
 export interface ActivityDetail extends ActivitySummary {
   description: string | null;
   max_speed_kmh: number | null;
@@ -160,6 +165,7 @@ export interface ActivityDetail extends ActivitySummary {
   best_efforts: BestEffortItem[];
   hr_zones: HrZoneItem[] | null;
   pace_zones: PaceZoneItem[] | null;
+  hr_curve: HrCurvePoint[] | null;
 }
 
 export interface PaginatedActivities {

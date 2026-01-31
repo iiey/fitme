@@ -329,7 +329,7 @@ export function TrainingLoadSection({
 
         <HowToRead />
 
-        {/* Activities for the hovered day — placed last so height changes don't shift the chart */}
+        {/* Activities for the hovered day - placed last so height changes don't shift the chart */}
         <DayPanel point={activePoint} distanceUnit={distanceUnit} />
       </div>
     </div>

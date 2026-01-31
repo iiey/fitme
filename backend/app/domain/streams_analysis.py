@@ -5,6 +5,29 @@ from app.enums import StreamType
 # Durations (seconds) for the peak-power-output widget.
 PEAK_POWER_DURATIONS = [5, 30, 60, 300, 1200]
 
+# Window durations (seconds) sampled for the mean-maximal heart-rate curve.
+HR_CURVE_DURATIONS = [
+    1,
+    2,
+    5,
+    10,
+    15,
+    30,
+    60,
+    120,
+    300,
+    600,
+    1200,
+    1800,
+    2700,
+    3600,
+    5400,
+    7200,
+    10800,
+    14400,
+    18000,
+]
+
 
 def peak_power_for_duration(time_s: list[int], watts: list[float], duration: int) -> float | None:
     """Maximum average power sustained over any window of >= ``duration`` seconds."""
@@ -41,6 +64,73 @@ def peak_power_outputs(streams: dict[str, list]) -> dict[int, float]:
         if peak is not None:
             outputs[duration] = round(peak)
     return outputs
+
+
+def _max_average_for_duration(
+    time_s: list[float], values: list[float], duration: int
+) -> float | None:
+    """Highest average of ``values`` over any window of >= ``duration`` seconds."""
+    n = min(len(time_s), len(values))
+    if n == 0:
+        return None
+
+    prefix = [0.0] * (n + 1)
+    for i in range(n):
+        prefix[i + 1] = prefix[i] + (values[i] or 0.0)
+
+    best: float | None = None
+    start = 0
+    for end in range(n):
+        while time_s[end] - time_s[start] > duration and start < end:
+            start += 1
+        if time_s[end] - time_s[start] >= duration * 0.9:
+            samples = end - start + 1
+            avg = (prefix[end + 1] - prefix[start]) / samples
+            if best is None or avg > best:
+                best = avg
+    return best
+
+
+def mean_max_hr_curve(streams: dict[str, list]) -> list[tuple[int, int]]:
+    """Mean-maximal heart-rate curve: best sustained average HR per duration.
+
+    Returns ``(duration_s, bpm)`` pairs for every standard window that fits
+    within the activity, where ``bpm`` is the highest average heart rate held
+    over any window of that length. The curve is monotonically non-increasing
+    by construction: shorter windows capture peaks, longer windows are pulled
+    toward the activity's overall average.
+    """
+    time_s = streams.get(StreamType.TIME.value) or []
+    heart_rate = streams.get(StreamType.HEART_RATE.value) or []
+    n = min(len(time_s), len(heart_rate))
+    if n < 2:
+        return []
+
+    total = time_s[n - 1] - time_s[0]
+    if total <= 0:
+        return []
+
+    # Ignore windows shorter than the stream's effective sampling resolution:
+    # downsampled streams otherwise yield unreliable, jagged short-duration points.
+    min_duration = 2 * total / (n - 1)
+
+    curve: list[tuple[int, int]] = []
+    prev: int | None = None
+    for duration in HR_CURVE_DURATIONS:
+        if duration > total:
+            break
+        if duration < min_duration:
+            continue
+        best = _max_average_for_duration(time_s, heart_rate, duration)
+        if best is None:
+            continue
+        bpm = round(best)
+        # The true curve is non-increasing in duration; clamp discretisation noise.
+        if prev is not None:
+            bpm = min(bpm, prev)
+        prev = bpm
+        curve.append((duration, bpm))
+    return curve
 
 
 def time_in_hr_zones(streams: dict[str, list], zone_lower_bounds: list[int]) -> list[int]:
