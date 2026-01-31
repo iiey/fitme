@@ -88,18 +88,12 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="space-y-2 border-t border-gray-200 p-3 dark:border-gray-700">
-        <button
-          onClick={() => setImportOpen(true)}
-          className="flex w-full items-center gap-3 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-dark"
-        >
-          <span className="text-lg">⬆️</span>
-          Import data
-        </button>
+      <div className="border-t border-gray-200 p-3 dark:border-gray-700">
         <AthleteSwitcher
           athletes={athletes}
           activeId={athleteId}
           onSwitch={setAthleteId}
+          onImport={() => setImportOpen(true)}
         />
       </div>
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
@@ -156,11 +150,14 @@ function AthleteSwitcher({
   athletes,
   activeId,
   onSwitch,
+  onImport,
 }: {
   athletes: AthleteListItem[];
   activeId: string | null;
   onSwitch: (id: string | null) => void;
+  onImport: () => void;
 }) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -177,10 +174,7 @@ function AthleteSwitcher({
   }, []);
 
   const active = athletes.find((a) => a.athlete_id === activeId);
-
-  if (athletes.length === 0) {
-    return <p className="px-3 py-2 text-xs text-gray-400">Self-hosted · FitMe</p>;
-  }
+  const hasAthletes = athletes.length > 0;
 
   const initials = (name: string | null) =>
     (name ?? "?")
@@ -209,18 +203,18 @@ function AthleteSwitcher({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">
-          {initials(active?.name ?? null)}
+          {active ? initials(active.name) : "👤"}
         </span>
         <span className="min-w-0 flex-1 text-left">
           <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-200">
-            {active?.name ?? "Select athlete"}
+            {active?.name ?? (hasAthletes ? "Select athlete" : "FitMe")}
           </span>
-          {active?.location && (
-            <span className="block truncate text-xs text-gray-400">{active.location}</span>
-          )}
+          <span className="block truncate text-xs text-gray-400">
+            {active?.location ?? "Self-hosted"}
+          </span>
         </span>
         <span className="text-xs text-gray-400">{open ? "▲" : "▼"}</span>
       </button>
@@ -286,6 +280,34 @@ function AthleteSwitcher({
                 )}
               </div>
             ))}
+          </div>
+          {hasAthletes && (
+            <div className="border-t border-gray-200 dark:border-gray-700" />
+          )}
+          <div className="p-1">
+            <button
+              onClick={() => {
+                onImport();
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <span className="text-base">⬆️</span>
+              Import data
+            </button>
+            <Link
+              href="/settings"
+              onClick={() => setOpen(false)}
+              className={clsx(
+                "flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm",
+                pathname.startsWith("/settings")
+                  ? "bg-brand/10 text-brand"
+                  : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800",
+              )}
+            >
+              <span className="text-base">⚙️</span>
+              Settings
+            </Link>
           </div>
         </div>
       )}

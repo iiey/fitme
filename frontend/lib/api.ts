@@ -13,6 +13,9 @@ import type {
   MonthResponse,
   PaginatedActivities,
   RewindResponse,
+  SyncConfig,
+  SyncRunResult,
+  SyncStatus,
 } from "./types";
 import {
   ActivityDetailSchema,
@@ -21,6 +24,9 @@ import {
   ImportRunStatusSchema,
   MetaSchema,
   PaginatedActivitiesSchema,
+  SyncConfigSchema,
+  SyncRunResultSchema,
+  SyncStatusSchema,
 } from "./schemas";
 
 export class ApiError extends Error {
@@ -203,4 +209,65 @@ export async function getImportRun(id: number): Promise<ImportRunStatus> {
 
 export function revalidateAll() {
   mutate(() => true);
+}
+
+// -- Intervals.icu sync -----------------------------------------------------
+
+/** Fetch the sync config, tolerating a ``null`` body when none is configured. */
+async function fetchSyncConfig(url: string): Promise<SyncConfig | null> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new ApiError(response.status, `Request failed: ${response.status}`);
+  }
+  const text = await response.text();
+  if (!text || text === "null") return null;
+  return SyncConfigSchema.parse(JSON.parse(text));
+}
+
+export function useSyncConfig() {
+  return useSWR<SyncConfig | null>("/api/sync/config", fetchSyncConfig);
+}
+
+export function useSyncStatus(poll: boolean) {
+  return useSWR<SyncStatus>("/api/sync/status", validated(SyncStatusSchema), {
+    refreshInterval: poll ? 2000 : 0,
+  });
+}
+
+export interface SyncConfigInput {
+  athlete_id: string;
+  api_key: string;
+  icu_athlete_id?: string;
+  enabled?: boolean;
+}
+
+export async function saveSyncConfig(input: SyncConfigInput): Promise<SyncConfig> {
+  const response = await fetch("/api/sync/config", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await readErrorDetail(response, "Could not save sync settings"));
+  }
+  return SyncConfigSchema.parse(await response.json());
+}
+
+export async function deleteSyncConfig(): Promise<void> {
+  const response = await fetch("/api/sync/config", { method: "DELETE" });
+  if (!response.ok) {
+    throw new ApiError(response.status, await readErrorDetail(response, "Could not remove sync settings"));
+  }
+}
+
+export async function triggerSync(fullResync = false): Promise<SyncRunResult> {
+  const response = await fetch("/api/sync/trigger", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ full_resync: fullResync }),
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await readErrorDetail(response, "Could not start sync"));
+  }
+  return SyncRunResultSchema.parse(await response.json());
 }

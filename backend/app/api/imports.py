@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.concurrency import import_lock as _import_lock
 from app.config import settings
 from app.db import SessionLocal, get_db
 from app.ingestion.export import AthleteProfileRow, ExportReader
@@ -24,8 +25,6 @@ router = APIRouter(prefix="/api/import", tags=["import"])
 
 _ALLOWED_UPLOAD_SUFFIXES = {".zip"}
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
-
-_import_lock = threading.Lock()
 
 
 def _run_status(run: ImportRun) -> ImportRunStatus:

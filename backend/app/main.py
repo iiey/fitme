@@ -73,6 +73,7 @@ def create_app() -> FastAPI:
         meta,
         milestones,
         rewind,
+        sync,
     )
 
     app.include_router(meta.router)
@@ -85,6 +86,7 @@ def create_app() -> FastAPI:
     app.include_router(heatmap.router)
     app.include_router(milestones.router)
     app.include_router(rewind.router)
+    app.include_router(sync.router)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:

@@ -57,6 +57,40 @@ export interface ImportPreview {
   suggested_athlete_name: string | null;
 }
 
+export interface SyncConfig {
+  provider: string;
+  athlete_id: string;
+  athlete_name: string | null;
+  icu_athlete_id: string;
+  enabled: boolean;
+  has_api_key: boolean;
+  synced_through: string | null;
+  last_run_at: string | null;
+  last_status: string | null;
+  last_message: string | null;
+}
+
+export interface SyncStatus {
+  configured: boolean;
+  enabled: boolean;
+  running: boolean;
+  synced_through: string | null;
+  last_run_at: string | null;
+  last_status: string | null;
+  last_message: string | null;
+}
+
+export interface SyncRunResult {
+  status: string; // ok | error
+  listed: number;
+  added: number;
+  updated: number;
+  skipped: number;
+  deduped: number;
+  enriched: number;
+  message: string | null;
+}
+
 export interface SportTypeOption {
   value: string;
   label: string;

@@ -197,3 +197,36 @@ class SourceIdentity(Base):
     updated_on: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+
+class SyncConfig(Base):
+    """Configuration and run-state for a continuous provider sync (Intervals.icu).
+
+    A single row per provider drives the periodic pull of new activities. It
+    binds the sync to a canonical ``athlete_id`` (so synced activities land under
+    the same athlete as existing bulk imports and de-duplicate against them) and
+    persists how far the sync has progressed across restarts.
+    """
+
+    __tablename__ = "sync_config"
+
+    # The sync provider; one configuration row per provider (``intervals`` today).
+    provider: Mapped[str] = mapped_column(String, primary_key=True, default="intervals")
+    # Canonical athlete the synced activities belong to. Must match the athlete
+    # used for existing bulk imports, or dedup cannot collapse the same workout.
+    athlete_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    # The provider's immutable athlete id ("0" resolves to the API key's athlete).
+    icu_athlete_id: Mapped[str] = mapped_column(String, default="0")
+    # Personal API key (HTTP Basic password). Write-only in API responses.
+    api_key: Mapped[str] = mapped_column(String, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Watermark: local start time of the newest activity synced so far.
+    synced_through: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Observability for the most recent run (``ok`` | ``error`` | ``running``).
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_status: Mapped[str | None] = mapped_column(String, nullable=True)
+    last_message: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_on: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )

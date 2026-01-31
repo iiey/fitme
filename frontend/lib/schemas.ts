@@ -229,3 +229,37 @@ export const ImportPreviewSchema = z.object({
   suggested_athlete_id: z.string().nullable(),
   suggested_athlete_name: z.string().nullable(),
 });
+
+export const SyncConfigSchema = z.object({
+  provider: z.string(),
+  athlete_id: z.string(),
+  athlete_name: z.string().nullable(),
+  icu_athlete_id: z.string(),
+  enabled: z.boolean(),
+  has_api_key: z.boolean(),
+  synced_through: z.string().nullable(),
+  last_run_at: z.string().nullable(),
+  last_status: z.string().nullable(),
+  last_message: z.string().nullable(),
+});
+
+export const SyncStatusSchema = z.object({
+  configured: z.boolean(),
+  enabled: z.boolean(),
+  running: z.boolean(),
+  synced_through: z.string().nullable(),
+  last_run_at: z.string().nullable(),
+  last_status: z.string().nullable(),
+  last_message: z.string().nullable(),
+});
+
+export const SyncRunResultSchema = z.object({
+  status: z.string(),
+  listed: z.number(),
+  added: z.number(),
+  updated: z.number(),
+  skipped: z.number(),
+  deduped: z.number(),
+  enriched: z.number(),
+  message: z.string().nullable(),
+});

@@ -177,5 +177,63 @@ class SportTypeOption(BaseModel):
     activity_type: str
 
 
+class SyncConfigResponse(BaseModel):
+    """Current sync configuration, with the API key redacted.
+
+    ``has_api_key`` tells the UI a key is stored without ever returning it;
+    ``athlete_name`` is the display name of the bound canonical athlete.
+    """
+
+    provider: str
+    athlete_id: str
+    athlete_name: str | None = None
+    icu_athlete_id: str
+    enabled: bool
+    has_api_key: bool
+    synced_through: datetime | None = None
+    last_run_at: datetime | None = None
+    last_status: str | None = None
+    last_message: str | None = None
+
+
+class SyncConfigRequest(BaseModel):
+    """Create/update the sync configuration. The API key is validated first."""
+
+    athlete_id: str
+    api_key: str
+    icu_athlete_id: str = "0"
+    enabled: bool = True
+
+
+class SyncTriggerRequest(BaseModel):
+    # Ignore the watermark and re-scan from the athlete's earliest anchor.
+    full_resync: bool = False
+
+
+class SyncRunResult(BaseModel):
+    """Outcome of a sync run (returned by the trigger endpoint)."""
+
+    status: str  # ok | error
+    listed: int = 0
+    added: int = 0
+    updated: int = 0
+    skipped: int = 0
+    deduped: int = 0
+    enriched: int = 0
+    message: str | None = None
+
+
+class SyncStatusResponse(BaseModel):
+    """Pollable last/in-progress sync run state."""
+
+    configured: bool
+    enabled: bool = False
+    running: bool = False
+    synced_through: datetime | None = None
+    last_run_at: datetime | None = None
+    last_status: str | None = None
+    last_message: str | None = None
+
+
 ActivityDetail.model_rebuild()
 MetaResponse.model_rebuild()
