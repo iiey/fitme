@@ -319,6 +319,30 @@ def _store_best_efforts(
         )
 
 
+def replace_best_efforts(db: Session, activity: Activity, streams: dict[str, list]) -> int:
+    """Recompute and replace an activity's best efforts from existing streams.
+
+    Re-derives best efforts in place (e.g. after the computation is improved to
+    reject GPS glitches) without needing the original source file. Returns the
+    number of best-effort rows written.
+    """
+    sport = SportType(activity.sport_type)
+    efforts = compute_best_efforts(streams, sport)
+    db.execute(delete(BestEffort).where(BestEffort.activity_id == activity.activity_id))
+    for distance_m, time_s in efforts:
+        db.add(
+            BestEffort(
+                activity_id=activity.activity_id,
+                distance_m=distance_m,
+                sport_type=sport.value,
+                activity_type=sport.activity_type.value,
+                start_date_time=activity.start_date_time,
+                time_s=time_s,
+            )
+        )
+    return len(efforts)
+
+
 def gear_slug(name: str, athlete_id: str = "") -> str:
     key = f"{athlete_id}:{name.strip().lower()}" if athlete_id else name.strip().lower()
     return "gear-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
