@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 
 import { Card } from "@/components/ui/Card"
+import { InfoTip } from "@/components/ui/InfoTip"
 import { Spinner } from "@/components/ui/States"
 import {
   deleteSyncConfig,
@@ -451,7 +452,30 @@ function AthleteConfigSection({ athleteId }: { athleteId: string }) {
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">Threshold pace (s/km)</span>
+            <span className="mb-1 flex items-center text-sm font-medium">
+              Threshold pace (s/km)
+              <InfoTip width="w-72">
+                <p className="font-semibold">Functional Threshold Pace (FTP)</p>
+                <p className="mt-1">The fastest pace you can sustain for ~60 min.</p>
+                <p className="mt-2 font-semibold">Garmin users</p>
+                <p className="mt-0.5">
+                  Garmin Connect app → More → Performance Stats → Running Lactate Threshold
+                </p>
+                <p className="mt-0.5 text-gray-400">
+                  Requires: Watch Settings → User Profile → HR &amp; Power Zones → Auto Detection →
+                  ON
+                </p>
+                <p className="mt-2 font-semibold">Manual estimate</p>
+                <ol className="mt-0.5 list-inside list-decimal">
+                  <li>Run a 30-min time trial at max sustainable effort</li>
+                  <li>Divide total seconds by distance in km</li>
+                  <li>Multiply by 1.05 to approximate the 60-min pace</li>
+                </ol>
+                <p className="mt-1 text-gray-400">
+                  Example: 30 min for 6.3 km → 286 s/km × 1.05 ≈ 300 s/km (5:00/km)
+                </p>
+              </InfoTip>
+            </span>
             <input
               type="number"
               min="0"

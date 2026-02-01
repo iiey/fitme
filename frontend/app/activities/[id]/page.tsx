@@ -8,6 +8,7 @@ import { mutate } from "swr"
 
 import { EChart } from "@/components/charts/EChart"
 import { Card } from "@/components/ui/Card"
+import { InfoTip } from "@/components/ui/InfoTip"
 import { StatCard } from "@/components/ui/StatCard"
 import { ErrorState, Spinner } from "@/components/ui/States"
 import { updateActivityNote, useActivity, useMeta } from "@/lib/api"
@@ -389,12 +390,23 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
           {activity.pace_zones && activity.pace_zones.length > 0 && (
             <Card
               title={
-                <span
-                  title={
-                    "Joe Friel, The Triathlete's Training Bible\n\nZones = % of Functional Threshold Pace (FTP):\n  Z1 Recovery:       FTP × 1.29  (>129%)\n  Z2 Aerobic:        FTP × 1.14  (114–129%)\n  Z3 Tempo:          FTP × 1.06  (106–113%)\n  Z4 Sub-Threshold:  FTP × 0.99  (99–105%)\n  Z5 VO2 Max:        FTP × 0.95  (<99%)"
-                  }
-                >
+                <span className="inline-flex items-center">
                   Pace Zones
+                  <InfoTip width="w-72">
+                    <p className="font-semibold">Joe Friel, The Triathlete&apos;s Training Bible</p>
+                    <p className="mt-1">Zones = % of Functional Threshold Pace (FTP):</p>
+                    <ul className="mt-1 space-y-0.5">
+                      <li>Z1 Recovery: FTP × 1.29 (&gt;129%)</li>
+                      <li>Z2 Aerobic: FTP × 1.14 (114–129%)</li>
+                      <li>Z3 Tempo: FTP × 1.06 (106–113%)</li>
+                      <li>Z4 Sub-Threshold: FTP × 0.99 (99–105%)</li>
+                      <li>Z5 VO2 Max: FTP × 0.95 (&lt;99%)</li>
+                    </ul>
+                    <p className="mt-2 text-gray-400">
+                      We perform only a rough estimate. To set your own threshold pace, go to
+                      Settings → Athlete Profile.
+                    </p>
+                  </InfoTip>
                 </span>
               }
             >

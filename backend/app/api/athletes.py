@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.athlete import estimate_threshold_pace
 from app.db import get_db
 from app.models import (
     Activity,
@@ -54,6 +55,28 @@ def get_required_athlete_id(
     if athlete_id is None:
         raise HTTPException(404, "No athletes found. Import data first.")
     return athlete_id
+
+
+def _config_response(
+    db: Session, profile: AthleteProfile, athlete_id: str
+) -> AthleteConfigResponse:
+    # A stored value is the athlete's manual override; when unset, surface the
+    # live auto-estimate so Settings shows the pace the zones actually use.
+    threshold_pace = profile.threshold_pace
+    if threshold_pace is None:
+        threshold_pace = estimate_threshold_pace(db, athlete_id)
+    return AthleteConfigResponse(
+        birthday=profile.birthday,
+        weight_kg=profile.weight_kg,
+        ftp=profile.ftp,
+        max_heart_rate=profile.max_heart_rate,
+        resting_heart_rate=profile.resting_heart_rate,
+        unit_system=profile.unit_system or "metric",
+        threshold_pace=threshold_pace,
+        heart_rate_zones=profile.heart_rate_zones,
+        power_zones=profile.power_zones,
+        pace_zones=profile.pace_zones,
+    )
 
 
 def _profile_to_dict(profile: AthleteProfile, activity_count: int) -> dict:
@@ -117,18 +140,7 @@ def get_athlete_config(
     profile = db.get(AthleteProfile, athlete_id)
     if profile is None:
         raise HTTPException(404, "Athlete not found")
-    return AthleteConfigResponse(
-        birthday=profile.birthday,
-        weight_kg=profile.weight_kg,
-        ftp=profile.ftp,
-        max_heart_rate=profile.max_heart_rate,
-        resting_heart_rate=profile.resting_heart_rate,
-        unit_system=profile.unit_system or "metric",
-        threshold_pace=profile.threshold_pace,
-        heart_rate_zones=profile.heart_rate_zones,
-        power_zones=profile.power_zones,
-        pace_zones=profile.pace_zones,
-    )
+    return _config_response(db, profile, athlete_id)
 
 
 @router.put("/config", response_model=AthleteConfigResponse)
@@ -145,15 +157,4 @@ def update_athlete_config(
         setattr(profile, field, value)
     db.commit()
     db.refresh(profile)
-    return AthleteConfigResponse(
-        birthday=profile.birthday,
-        weight_kg=profile.weight_kg,
-        ftp=profile.ftp,
-        max_heart_rate=profile.max_heart_rate,
-        resting_heart_rate=profile.resting_heart_rate,
-        unit_system=profile.unit_system or "metric",
-        threshold_pace=profile.threshold_pace,
-        heart_rate_zones=profile.heart_rate_zones,
-        power_zones=profile.power_zones,
-        pace_zones=profile.pace_zones,
-    )
+    return _config_response(db, profile, athlete_id)
