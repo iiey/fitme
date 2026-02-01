@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "FitMe"
-    app_subtitle: str = "Statistics for your Strava data"
+    app_subtitle: str = "Statistics for your sport data"
 
     # Database (SQLite by default; single-user self-hosted).
     database_url: str = f"sqlite:///{STORAGE_DIR / 'fitme.db'}"

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 
 import { TrainingLoadSection } from "@/components/charts/TrainingLoadSection"
 import { DeferredSection } from "@/components/ui/DeferredSection"
+import { InfoTip } from "@/components/ui/InfoTip"
 import { EmptyState, Spinner } from "@/components/ui/States"
 import { useDashboard, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
@@ -36,7 +37,21 @@ export default function FitnessPage() {
   const header = (
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold">Training Load Analysis</h1>
+        <h1 className="text-2xl font-bold">
+          Training Load Analysis
+          <InfoTip width="w-72" position="below" align="left">
+            <p className="mb-1.5 font-semibold">Training Load = Duration × Intensity</p>
+            <p className="mb-1.5">
+              Quantifies the total physiological stress placed on your body from training - more
+              accurate than just tracking mileage or time alone.
+            </p>
+            <p className="mb-0.5 font-medium">The Two Dimensions</p>
+            <ul className="list-disc pl-3.5">
+              <li>Volume - how long you trained (time/distance)</li>
+              <li>Intensity - how hard (HR, pace, power relative to your threshold)</li>
+            </ul>
+          </InfoTip>
+        </h1>
         <p className="text-sm text-gray-500">Fitness, fatigue and form trends</p>
       </div>
       {filterControls}
