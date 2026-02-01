@@ -4,15 +4,20 @@ import clsx from "clsx"
 import {
   Activity,
   CalendarDays,
+  Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   ClipboardList,
   LayoutDashboard,
   type LucideIcon,
   Map as MapIcon,
   Menu,
+  Monitor,
+  Moon,
+  RefreshCw,
   Rewind,
-  Settings,
+  Sun,
   Target,
   Trash2,
   TrendingUp,
@@ -22,12 +27,12 @@ import {
   X,
 } from "lucide-react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 
 import { ImportDialog } from "@/components/import/ImportDialog"
-import { ThemeToggle } from "@/components/ui/ThemeToggle"
-import { deleteAthlete, revalidateAll, useMeta } from "@/lib/api"
+import { type Theme, useTheme } from "@/components/ui/ThemeToggle"
+import { deleteAthlete, revalidateAll, triggerSync, useMeta, useSyncConfig } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import type { AthleteListItem } from "@/lib/types"
 
@@ -46,6 +51,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const { athleteId, setAthleteId, athletes, setAthletes } = useAthleteContext()
   const { data: meta } = useMeta(athleteId)
+  const { data: syncConfig } = useSyncConfig()
   const [importOpen, setImportOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -78,16 +84,14 @@ export function Sidebar() {
             Fit<span className="text-brand">Me</span>
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
-            aria-label="Close menu"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
+          aria-label="Close menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
         {NAV_ITEMS.map((item) => {
@@ -116,6 +120,7 @@ export function Sidebar() {
           activeId={athleteId}
           onSwitch={setAthleteId}
           onImport={() => setImportOpen(true)}
+          syncConfigured={!!syncConfig}
         />
       </div>
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
@@ -169,26 +174,43 @@ export function Sidebar() {
   )
 }
 
+const THEME_OPTIONS: { value: Theme; label: string; icon: LucideIcon }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
+]
+
 function AthleteSwitcher({
   athletes,
   activeId,
   onSwitch,
   onImport,
+  syncConfigured,
 }: {
   athletes: AthleteListItem[]
   activeId: string | null
   onSwitch: (id: string | null) => void
   onImport: () => void
+  syncConfigured: boolean
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [appearanceOpen, setAppearanceOpen] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const { theme, setTheme } = useTheme()
   const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) setAppearanceOpen(false)
+  }, [open])
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
       if (ref.current && !ref.current.contains(event.target as Node)) {
         setOpen(false)
+        setAppearanceOpen(false)
         setDeleting(null)
       }
     }
@@ -310,16 +332,6 @@ function AthleteSwitcher({
           </div>
           {hasAthletes && <div className="border-t border-gray-200 dark:border-gray-700" />}
           <div className="p-1">
-            <button
-              onClick={() => {
-                onImport()
-                setOpen(false)
-              }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              <Upload className="h-4 w-4 shrink-0" />
-              Import data
-            </button>
             <Link
               href="/settings"
               onClick={() => setOpen(false)}
@@ -330,9 +342,98 @@ function AthleteSwitcher({
                   : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800",
               )}
             >
-              <Settings className="h-4 w-4 shrink-0" />
-              Settings
+              <User className="h-4 w-4 shrink-0" />
+              Athlete Profile
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                onImport()
+                setOpen(false)
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <Upload className="h-4 w-4 shrink-0" />
+              Import data
+            </button>
+            <button
+              type="button"
+              title={
+                syncConfigured
+                  ? "Fetch new activities from Intervals.icu"
+                  : "Set up Intervals.icu sync in Settings first"
+              }
+              onClick={async () => {
+                if (!syncConfigured) {
+                  router.push("/settings")
+                  setOpen(false)
+                  return
+                }
+                setSyncing(true)
+                setOpen(false)
+                try {
+                  await triggerSync(false)
+                  revalidateAll()
+                } finally {
+                  setSyncing(false)
+                }
+              }}
+              className={clsx(
+                "flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm",
+                syncConfigured
+                  ? "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                  : "text-gray-400 dark:text-gray-500",
+              )}
+            >
+              <RefreshCw className={clsx("h-4 w-4 shrink-0", syncing && "animate-spin")} />
+              {syncing ? "Syncing…" : "Sync"}
+            </button>
+            <div
+              className="relative"
+              onMouseEnter={() => setAppearanceOpen(true)}
+              onMouseLeave={() => setAppearanceOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setAppearanceOpen(!appearanceOpen)}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                {theme === "light" ? (
+                  <Sun className="h-4 w-4 shrink-0" />
+                ) : theme === "dark" ? (
+                  <Moon className="h-4 w-4 shrink-0" />
+                ) : (
+                  <Monitor className="h-4 w-4 shrink-0" />
+                )}
+                <span className="flex-1 text-left">Appearance</span>
+                <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
+              </button>
+              {appearanceOpen && (
+                <div className="absolute bottom-0 left-full pl-1">
+                  <div className="w-40 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                    {THEME_OPTIONS.map((opt) => {
+                      const Icon = opt.icon
+                      return (
+                        <button
+                          type="button"
+                          key={opt.value}
+                          onClick={() => {
+                            setTheme(opt.value)
+                            setAppearanceOpen(false)
+                            setOpen(false)
+                          }}
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                        >
+                          <Icon className="h-4 w-4" />
+                          <span className="flex-1 text-left">{opt.label}</span>
+                          {theme === opt.value && <Check className="h-4 w-4 text-brand" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
