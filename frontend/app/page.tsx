@@ -19,7 +19,7 @@ import { Card } from "@/components/ui/Card"
 import { DeferredSection } from "@/components/ui/DeferredSection"
 import { StatCard } from "@/components/ui/StatCard"
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
-import { useDashboard, useMeta } from "@/lib/api"
+import { isTransientError, useDashboard, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDate, formatHours, formatNumber } from "@/lib/format"
 import { useIsDark } from "@/lib/use-is-dark"
@@ -144,7 +144,18 @@ export default function DashboardPage() {
       </div>
     )
   }
-  if (error) {
+  // The backend may still be starting up: keep showing a spinner while SWR
+  // retries a transient failure, so the dashboard appears on its own once the
+  // server is reachable instead of getting stuck on an error screen.
+  if (error && !data && isTransientError(error)) {
+    return (
+      <div className="space-y-6">
+        {header}
+        <Spinner label="Connecting to the server…" />
+      </div>
+    )
+  }
+  if (error && !data) {
     return (
       <>
         <div className="space-y-6">

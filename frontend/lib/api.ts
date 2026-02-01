@@ -1,4 +1,4 @@
-import useSWR, { mutate } from "swr"
+import useSWR, { mutate, type SWRConfiguration } from "swr"
 import type { ZodType } from "zod"
 import {
   ActivityDetailSchema,
@@ -93,9 +93,37 @@ function buildQuery(params: Record<string, unknown>): string {
   return query ? `?${query}` : ""
 }
 
+const RETRY_INTERVAL_MS = 2000
+
+/**
+ * Whether a failed request is worth retrying. A backend that is still starting
+ * up (or briefly unreachable) surfaces as a network ``TypeError`` with no status
+ * or as a 5xx from the proxy — both are transient. A 4xx means the request
+ * itself is wrong, so retrying would just loop forever.
+ */
+export function isTransientError(error: unknown): boolean {
+  if (error instanceof ApiError) return error.status >= 500
+  return true
+}
+
+/**
+ * SWR options that keep retrying transient failures at a steady interval so the
+ * UI recovers on its own once the backend finishes starting up, instead of
+ * giving up after a few attempts and getting stuck on an error screen. Retrying
+ * is paused while the tab is hidden; SWR revalidates again on focus.
+ */
+const resilientConfig: SWRConfiguration = {
+  keepPreviousData: true,
+  onErrorRetry: (error, _key, _config, revalidate, { retryCount }) => {
+    if (!isTransientError(error)) return
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return
+    setTimeout(() => revalidate({ retryCount }), RETRY_INTERVAL_MS)
+  },
+}
+
 export function useMeta(athleteId: string | null) {
   const query = buildQuery({ athlete: athleteId ?? undefined })
-  return useSWR<Meta>(`/api/meta${query}`, validated(MetaSchema))
+  return useSWR<Meta>(`/api/meta${query}`, validated(MetaSchema), resilientConfig)
 }
 
 export interface DashboardFilters {
@@ -111,9 +139,7 @@ export function useDashboard(athleteId: string | null, filters: DashboardFilters
     athlete: athleteId ?? undefined,
     ...(filters as Record<string, unknown>),
   })
-  return useSWR<Dashboard>(`/api/dashboard${query}`, validated(DashboardSchema), {
-    keepPreviousData: true,
-  })
+  return useSWR<Dashboard>(`/api/dashboard${query}`, validated(DashboardSchema), resilientConfig)
 }
 
 export interface ActivityFilters {
