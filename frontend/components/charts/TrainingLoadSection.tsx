@@ -18,6 +18,7 @@ import {
   formatDuration,
   formatNumber,
 } from "@/lib/format";
+import { InfoTip } from "@/components/ui/InfoTip";
 import type { TrainingLoadActivity, TrainingLoadAnalysis, TrainingLoadPoint } from "@/lib/types";
 import { useIsDark } from "@/lib/use-is-dark";
 
@@ -28,26 +29,6 @@ const STATUS_COLORS: Record<string, string> = {
   orange: "text-orange-500 dark:text-orange-400",
   neutral: "text-gray-900 dark:text-gray-100",
 };
-
-function InfoTip({ text }: { text: string }) {
-  return (
-    <span className="group relative ml-1 inline-flex cursor-help" aria-label={text}>
-      <svg
-        className="h-3.5 w-3.5 text-gray-400"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        viewBox="0 0 24 24"
-      >
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 16v-4M12 8h.01" />
-      </svg>
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:bg-gray-700">
-        {text}
-      </span>
-    </span>
-  );
-}
 
 function MetricCard({
   label,

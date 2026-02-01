@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { ErrorState, Spinner } from "@/components/ui/States";
 import { useMeta, useMonth } from "@/lib/api";
 import { useAthleteContext } from "@/lib/athlete-context";
@@ -63,7 +64,18 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Calendar</h1>
+          <h1 className="flex items-center text-2xl font-bold">
+            Calendar
+            <InfoTip width="w-72" position="below">
+              <p className="mb-1.5 font-semibold">How to read this calendar</p>
+              <ul className="list-inside list-disc space-y-1">
+                <li><strong>Week column</strong> - Weekly totals: time, distance, elevation, calories &amp; training load.</li>
+                <li><strong>Day number</strong> - Click to view that day&apos;s activities.</li>
+                <li><strong>Activity rows</strong> - Duration, distance, avg HR &amp; training load.</li>
+                <li><strong>Sport dot</strong> - Colored by sport type.</li>
+              </ul>
+            </InfoTip>
+          </h1>
           <p className="text-sm text-gray-500">Monthly stats with an interactive calendar</p>
         </div>
         <div className="flex items-center gap-2">
@@ -217,15 +229,15 @@ function CalendarGrid({
 
   return (
     <div>
-      <div className="mb-2 grid grid-cols-[60px_repeat(7,1fr)] gap-1 text-center text-xs font-semibold text-gray-400">
-        <div title={`Calendar week summary: time, distance (${distUnit}), elevation (${elevUnit}), calories, training load`}>Week</div>
+      <div className="mb-2 grid grid-cols-[80px_repeat(7,1fr)] gap-1 text-center text-xs font-semibold text-gray-400">
+        <div>Week</div>
         {WEEKDAY_LABELS.map((label) => (
           <div key={label}>{label}</div>
         ))}
       </div>
       <div className="space-y-1">
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-[60px_repeat(7,1fr)] gap-1">
+          <div key={wi} className="grid grid-cols-[80px_repeat(7,1fr)] gap-1">
             <div
               className="flex flex-col items-center justify-center rounded-lg bg-gray-50 py-1 text-gray-400 dark:bg-gray-800/50"
               title={
@@ -236,7 +248,7 @@ function CalendarGrid({
             >
               <span className="text-xs font-bold text-gray-500 dark:text-gray-300">{week.weekNum}</span>
               {week.count > 0 && (
-                <div className="mt-0.5 flex flex-col items-center text-[9px] leading-snug">
+                <div className="mt-0.5 flex flex-col items-center text-[11px] leading-snug">
                   <span className="font-medium">{formatHours(week.time_s)}</span>
                   <span>{formatNumber(week.distance, 0)} {distUnit}</span>
                   {week.elevation > 0 && (
@@ -258,7 +270,7 @@ function CalendarGrid({
                 <div
                   key={day.date}
                   className={clsx(
-                    "flex min-h-[88px] flex-col rounded-lg border p-1 text-xs",
+                    "flex min-h-[150px] flex-col rounded-lg border p-1.5 text-xs",
                     day.count > 0 ? "border-brand/30" : "border-gray-100 dark:border-gray-700",
                   )}
                   style={
@@ -269,7 +281,7 @@ function CalendarGrid({
                 >
                   <Link
                     href={`/activities?from=${day.date}&to=${day.date}`}
-                    className="mb-0.5 text-lg font-bold text-gray-400 transition-colors hover:text-brand"
+                    className="mb-0.5 text-xl font-bold text-gray-400 transition-colors hover:text-brand"
                   >
                     {day.day}
                   </Link>
@@ -278,10 +290,10 @@ function CalendarGrid({
                     return (
                       <div
                         key={act.activity_id}
-                        className="mt-px flex flex-wrap items-center gap-x-1 text-[9px] leading-tight text-gray-600 dark:text-gray-300"
+                        className="mt-px flex flex-wrap items-center gap-x-1 text-[15px] leading-snug text-gray-600 dark:text-gray-300"
                       >
                         <span
-                          className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                           style={{ backgroundColor: colorForSportType(act.sport_type) }}
                         />
                         <span className="font-medium">{formatCompactTime(act.moving_time_s)}</span>
@@ -296,7 +308,7 @@ function CalendarGrid({
                     );
                   })}
                   {dayActs.length > 3 && (
-                    <span className="mt-px text-[8px] text-gray-400">+{dayActs.length - 3} more</span>
+                    <span className="mt-px text-[10px] text-gray-400">+{dayActs.length - 3} more</span>
                   )}
                 </div>
               );
