@@ -51,7 +51,10 @@ def list_activities(
     descending = order.lower() != "asc"
 
     parsed = parse_activity_search(search)
-    sport_filter = sorted({*(sport_type or []), *parsed.sport_types}) or None
+    # The explicit sport dropdown stays a hard filter; a sport word typed into
+    # the search box matches by sport type OR name (see ParsedSearch.sport_terms),
+    # so e.g. a "Trail Run" logged as a plain Run is still found by "trail".
+    sport_filter = sorted(set(sport_type)) if sport_type else None
     start_filter = start or parsed.start
     end_filter = end or parsed.end
 
@@ -61,6 +64,7 @@ def list_activities(
         "start": start_filter,
         "end": end_filter,
         "name_terms": parsed.terms,
+        "sport_or_name_terms": [(term.sport_types, term.token) for term in parsed.sport_terms],
         "distance_min_m": distance_min * 1000 if distance_min is not None else None,
         "distance_max_m": distance_max * 1000 if distance_max is not None else None,
     }

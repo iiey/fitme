@@ -15,13 +15,34 @@ _YEAR_MONTH_DAY_RE = re.compile(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$")
 
 
 @dataclass
+class SportTerm:
+    """A search token that names a sport type (e.g. ``"trail"`` -> ``TrailRun``).
+
+    It matches an activity whose ``sport_type`` is one of ``sport_types`` *or*
+    whose name contains ``token``. The name fallback is what makes a trail run
+    that was logged as a plain ``Run`` still show up when searching "trail".
+    """
+
+    token: str
+    sport_types: list[str]
+
+
+@dataclass
 class ParsedSearch:
     """Structured filters extracted from a free-text search string."""
 
-    sport_types: list[str] = field(default_factory=list)
+    sport_terms: list[SportTerm] = field(default_factory=list)
     start: datetime | None = None
     end: datetime | None = None
     terms: list[str] = field(default_factory=list)
+
+    @property
+    def sport_types(self) -> list[str]:
+        """Every sport-type value referenced by the parsed sport tokens."""
+        values: set[str] = set()
+        for sport_term in self.sport_terms:
+            values.update(sport_term.sport_types)
+        return sorted(values)
 
 
 def _end_of_day(year: int, month: int, day: int) -> datetime:
@@ -79,7 +100,7 @@ def parse_activity_search(text: str | None) -> ParsedSearch:
     """Split a search string into date, sport and free-text filters.
 
     Example: ``"2025-12 run morning"`` →
-    ``ParsedSearch(sport_types=[Run, TrailRun, VirtualRun],
+    ``ParsedSearch(sport_terms=[SportTerm("run", [Run, TrailRun, VirtualRun])],
                    start=2025-12-01, end=2025-12-31, terms=["morning"])``.
     """
     parsed = ParsedSearch()
@@ -94,10 +115,11 @@ def parse_activity_search(text: str | None) -> ParsedSearch:
 
         sports = _sport_matches(token)
         if sports:
-            parsed.sport_types.extend(sports)
+            # Match on the sport type OR the name, so a "Trail Run" logged as a
+            # plain Run is still found when the typed word names a sport.
+            parsed.sport_terms.append(SportTerm(token=token, sport_types=sorted(sports)))
             continue
 
         parsed.terms.append(token)
 
-    parsed.sport_types = sorted(set(parsed.sport_types))
     return parsed

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from app import repository
 from app.domain.search import parse_activity_search
+from app.models import Activity
 
 
 def test_parse_year_month_and_sport():
@@ -51,3 +53,57 @@ def test_invalid_month_is_not_a_date():
     parsed = parse_activity_search("2025-13")
     assert parsed.start is None
     assert "2025-13" in parsed.terms
+
+
+def test_sport_word_is_kept_for_name_fallback():
+    # "trail" names the TrailRun sport, but the token must NOT be discarded: it
+    # still has to match activities whose name contains "trail".
+    parsed = parse_activity_search("trail")
+    assert [term.token for term in parsed.sport_terms] == ["trail"]
+    assert "TrailRun" in parsed.sport_terms[0].sport_types
+    assert parsed.terms == []
+
+
+def _add_run(db, activity_id: str, name: str, sport_type: str = "Run") -> None:
+    db.add(
+        Activity(
+            activity_id=activity_id,
+            athlete_id="42",
+            name=name,
+            sport_type=sport_type,
+            activity_type="Run",
+            start_date_time=datetime(2024, 4, 1, 6, 0, 0),
+        )
+    )
+
+
+def _search(db, text: str) -> list[Activity]:
+    """Run a fuzzy search exactly like the activities API wires it up."""
+    parsed = parse_activity_search(text)
+    return repository.list_activities(
+        db,
+        "42",
+        name_terms=parsed.terms,
+        sport_or_name_terms=[(term.sport_types, term.token) for term in parsed.sport_terms],
+    )
+
+
+def test_trail_run_logged_as_run_is_found(db_session):
+    # The reported bug: a trail run stored with sport_type "Run" (no TrailRun
+    # rows exist) must still appear when searching "trail".
+    _add_run(db_session, "1", "Morning Trail Run")
+    _add_run(db_session, "2", "Easy Run")
+    db_session.commit()
+
+    found = _search(db_session, "trail")
+    assert {a.name for a in found} == {"Morning Trail Run"}
+
+
+def test_sport_word_still_matches_by_sport_type(db_session):
+    # A genuine TrailRun is matched by sport type even if its name lacks "trail".
+    _add_run(db_session, "1", "Hill repeats", sport_type="TrailRun")
+    _add_run(db_session, "2", "Easy Run")
+    db_session.commit()
+
+    found = _search(db_session, "trail")
+    assert {a.name for a in found} == {"Hill repeats"}

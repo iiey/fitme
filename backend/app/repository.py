@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Activity, ActivityStream, BestEffort, Gear, Goal
@@ -19,6 +19,7 @@ def list_activities(
     end: datetime | None = None,
     search: str | None = None,
     name_terms: list[str] | None = None,
+    sport_or_name_terms: list[tuple[list[str], str]] | None = None,
     distance_min_m: float | None = None,
     distance_max_m: float | None = None,
     order_by: str = "start_date_time",
@@ -35,6 +36,7 @@ def list_activities(
         end,
         search,
         name_terms,
+        sport_or_name_terms=sport_or_name_terms,
         distance_min_m=distance_min_m,
         distance_max_m=distance_max_m,
     )
@@ -59,6 +61,7 @@ def count_activities(
     end: datetime | None = None,
     search: str | None = None,
     name_terms: list[str] | None = None,
+    sport_or_name_terms: list[tuple[list[str], str]] | None = None,
     distance_min_m: float | None = None,
     distance_max_m: float | None = None,
 ) -> int:
@@ -71,6 +74,7 @@ def count_activities(
         end,
         search,
         name_terms,
+        sport_or_name_terms=sport_or_name_terms,
         distance_min_m=distance_min_m,
         distance_max_m=distance_max_m,
     )
@@ -305,6 +309,7 @@ def _apply_filters(
     search,
     name_terms=None,
     *,
+    sport_or_name_terms=None,
     distance_min_m=None,
     distance_max_m=None,
 ):
@@ -327,4 +332,13 @@ def _apply_filters(
         stmt = stmt.where(Activity.name.ilike(f"%{search}%"))
     for term in name_terms or []:
         stmt = stmt.where(Activity.name.ilike(f"%{term}%"))
+    for sport_values, token in sport_or_name_terms or []:
+        # A typed sport word matches by sport type OR by name, so a trail run
+        # logged as a plain "Run" is still found when searching "trail".
+        stmt = stmt.where(
+            or_(
+                Activity.sport_type.in_(sport_values),
+                Activity.name.ilike(f"%{token}%"),
+            )
+        )
     return stmt
