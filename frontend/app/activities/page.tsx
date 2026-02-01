@@ -1,10 +1,10 @@
 "use client"
 
-import { useCallback, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useCallback, useState } from "react"
 
-import { Column, DataTable } from "@/components/ui/DataTable"
+import { type Column, DataTable } from "@/components/ui/DataTable"
 import { ErrorState, Spinner } from "@/components/ui/States"
 import { useActivities, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"

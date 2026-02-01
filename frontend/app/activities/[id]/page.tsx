@@ -1,9 +1,9 @@
 "use client"
 
+import type { EChartsOption } from "echarts"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { use, useCallback, useState } from "react"
-import type { EChartsOption } from "echarts"
 import { mutate } from "swr"
 
 import { EChart } from "@/components/charts/EChart"
@@ -122,7 +122,7 @@ function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
       formatter: (params: unknown) => {
         const p = Array.isArray(params) ? params[0] : params
         const val = (p as { value: [number, number] }).value
-        const seconds = Math.pow(10, val[0])
+        const seconds = 10 ** val[0]
         return `<strong>${Math.round(val[1])} bpm</strong><br/><span style="color:#9ca3af">best average over ${formatWindowLabel(seconds)}</span>`
       },
     },
@@ -138,7 +138,7 @@ function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
         fontSize: 10,
         color: "#9ca3af",
         customValues: ticks.map(toLog),
-        formatter: (value: number) => formatWindowLabel(Math.round(Math.pow(10, value))),
+        formatter: (value: number) => formatWindowLabel(Math.round(10 ** value)),
       },
       axisTick: { show: true, customValues: ticks.map(toLog) },
       axisLine: { lineStyle: { color: "#e5e7eb" } },

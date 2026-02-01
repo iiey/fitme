@@ -11,6 +11,7 @@ import {
   formZoneFor,
   trainingLoadDetailChart,
 } from "@/components/charts/options"
+import { InfoTip } from "@/components/ui/InfoTip"
 import {
   colorForActivityType,
   formatActivityPace,
@@ -18,7 +19,6 @@ import {
   formatDuration,
   formatNumber,
 } from "@/lib/format"
-import { InfoTip } from "@/components/ui/InfoTip"
 import type { TrainingLoadActivity, TrainingLoadAnalysis, TrainingLoadPoint } from "@/lib/types"
 import { useIsDark } from "@/lib/use-is-dark"
 

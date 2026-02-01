@@ -1,8 +1,8 @@
 "use client"
 
+import type { LatLngBoundsExpression, LatLngTuple } from "leaflet"
 import { useEffect, useMemo } from "react"
 import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet"
-import type { LatLngBoundsExpression, LatLngTuple } from "leaflet"
 
 import { colorForActivityType } from "@/lib/format"
 import { decodePolyline } from "@/lib/polyline"

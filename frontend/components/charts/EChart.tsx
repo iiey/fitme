@@ -1,9 +1,9 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import type { EChartsOption } from "echarts"
-import echarts from "@/lib/echarts"
+import dynamic from "next/dynamic"
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
+import echarts from "@/lib/echarts"
 
 const ReactECharts = dynamic(() => import("echarts-for-react/lib/core"), {
   ssr: false,

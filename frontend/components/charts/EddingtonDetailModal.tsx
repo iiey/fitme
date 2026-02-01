@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import type { EChartsOption } from "echarts"
+import { useState } from "react"
 
 import { EChart } from "@/components/charts/EChart"
 import { themeColors } from "@/components/charts/options"
@@ -10,8 +10,8 @@ import { StatCard } from "@/components/ui/StatCard"
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
 import { useEddington } from "@/lib/api"
 import { formatNumber } from "@/lib/format"
-import { useIsDark } from "@/lib/use-is-dark"
 import type { EddingtonResult } from "@/lib/types"
+import { useIsDark } from "@/lib/use-is-dark"
 
 export function EddingtonDetailModal({
   athleteId,

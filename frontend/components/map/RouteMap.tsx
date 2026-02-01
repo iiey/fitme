@@ -1,8 +1,8 @@
 "use client"
 
+import type { LatLngBoundsExpression } from "leaflet"
 import { useEffect } from "react"
 import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet"
-import type { LatLngBoundsExpression } from "leaflet"
 
 import { decodePolyline } from "@/lib/polyline"
 

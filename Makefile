@@ -95,13 +95,14 @@ test: ## Run backend tests.
 	cd $(BACKEND) && uv run pytest
 
 .PHONY: lint
-lint: ## Lint backend (ruff) and frontend (eslint + tsc).
-	cd $(BACKEND) && uv run ruff check app
-	cd $(FRONTEND) && npm run lint && npm run typecheck
+lint: ## Lint backend (ruff) and frontend (biome + tsc).
+	cd $(BACKEND) && uv run ruff check . && uv run ruff format --check .
+	cd $(FRONTEND) && npx @biomejs/biome check . && npm run typecheck
 
 .PHONY: format
-format: ## Auto-fix backend lint issues.
-	cd $(BACKEND) && uv run ruff check app --fix
+format: ## Auto-format backend (ruff) and frontend (biome).
+	cd $(BACKEND) && uv run ruff check . --fix && uv run ruff format .
+	cd $(FRONTEND) && npx @biomejs/biome check --write .
 
 .PHONY: build
 build: ## Production-build the frontend.

@@ -1,6 +1,18 @@
 import useSWR, { mutate } from "swr"
 import type { ZodType } from "zod"
-
+import {
+  ActivityDetailSchema,
+  AthleteConfigSchema,
+  DashboardSchema,
+  GoalProgressResponseSchema,
+  ImportPreviewSchema,
+  ImportRunStatusSchema,
+  MetaSchema,
+  PaginatedActivitiesSchema,
+  SyncConfigSchema,
+  SyncRunResultSchema,
+  SyncStatusSchema,
+} from "./schemas"
 import type {
   ActivityDetail,
   AthleteConfig,
@@ -20,19 +32,6 @@ import type {
   SyncRunResult,
   SyncStatus,
 } from "./types"
-import {
-  ActivityDetailSchema,
-  AthleteConfigSchema,
-  DashboardSchema,
-  GoalProgressResponseSchema,
-  ImportPreviewSchema,
-  ImportRunStatusSchema,
-  MetaSchema,
-  PaginatedActivitiesSchema,
-  SyncConfigSchema,
-  SyncRunResultSchema,
-  SyncStatusSchema,
-} from "./schemas"
 
 export class ApiError extends Error {
   constructor(

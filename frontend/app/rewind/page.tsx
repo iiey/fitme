@@ -11,8 +11,8 @@ import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
 import { useRewind } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDuration, formatHours, formatNumber } from "@/lib/format"
-import { useIsDark } from "@/lib/use-is-dark"
 import type { Rewind } from "@/lib/types"
+import { useIsDark } from "@/lib/use-is-dark"
 
 type SportMetric = "distance" | "hours"
 

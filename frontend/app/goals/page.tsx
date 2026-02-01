@@ -4,7 +4,7 @@ import { useCallback, useState } from "react"
 
 import { Card } from "@/components/ui/Card"
 import { ErrorState, Spinner } from "@/components/ui/States"
-import { createGoal, deleteGoal, updateGoal, useMeta, useGoalsProgress } from "@/lib/api"
+import { createGoal, deleteGoal, updateGoal, useGoalsProgress, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDate, formatDuration, formatNumber } from "@/lib/format"
 import type { GoalCreate, GoalProgressResponse } from "@/lib/types"
