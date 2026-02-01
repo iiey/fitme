@@ -3,8 +3,10 @@
 import clsx from "clsx"
 import {
   Activity,
+  AlertCircle,
   CalendarDays,
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -28,13 +30,21 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { ImportDialog } from "@/components/import/ImportDialog"
 import { type Theme, useTheme } from "@/components/ui/ThemeToggle"
-import { deleteAthlete, revalidateAll, triggerSync, useMeta, useSyncConfig } from "@/lib/api"
+import {
+  ApiError,
+  deleteAthlete,
+  revalidateAll,
+  triggerSync,
+  useMeta,
+  useSyncConfig,
+  useSyncStatus,
+} from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
-import type { AthleteListItem } from "@/lib/types"
+import type { AthleteListItem, SyncStatus } from "@/lib/types"
 
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -47,6 +57,93 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/rewind", label: "Rewind", icon: Rewind },
 ]
 
+type SyncBannerState = {
+  phase: "running" | "done" | "error"
+  message: string
+}
+
+/** Read the current sync watermark (last_run_at), falling back when unavailable. */
+async function fetchSyncBaseline(fallback: string | null): Promise<string | null> {
+  try {
+    const response = await fetch("/api/sync/status")
+    if (!response.ok) return fallback
+    const data = await response.json()
+    return (data?.last_run_at as string | null) ?? null
+  } catch {
+    return fallback
+  }
+}
+
+/** Turn the persisted sync run state into a friendly banner message. */
+function summarizeSync(status: SyncStatus): SyncBannerState {
+  if (status.last_status === "error") {
+    let detail = "Sync failed"
+    try {
+      const parsed = JSON.parse(status.last_message ?? "{}")
+      if (typeof parsed.error === "string") detail = `Sync failed: ${parsed.error}`
+    } catch {
+      // Non-JSON message - keep the generic text.
+    }
+    return { phase: "error", message: detail }
+  }
+
+  let added = 0
+  let updated = 0
+  try {
+    const parsed = JSON.parse(status.last_message ?? "{}")
+    added = Number(parsed.added) || 0
+    updated = Number(parsed.updated) || 0
+  } catch {
+    // Treat an unparseable message as "no changes".
+  }
+  if (added === 0 && updated === 0) {
+    return { phase: "done", message: "Already up to date- no new activities" }
+  }
+  const parts: string[] = []
+  if (added > 0) parts.push(`${added} new ${added === 1 ? "activity" : "activities"}`)
+  if (updated > 0) parts.push(`${updated} updated`)
+  return { phase: "done", message: `Sync complete- ${parts.join(", ")}` }
+}
+
+/** Small, non-disruptive toast pinned to the top of the viewport. */
+function SyncBanner({ state, onDismiss }: { state: SyncBannerState; onDismiss: () => void }) {
+  const Icon =
+    state.phase === "running" ? RefreshCw : state.phase === "done" ? CheckCircle2 : AlertCircle
+  const tone = {
+    running:
+      "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200",
+    done: "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300",
+    error:
+      "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300",
+  }[state.phase]
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={clsx(
+        "fixed left-1/2 top-16 z-[60] flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium shadow-lg lg:top-4",
+        tone,
+      )}
+    >
+      <Icon
+        className={clsx("h-4 w-4 shrink-0", state.phase === "running" && "animate-spin text-brand")}
+        strokeWidth={2.25}
+      />
+      <span className="truncate">{state.message}</span>
+      {state.phase !== "running" && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="-mr-1 ml-1 shrink-0 rounded-full p-0.5 opacity-70 hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function Sidebar() {
   const pathname = usePathname()
   const { athleteId, setAthleteId, athletes, setAthletes } = useAthleteContext()
@@ -54,6 +151,57 @@ export function Sidebar() {
   const { data: syncConfig } = useSyncConfig()
   const [importOpen, setImportOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // -- Intervals.icu sync feedback ------------------------------------------
+  // Clicking "Sync" kicks off a background job on the server; we surface its
+  // progress and result in a small banner by polling the status endpoint.
+  const [syncBanner, setSyncBanner] = useState<SyncBannerState | null>(null)
+  const [syncPolling, setSyncPolling] = useState(false)
+  const { data: syncStatus } = useSyncStatus(syncPolling)
+  // The last_run_at of the previous run, captured up-front so we can tell when
+  // a *new* run has finished (rather than reading a stale earlier result).
+  const syncBaselineRef = useRef<string | null | undefined>(undefined)
+
+  const startSync = useCallback(async () => {
+    setSyncBanner({ phase: "running", message: "Syncing with Intervals.icu…" })
+    // Capture the pre-run watermark from a fresh read (taken *before* we trigger)
+    // so we can reliably tell when this run finishes - its last_run_at advances
+    // on completion - without mistaking a stale earlier result for our run.
+    syncBaselineRef.current = await fetchSyncBaseline(syncStatus?.last_run_at ?? null)
+    try {
+      await triggerSync(false)
+      setSyncPolling(true)
+    } catch (err) {
+      // A 409 means a sync/import is already in flight - track it to the end
+      // rather than reporting a scary error.
+      if (err instanceof ApiError && err.status === 409) {
+        setSyncBanner({ phase: "running", message: "A sync is already running…" })
+        setSyncPolling(true)
+        return
+      }
+      setSyncBanner({
+        phase: "error",
+        message: err instanceof Error ? err.message : "Could not start sync",
+      })
+    }
+  }, [syncStatus?.last_run_at])
+
+  // When the background run finishes, surface the outcome and refresh data.
+  useEffect(() => {
+    if (!syncPolling || !syncStatus) return
+    if (syncStatus.running) return
+    if (syncStatus.last_run_at === syncBaselineRef.current) return
+    setSyncPolling(false)
+    setSyncBanner(summarizeSync(syncStatus))
+    revalidateAll()
+  }, [syncPolling, syncStatus])
+
+  // A successful banner auto-dismisses; errors stay until the user closes them.
+  useEffect(() => {
+    if (syncBanner?.phase !== "done") return
+    const timer = setTimeout(() => setSyncBanner(null), 6000)
+    return () => clearTimeout(timer)
+  }, [syncBanner])
 
   useEffect(() => {
     if (!meta) return
@@ -121,6 +269,8 @@ export function Sidebar() {
           onSwitch={setAthleteId}
           onImport={() => setImportOpen(true)}
           syncConfigured={!!syncConfig}
+          syncing={syncBanner?.phase === "running"}
+          onSync={startSync}
         />
       </div>
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
@@ -129,6 +279,7 @@ export function Sidebar() {
 
   return (
     <>
+      {syncBanner && <SyncBanner state={syncBanner} onDismiss={() => setSyncBanner(null)} />}
       {/* Mobile top bar */}
       <div className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 lg:hidden">
         <div className="flex items-center gap-2">
@@ -186,19 +337,22 @@ function AthleteSwitcher({
   onSwitch,
   onImport,
   syncConfigured,
+  syncing,
+  onSync,
 }: {
   athletes: AthleteListItem[]
   activeId: string | null
   onSwitch: (id: string | null) => void
   onImport: () => void
   syncConfigured: boolean
+  syncing: boolean
+  onSync: () => void
 }) {
   const pathname = usePathname()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [appearanceOpen, setAppearanceOpen] = useState(false)
-  const [syncing, setSyncing] = useState(false)
   const { theme, setTheme } = useTheme()
   const ref = useRef<HTMLDivElement>(null)
 
@@ -363,21 +517,16 @@ function AthleteSwitcher({
                   ? "Fetch new activities from Intervals.icu"
                   : "Set up Intervals.icu sync in Settings first"
               }
-              onClick={async () => {
+              onClick={() => {
                 if (!syncConfigured) {
                   router.push("/settings")
                   setOpen(false)
                   return
                 }
-                setSyncing(true)
                 setOpen(false)
-                try {
-                  await triggerSync(false)
-                  revalidateAll()
-                } finally {
-                  setSyncing(false)
-                }
+                onSync()
               }}
+              disabled={syncing}
               className={clsx(
                 "flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm",
                 syncConfigured
