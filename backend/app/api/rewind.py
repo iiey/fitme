@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app import repository
@@ -18,9 +18,12 @@ def get_rewind(
     athlete_id: str = Depends(get_athlete_id),
     year: int | None = None,
     days: int | None = None,
+    sport_type: list[str] | None = Query(None),
 ) -> dict:
     athlete = get_athlete_config(db, athlete_id)
     activities = repository.all_activities(db, athlete_id)
+    if sport_type:
+        activities = [a for a in activities if a.sport_type in sport_type]
     best_efforts = repository.best_efforts_for_athlete(db, athlete_id)
     years = available_years(activities)
     return {

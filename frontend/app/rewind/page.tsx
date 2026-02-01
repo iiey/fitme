@@ -5,11 +5,11 @@ import Link from "next/link"
 import { useState } from "react"
 
 import { EChart } from "@/components/charts/EChart"
-import { barChart, donutChart } from "@/components/charts/options"
+import { barChart, donutChart, themeColors } from "@/components/charts/options"
 import { Card } from "@/components/ui/Card"
 import { StatCard } from "@/components/ui/StatCard"
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
-import { useRewind } from "@/lib/api"
+import { useMeta, useRewind } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDuration, formatHours, formatNumber } from "@/lib/format"
 import type { Rewind } from "@/lib/types"
@@ -21,10 +21,17 @@ export default function RewindPage() {
   const { athleteId } = useAthleteContext()
   const isDark = useIsDark()
   const [filter, setFilter] = useState<string>("")
+  const [sportType, setSportType] = useState<string>("")
   const [sportMetric, setSportMetric] = useState<SportMetric>("distance")
   const year = filter && filter !== "last365" ? Number(filter) : null
   const days = filter === "last365" ? 365 : null
-  const { data, error, isLoading } = useRewind(athleteId, year, days)
+  const { data: meta } = useMeta(athleteId)
+  const { data, error, isLoading } = useRewind(
+    athleteId,
+    year,
+    days,
+    sportType ? [sportType] : undefined,
+  )
 
   if (isLoading && !data) return <Spinner label="Rewinding your year…" />
   if (error) return <ErrorState />
@@ -40,19 +47,33 @@ export default function RewindPage() {
           <h1 className="text-2xl font-bold">FitMe Rewind</h1>
           <p className="text-sm text-gray-500">A fun look back at your year in motion</p>
         </div>
-        <select
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
-        >
-          <option value="">All time</option>
-          <option value="last365">Last 365 days</option>
-          {data.available_years.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={sportType}
+            onChange={(event) => setSportType(event.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
+          >
+            <option value="">All sports</option>
+            {meta?.sport_types.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
+          >
+            <option value="">All time</option>
+            <option value="last365">Last 365 days</option>
+            {data.available_years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -67,16 +88,7 @@ export default function RewindPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={`Distance per month (${distanceUnit})`}>
-          <EChart
-            option={barChart(
-              rewind.totals_per_month.map((m) => m.month),
-              rewind.totals_per_month.map((m) => m.distance),
-              "#3b82f6",
-              distanceUnit,
-              isDark,
-            )}
-            height={260}
-          />
+          <EChart option={distancePerMonthChart(rewind, distanceUnit, isDark)} height={260} />
         </Card>
         <Card
           title={`By sport (${sportMetric === "distance" ? distanceUnit : "hours"})`}
@@ -144,6 +156,51 @@ export default function RewindPage() {
       <AchievementsSection rewind={rewind} />
     </div>
   )
+}
+
+function distancePerMonthChart(rewind: Rewind, unit: string, dark: boolean) {
+  const t = themeColors(dark)
+  const months = rewind.totals_per_month.map((m) => m.month)
+  const distances = rewind.totals_per_month.map((m) => m.distance)
+  const counts = rewind.totals_per_month.map((m) => m.count)
+  return {
+    grid: { left: 50, right: 15, top: 28, bottom: 50 },
+    tooltip: {
+      trigger: "axis" as const,
+      backgroundColor: t.tooltipBg,
+      borderColor: t.tooltipBorder,
+      textStyle: { color: t.tooltipText },
+      formatter: (params: unknown) => {
+        const list = params as { dataIndex: number }[]
+        const i = Array.isArray(list) ? (list[0]?.dataIndex ?? 0) : 0
+        const n = counts[i]
+        return `<b>${months[i]}</b><br/>${n} ${n === 1 ? "activity" : "activities"}`
+      },
+    },
+    xAxis: {
+      type: "category" as const,
+      data: months,
+      axisLabel: { fontSize: 10, rotate: 0, color: t.axis },
+    },
+    yAxis: { type: "value" as const, axisLabel: { fontSize: 10, color: t.axis } },
+    series: [
+      {
+        type: "bar" as const,
+        data: distances,
+        itemStyle: { color: "#3b82f6", borderRadius: [3, 3, 0, 0] },
+        label: {
+          show: true,
+          position: "top" as const,
+          fontSize: 10,
+          color: t.text,
+          formatter: (p: unknown) => {
+            const v = (p as { value: number }).value
+            return v > 0 ? `${Math.round(v)} ${unit}` : ""
+          },
+        },
+      },
+    ],
+  }
 }
 
 function metricTabClass(active: boolean): string {

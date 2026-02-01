@@ -208,11 +208,13 @@ export function useRewind(
   athleteId: string | null,
   year: number | null,
   days: number | null = null,
+  sportType?: string[],
 ) {
   const query = buildQuery({
     athlete: athleteId ?? undefined,
     year: year ?? undefined,
     days: days ?? undefined,
+    sport_type: sportType,
   })
   return useSWR<RewindResponse>(`/api/rewind${query}`, fetcher)
 }
