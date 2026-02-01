@@ -1,22 +1,22 @@
-"use client";
+"use client"
 
-import dynamic from "next/dynamic";
-import type { EChartsOption } from "echarts";
-import echarts from "@/lib/echarts";
-import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import dynamic from "next/dynamic"
+import type { EChartsOption } from "echarts"
+import echarts from "@/lib/echarts"
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 
 const ReactECharts = dynamic(() => import("echarts-for-react/lib/core"), {
   ssr: false,
-});
+})
 
 export function EChart({
   option,
   height = 300,
   onEvents,
 }: {
-  option: EChartsOption;
-  height?: number;
-  onEvents?: Record<string, (params: unknown) => void>;
+  option: EChartsOption
+  height?: number
+  onEvents?: Record<string, (params: unknown) => void>
 }) {
   return (
     <ErrorBoundary>
@@ -30,5 +30,5 @@ export function EChart({
         opts={{ renderer: "canvas" }}
       />
     </ErrorBoundary>
-  );
+  )
 }

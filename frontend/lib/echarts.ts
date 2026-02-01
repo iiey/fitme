@@ -1,5 +1,5 @@
-import * as echarts from "echarts/core";
-import { BarChart, LineChart, PieChart } from "echarts/charts";
+import * as echarts from "echarts/core"
+import { BarChart, LineChart, PieChart } from "echarts/charts"
 import {
   GridComponent,
   TitleComponent,
@@ -9,8 +9,8 @@ import {
   MarkLineComponent,
   MarkAreaComponent,
   VisualMapComponent,
-} from "echarts/components";
-import { CanvasRenderer } from "echarts/renderers";
+} from "echarts/components"
+import { CanvasRenderer } from "echarts/renderers"
 
 echarts.use([
   BarChart,
@@ -25,6 +25,6 @@ echarts.use([
   MarkAreaComponent,
   VisualMapComponent,
   CanvasRenderer,
-]);
+])
 
-export default echarts;
+export default echarts

@@ -1,28 +1,28 @@
-"use client";
+"use client"
 
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react"
 
 interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
+  children: ReactNode
+  fallback?: ReactNode
 }
 
 interface State {
-  hasError: boolean;
+  hasError: boolean
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false };
+    super(props)
+    this.state = { hasError: false }
   }
 
   static getDerivedStateFromError(): State {
-    return { hasError: true };
+    return { hasError: true }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("ErrorBoundary caught:", error, info.componentStack);
+    console.error("ErrorBoundary caught:", error, info.componentStack)
   }
 
   render() {
@@ -33,8 +33,8 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong rendering this section.
           </div>
         )
-      );
+      )
     }
-    return this.props.children;
+    return this.props.children
   }
 }

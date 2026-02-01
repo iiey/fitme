@@ -1,13 +1,13 @@
-"use client";
+"use client"
 
-import clsx from "clsx";
-import { useMemo, useState } from "react";
+import clsx from "clsx"
+import { useMemo, useState } from "react"
 
-import { Card } from "@/components/ui/Card";
-import { EmptyState, ErrorState, Spinner } from "@/components/ui/States";
-import { useMilestones } from "@/lib/api";
-import { useAthleteContext } from "@/lib/athlete-context";
-import { formatDate } from "@/lib/format";
+import { Card } from "@/components/ui/Card"
+import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
+import { useMilestones } from "@/lib/api"
+import { useAthleteContext } from "@/lib/athlete-context"
+import { formatDate } from "@/lib/format"
 
 const GROUP_ICONS: Record<string, string> = {
   Firsts: "🚩",
@@ -18,28 +18,30 @@ const GROUP_ICONS: Record<string, string> = {
   "Personal Bests": "🥇",
   Eddington: "📈",
   Streaks: "🔥",
-};
+}
 
 export default function MilestonesPage() {
-  const { athleteId } = useAthleteContext();
-  const { data, error, isLoading } = useMilestones(athleteId);
-  const [activeGroup, setActiveGroup] = useState<string>("All");
+  const { athleteId } = useAthleteContext()
+  const { data, error, isLoading } = useMilestones(athleteId)
+  const [activeGroup, setActiveGroup] = useState<string>("All")
 
   const filteredTimeline = useMemo(() => {
-    if (!data) return [];
-    if (activeGroup === "All") return data.timeline;
+    if (!data) return []
+    if (activeGroup === "All") return data.timeline
     return data.timeline
       .map((year) => ({
         year: year.year,
         milestones: year.milestones.filter((m) => m.group === activeGroup),
       }))
-      .filter((year) => year.milestones.length > 0);
-  }, [data, activeGroup]);
+      .filter((year) => year.milestones.length > 0)
+  }, [data, activeGroup])
 
-  if (isLoading) return <Spinner label="Discovering milestones…" />;
-  if (error) return <ErrorState />;
+  if (isLoading) return <Spinner label="Discovering milestones…" />
+  if (error) return <ErrorState />
   if (!data || data.total === 0) {
-    return <EmptyState message="No milestones discovered yet. Import more activities to unlock achievements." />;
+    return (
+      <EmptyState message="No milestones discovered yet. Import more activities to unlock achievements." />
+    )
   }
 
   return (
@@ -95,5 +97,5 @@ export default function MilestonesPage() {
         ))}
       </div>
     </div>
-  );
+  )
 }

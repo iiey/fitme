@@ -1,9 +1,9 @@
-"use client";
+"use client"
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react"
 
-import { Card } from "@/components/ui/Card";
-import { Spinner } from "@/components/ui/States";
+import { Card } from "@/components/ui/Card"
+import { Spinner } from "@/components/ui/States"
 import {
   deleteSyncConfig,
   revalidateAll,
@@ -13,122 +13,122 @@ import {
   useAthleteConfig,
   useSyncConfig,
   useSyncStatus,
-} from "@/lib/api";
-import { useAthleteContext } from "@/lib/athlete-context";
-import { formatDateTime } from "@/lib/format";
-import type { AthleteConfig } from "@/lib/types";
+} from "@/lib/api"
+import { useAthleteContext } from "@/lib/athlete-context"
+import { formatDateTime } from "@/lib/format"
+import type { AthleteConfig } from "@/lib/types"
 
 export default function SettingsPage() {
-  const { athleteId, athletes } = useAthleteContext();
-  const { data: config, isLoading: syncLoading, mutate: mutateConfig } = useSyncConfig();
+  const { athleteId, athletes } = useAthleteContext()
+  const { data: config, isLoading: syncLoading, mutate: mutateConfig } = useSyncConfig()
   // Poll the status while a run is in progress so the UI updates live.
-  const [polling, setPolling] = useState(false);
-  const { data: status, mutate: mutateStatus } = useSyncStatus(polling);
+  const [polling, setPolling] = useState(false)
+  const { data: status, mutate: mutateStatus } = useSyncStatus(polling)
 
-  const [selectedAthlete, setSelectedAthlete] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [icuAthleteId, setIcuAthleteId] = useState("0");
-  const [enabled, setEnabled] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [selectedAthlete, setSelectedAthlete] = useState("")
+  const [apiKey, setApiKey] = useState("")
+  const [icuAthleteId, setIcuAthleteId] = useState("0")
+  const [enabled, setEnabled] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   // Seed the form from the saved config (or the active athlete) once loaded.
   useEffect(() => {
     if (config) {
-      setSelectedAthlete(config.athlete_id);
-      setIcuAthleteId(config.icu_athlete_id);
-      setEnabled(config.enabled);
+      setSelectedAthlete(config.athlete_id)
+      setIcuAthleteId(config.icu_athlete_id)
+      setEnabled(config.enabled)
     } else if (athleteId) {
-      setSelectedAthlete((prev) => prev || athleteId);
+      setSelectedAthlete((prev) => prev || athleteId)
     }
-  }, [config, athleteId]);
+  }, [config, athleteId])
 
   // Stop polling once the in-progress run finishes.
   useEffect(() => {
     if (polling && status && !status.running) {
-      setPolling(false);
-      revalidateAll();
-      void mutateConfig();
+      setPolling(false)
+      revalidateAll()
+      void mutateConfig()
     }
-  }, [polling, status, mutateConfig]);
+  }, [polling, status, mutateConfig])
 
-  const running = status?.running ?? false;
-  const canSave = selectedAthlete && (apiKey.trim() || config?.has_api_key);
+  const running = status?.running ?? false
+  const canSave = selectedAthlete && (apiKey.trim() || config?.has_api_key)
 
   const lastRun = useMemo(() => {
-    const source = status ?? config;
-    if (!source) return null;
+    const source = status ?? config
+    if (!source) return null
     return {
       last_run_at: source.last_run_at,
       last_status: source.last_status,
       last_message: source.last_message,
       synced_through: source.synced_through,
-    };
-  }, [status, config]);
+    }
+  }, [status, config])
 
   async function handleSave() {
-    if (!selectedAthlete) return;
-    setBusy(true);
-    setError(null);
-    setNotice(null);
+    if (!selectedAthlete) return
+    setBusy(true)
+    setError(null)
+    setNotice(null)
     try {
       // Reuse the stored key when the field is left blank on an existing config.
-      const key = apiKey.trim();
+      const key = apiKey.trim()
       if (!key && !config?.has_api_key) {
-        setError("An API key is required.");
-        return;
+        setError("An API key is required.")
+        return
       }
       await saveSyncConfig({
         athlete_id: selectedAthlete,
         api_key: key,
         icu_athlete_id: icuAthleteId.trim() || "0",
         enabled,
-      });
-      setApiKey("");
-      setNotice("Settings saved and credentials verified.");
-      await mutateConfig();
+      })
+      setApiKey("")
+      setNotice("Settings saved and credentials verified.")
+      await mutateConfig()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save settings");
+      setError(err instanceof Error ? err.message : "Could not save settings")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
   async function handleSync(fullResync: boolean) {
-    setBusy(true);
-    setError(null);
-    setNotice(null);
+    setBusy(true)
+    setError(null)
+    setNotice(null)
     try {
-      await triggerSync(fullResync);
-      setNotice(fullResync ? "Full resync started." : "Sync started.");
-      setPolling(true);
-      void mutateStatus();
+      await triggerSync(fullResync)
+      setNotice(fullResync ? "Full resync started." : "Sync started.")
+      setPolling(true)
+      void mutateStatus()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start sync");
+      setError(err instanceof Error ? err.message : "Could not start sync")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
   async function handleDelete() {
-    if (!confirm("Remove the Intervals.icu sync configuration?")) return;
-    setBusy(true);
-    setError(null);
-    setNotice(null);
+    if (!confirm("Remove the Intervals.icu sync configuration?")) return
+    setBusy(true)
+    setError(null)
+    setNotice(null)
     try {
-      await deleteSyncConfig();
-      setApiKey("");
-      setNotice("Sync configuration removed.");
-      await mutateConfig();
+      await deleteSyncConfig()
+      setApiKey("")
+      setNotice("Sync configuration removed.")
+      await mutateConfig()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove settings");
+      setError(err instanceof Error ? err.message : "Could not remove settings")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
-  if (syncLoading) return <Spinner label="Loading settings…" />;
+  if (syncLoading) return <Spinner label="Loading settings…" />
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -142,8 +142,8 @@ export default function SettingsPage() {
       <Card title="Intervals.icu sync">
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
-            Intervals.icu aggregates activities from Garmin, Strava and direct
-            uploads through a free API. Generate a personal API key under{" "}
+            Intervals.icu aggregates activities from Garmin, Strava and direct uploads through a
+            free API. Generate a personal API key under{" "}
             <a
               href="https://intervals.icu/settings"
               target="_blank"
@@ -152,8 +152,8 @@ export default function SettingsPage() {
             >
               Developer Settings
             </a>{" "}
-            and paste it below. Bind the sync to the athlete your existing imports
-            belong to so duplicates are merged automatically.
+            and paste it below. Bind the sync to the athlete your existing imports belong to so
+            duplicates are merged automatically.
           </p>
 
           <label className="block">
@@ -184,9 +184,7 @@ export default function SettingsPage() {
             <span className="mb-1 block text-sm font-medium">
               API key{" "}
               {config?.has_api_key && (
-                <span className="font-normal text-gray-400">
-                  (stored - leave blank to keep)
-                </span>
+                <span className="font-normal text-gray-400">(stored - leave blank to keep)</span>
               )}
             </span>
             <input
@@ -213,8 +211,8 @@ export default function SettingsPage() {
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
             />
             <span className="mt-1 block text-xs text-gray-400">
-              Leave as <code className="font-mono">0</code> to sync your own account.
-              Only change it to pull another athlete&apos;s data (e.g. as their coach).
+              Leave as <code className="font-mono">0</code> to sync your own account. Only change it
+              to pull another athlete&apos;s data (e.g. as their coach).
             </span>
           </label>
 
@@ -292,16 +290,12 @@ export default function SettingsPage() {
             <div>
               <dt className="text-gray-400">Synced through</dt>
               <dd className="font-medium">
-                {lastRun.synced_through
-                  ? formatDateTime(lastRun.synced_through)
-                  : "Not yet"}
+                {lastRun.synced_through ? formatDateTime(lastRun.synced_through) : "Not yet"}
               </dd>
             </div>
             <div>
               <dt className="text-gray-400">Details</dt>
-              <dd className="font-medium break-words">
-                {formatRunMessage(lastRun.last_message)}
-              </dd>
+              <dd className="font-medium break-words">{formatRunMessage(lastRun.last_message)}</dd>
             </div>
           </dl>
         </Card>
@@ -309,39 +303,39 @@ export default function SettingsPage() {
 
       {athleteId && <AthleteConfigSection athleteId={athleteId} />}
     </div>
-  );
+  )
 }
 
 function StatusBadge({ status }: { status: string | null | undefined }) {
-  if (status === "ok") return <span className="text-green-600">Up to date</span>;
-  if (status === "error") return <span className="text-red-600">Error</span>;
-  if (status === "running") return <span className="text-brand">Running…</span>;
-  return <span className="text-gray-400">Idle</span>;
+  if (status === "ok") return <span className="text-green-600">Up to date</span>
+  if (status === "error") return <span className="text-red-600">Error</span>
+  if (status === "running") return <span className="text-brand">Running…</span>
+  return <span className="text-gray-400">Idle</span>
 }
 
 function formatRunMessage(message: string | null | undefined): string {
-  if (!message) return "-";
+  if (!message) return "-"
   try {
-    const data = JSON.parse(message) as Record<string, unknown>;
-    if (typeof data.error === "string") return data.error;
-    const added = Number(data.added ?? 0);
-    const updated = Number(data.updated ?? 0);
-    const deduped = Number(data.deduped ?? 0);
-    const skipped = Number(data.skipped ?? 0);
-    return `${added} added, ${updated} updated, ${deduped} merged, ${skipped} unchanged`;
+    const data = JSON.parse(message) as Record<string, unknown>
+    if (typeof data.error === "string") return data.error
+    const added = Number(data.added ?? 0)
+    const updated = Number(data.updated ?? 0)
+    const deduped = Number(data.deduped ?? 0)
+    const skipped = Number(data.skipped ?? 0)
+    return `${added} added, ${updated} updated, ${deduped} merged, ${skipped} unchanged`
   } catch {
-    return message;
+    return message
   }
 }
 
 function AthleteConfigSection({ athleteId }: { athleteId: string }) {
-  const { data: cfg, isLoading, mutate: mutateCfg } = useAthleteConfig(athleteId);
+  const { data: cfg, isLoading, mutate: mutateCfg } = useAthleteConfig(athleteId)
 
-  const [form, setForm] = useState<Partial<AthleteConfig>>({});
-  const [dirty, setDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<AthleteConfig>>({})
+  const [dirty, setDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (cfg) {
@@ -353,47 +347,47 @@ function AthleteConfigSection({ athleteId }: { athleteId: string }) {
         resting_heart_rate: cfg.resting_heart_rate,
         unit_system: cfg.unit_system,
         threshold_pace: cfg.threshold_pace,
-      });
-      setDirty(false);
+      })
+      setDirty(false)
     }
-  }, [cfg]);
+  }, [cfg])
 
   function update<K extends keyof AthleteConfig>(key: K, value: AthleteConfig[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    setDirty(true);
-    setNotice(null);
+    setForm((prev) => ({ ...prev, [key]: value }))
+    setDirty(true)
+    setNotice(null)
   }
 
   function numOrNull(v: string): number | null {
-    const n = parseFloat(v);
-    return isNaN(n) ? null : n;
+    const n = parseFloat(v)
+    return isNaN(n) ? null : n
   }
 
   async function handleSave() {
-    setSaving(true);
-    setError(null);
-    setNotice(null);
+    setSaving(true)
+    setError(null)
+    setNotice(null)
     try {
-      await updateAthleteConfig(athleteId, form);
-      await mutateCfg();
-      revalidateAll();
-      setDirty(false);
-      setNotice("Settings saved.");
+      await updateAthleteConfig(athleteId, form)
+      await mutateCfg()
+      revalidateAll()
+      setDirty(false)
+      setNotice("Settings saved.")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save settings");
+      setError(err instanceof Error ? err.message : "Could not save settings")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
-  if (isLoading) return null;
+  if (isLoading) return null
 
   return (
     <Card title="Athlete profile">
       <div className="space-y-4">
         <p className="text-sm text-gray-500">
-          Training parameters used for zone calculations, pace analysis, and
-          unit display. Values saved here override the YAML config file.
+          Training parameters used for zone calculations, pace analysis, and unit display. Values
+          saved here override the YAML config file.
         </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -457,9 +451,7 @@ function AthleteConfigSection({ athleteId }: { athleteId: string }) {
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm font-medium">
-              Threshold pace (s/km)
-            </span>
+            <span className="mb-1 block text-sm font-medium">Threshold pace (s/km)</span>
             <input
               type="number"
               min="0"
@@ -497,5 +489,5 @@ function AthleteConfigSection({ athleteId }: { athleteId: string }) {
         </div>
       </div>
     </Card>
-  );
+  )
 }

@@ -1,29 +1,29 @@
-"use client";
+"use client"
 
-import { useEffect, useMemo } from "react";
-import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet";
-import type { LatLngBoundsExpression, LatLngTuple } from "leaflet";
+import { useEffect, useMemo } from "react"
+import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet"
+import type { LatLngBoundsExpression, LatLngTuple } from "leaflet"
 
-import { colorForActivityType } from "@/lib/format";
-import { decodePolyline } from "@/lib/polyline";
-import type { HeatmapRoute } from "@/lib/types";
+import { colorForActivityType } from "@/lib/format"
+import { decodePolyline } from "@/lib/polyline"
+import type { HeatmapRoute } from "@/lib/types"
 
 interface DecodedRoute {
-  activityId: string;
-  name: string;
-  activityType: string;
-  points: LatLngTuple[];
+  activityId: string
+  name: string
+  activityType: string
+  points: LatLngTuple[]
 }
 
 function FitAllBounds({ routes }: { routes: DecodedRoute[] }) {
-  const map = useMap();
+  const map = useMap()
   useEffect(() => {
-    const allPoints = routes.flatMap((route) => route.points);
+    const allPoints = routes.flatMap((route) => route.points)
     if (allPoints.length > 0) {
-      map.fitBounds(allPoints as LatLngBoundsExpression, { padding: [30, 30] });
+      map.fitBounds(allPoints as LatLngBoundsExpression, { padding: [30, 30] })
     }
-  }, [map, routes]);
-  return null;
+  }, [map, routes])
+  return null
 }
 
 export default function HeatmapView({ routes }: { routes: HeatmapRoute[] }) {
@@ -38,14 +38,14 @@ export default function HeatmapView({ routes }: { routes: HeatmapRoute[] }) {
         }))
         .filter((route) => route.points.length > 1),
     [routes],
-  );
+  )
 
-  const center = decoded[0]?.points[0] ?? ([50.85, 4.35] as LatLngTuple);
+  const center = decoded[0]?.points[0] ?? ([50.85, 4.35] as LatLngTuple)
 
   return (
     <MapContainer center={center} zoom={11} style={{ height: "100%", width: "100%" }} preferCanvas>
       <TileLayer
-        attribution='&copy; OpenStreetMap contributors &copy; CARTO'
+        attribution="&copy; OpenStreetMap contributors &copy; CARTO"
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
       {decoded.map((route) => (
@@ -61,5 +61,5 @@ export default function HeatmapView({ routes }: { routes: HeatmapRoute[] }) {
       ))}
       <FitAllBounds routes={decoded} />
     </MapContainer>
-  );
+  )
 }

@@ -1,36 +1,36 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useState } from "react";
+import Link from "next/link"
+import { useState } from "react"
 
-import { EChart } from "@/components/charts/EChart";
-import { barChart, donutChart } from "@/components/charts/options";
-import { Card } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
-import { EmptyState, ErrorState, Spinner } from "@/components/ui/States";
-import { useRewind } from "@/lib/api";
-import { useAthleteContext } from "@/lib/athlete-context";
-import { formatDuration, formatHours, formatNumber } from "@/lib/format";
-import { useIsDark } from "@/lib/use-is-dark";
-import type { Rewind } from "@/lib/types";
+import { EChart } from "@/components/charts/EChart"
+import { barChart, donutChart } from "@/components/charts/options"
+import { Card } from "@/components/ui/Card"
+import { StatCard } from "@/components/ui/StatCard"
+import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
+import { useRewind } from "@/lib/api"
+import { useAthleteContext } from "@/lib/athlete-context"
+import { formatDuration, formatHours, formatNumber } from "@/lib/format"
+import { useIsDark } from "@/lib/use-is-dark"
+import type { Rewind } from "@/lib/types"
 
-type SportMetric = "distance" | "hours";
+type SportMetric = "distance" | "hours"
 
 export default function RewindPage() {
-  const { athleteId } = useAthleteContext();
-  const isDark = useIsDark();
-  const [filter, setFilter] = useState<string>("");
-  const [sportMetric, setSportMetric] = useState<SportMetric>("distance");
-  const year = filter && filter !== "last365" ? Number(filter) : null;
-  const days = filter === "last365" ? 365 : null;
-  const { data, error, isLoading } = useRewind(athleteId, year, days);
+  const { athleteId } = useAthleteContext()
+  const isDark = useIsDark()
+  const [filter, setFilter] = useState<string>("")
+  const [sportMetric, setSportMetric] = useState<SportMetric>("distance")
+  const year = filter && filter !== "last365" ? Number(filter) : null
+  const days = filter === "last365" ? 365 : null
+  const { data, error, isLoading } = useRewind(athleteId, year, days)
 
-  if (isLoading && !data) return <Spinner label="Rewinding your year…" />;
-  if (error) return <ErrorState />;
-  if (!data) return <EmptyState message="No data to rewind yet." />;
+  if (isLoading && !data) return <Spinner label="Rewinding your year…" />
+  if (error) return <ErrorState />
+  if (!data) return <EmptyState message="No data to rewind yet." />
 
-  const rewind = data.rewind;
-  const distanceUnit = rewind.unit;
+  const rewind = data.rewind
+  const distanceUnit = rewind.unit
 
   return (
     <div className="space-y-6">
@@ -56,7 +56,10 @@ export default function RewindPage() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Activities" value={formatNumber(rewind.summary.count)} accent />
-        <StatCard label={`Distance (${distanceUnit})`} value={formatNumber(rewind.summary.distance, 0)} />
+        <StatCard
+          label={`Distance (${distanceUnit})`}
+          value={formatNumber(rewind.summary.distance, 0)}
+        />
         <StatCard label="Elevation (m)" value={formatNumber(rewind.summary.elevation_m, 0)} />
         <StatCard label="Moving Time" value={formatHours(rewind.summary.moving_time_s)} />
       </div>
@@ -139,7 +142,7 @@ export default function RewindPage() {
 
       <AchievementsSection rewind={rewind} />
     </div>
-  );
+  )
 }
 
 function metricTabClass(active: boolean): string {
@@ -147,18 +150,19 @@ function metricTabClass(active: boolean): string {
     active
       ? "bg-white text-brand shadow-sm dark:bg-gray-700 dark:text-brand"
       : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-  }`;
+  }`
 }
 
 function formatHighlightValue(value: number, unit: string): string {
-  if (unit === "duration") return formatDuration(value);
-  if (unit === "kcal") return `${formatNumber(value)} kcal`;
-  return `${formatNumber(value, value < 100 ? 1 : 0)} ${unit}`;
+  if (unit === "duration") return formatDuration(value)
+  if (unit === "kcal") return `${formatNumber(value)} kcal`
+  return `${formatNumber(value, value < 100 ? 1 : 0)} ${unit}`
 }
 
 function AchievementsSection({ rewind }: { rewind: Rewind }) {
-  const { highlights, personal_records } = rewind.achievements;
-  if (highlights.length === 0 && personal_records.length === 0 && !rewind.longest_streak) return null;
+  const { highlights, personal_records } = rewind.achievements
+  if (highlights.length === 0 && personal_records.length === 0 && !rewind.longest_streak)
+    return null
 
   return (
     <Card title="🏅 Best efforts">
@@ -190,7 +194,9 @@ function AchievementsSection({ rewind }: { rewind: Rewind }) {
             Longest streak
           </p>
           <div className="inline-flex items-baseline gap-2 rounded-lg border border-gray-200 px-4 py-2 dark:border-gray-700">
-            <span className="text-2xl font-bold text-brand">{rewind.longest_streak.length} days</span>
+            <span className="text-2xl font-bold text-brand">
+              {rewind.longest_streak.length} days
+            </span>
             <span className="text-sm text-gray-500">
               {rewind.longest_streak.start} → {rewind.longest_streak.end}
             </span>
@@ -219,5 +225,5 @@ function AchievementsSection({ rewind }: { rewind: Rewind }) {
         </div>
       )}
     </Card>
-  );
+  )
 }

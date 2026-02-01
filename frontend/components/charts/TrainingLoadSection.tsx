@@ -1,26 +1,26 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
-import { EChart } from "@/components/charts/EChart";
+import { EChart } from "@/components/charts/EChart"
 import {
   FATIGUE_COLOR,
   FITNESS_COLOR,
   FORM_ZONES,
   formZoneFor,
   trainingLoadDetailChart,
-} from "@/components/charts/options";
+} from "@/components/charts/options"
 import {
   colorForActivityType,
   formatActivityPace,
   formatDate,
   formatDuration,
   formatNumber,
-} from "@/lib/format";
-import { InfoTip } from "@/components/ui/InfoTip";
-import type { TrainingLoadActivity, TrainingLoadAnalysis, TrainingLoadPoint } from "@/lib/types";
-import { useIsDark } from "@/lib/use-is-dark";
+} from "@/lib/format"
+import { InfoTip } from "@/components/ui/InfoTip"
+import type { TrainingLoadActivity, TrainingLoadAnalysis, TrainingLoadPoint } from "@/lib/types"
+import { useIsDark } from "@/lib/use-is-dark"
 
 const STATUS_COLORS: Record<string, string> = {
   green: "text-green-600 dark:text-green-400",
@@ -28,7 +28,7 @@ const STATUS_COLORS: Record<string, string> = {
   yellow: "text-yellow-600 dark:text-yellow-400",
   orange: "text-orange-500 dark:text-orange-400",
   neutral: "text-gray-900 dark:text-gray-100",
-};
+}
 
 function MetricCard({
   label,
@@ -37,11 +37,11 @@ function MetricCard({
   tip,
   colorClass,
 }: {
-  label: string;
-  value: string;
-  sub: string;
-  tip?: string;
-  colorClass?: string;
+  label: string
+  value: string
+  sub: string
+  tip?: string
+  colorClass?: string
 }) {
   return (
     <div className="card flex flex-col gap-1 p-3">
@@ -54,7 +54,7 @@ function MetricCard({
       </span>
       <span className="text-[11px] text-gray-400">{sub}</span>
     </div>
-  );
+  )
 }
 
 function MiniStat({ color, label, value }: { color: string; label: string; value: number }) {
@@ -64,17 +64,17 @@ function MiniStat({ color, label, value }: { color: string; label: string; value
       <span>{label}</span>
       <span className="font-semibold text-gray-800 dark:text-gray-100">{value}</span>
     </span>
-  );
+  )
 }
 
 function ActivityRow({
   activity,
   distanceUnit,
 }: {
-  activity: TrainingLoadActivity;
-  distanceUnit: string;
+  activity: TrainingLoadActivity
+  distanceUnit: string
 }) {
-  const distance = distanceUnit === "mi" ? activity.distance_mi : activity.distance_km;
+  const distance = distanceUnit === "mi" ? activity.distance_mi : activity.distance_km
   return (
     <Link
       href={`/activities/${activity.activity_id}`}
@@ -99,12 +99,12 @@ function ActivityRow({
         <span>{formatActivityPace(activity)}</span>
       </span>
     </Link>
-  );
+  )
 }
 
 function DayPanel({ point, distanceUnit }: { point: TrainingLoadPoint; distanceUnit: string }) {
-  const zone = formZoneFor(Math.round(point.tsb));
-  const activities = point.activities ?? [];
+  const zone = formZoneFor(Math.round(point.tsb))
+  const activities = point.activities ?? []
 
   return (
     <div className="rounded-lg border border-gray-200 bg-surface-muted p-3 dark:border-gray-700">
@@ -138,7 +138,7 @@ function DayPanel({ point, distanceUnit }: { point: TrainingLoadPoint; distanceU
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function HowToRead() {
@@ -154,69 +154,69 @@ function HowToRead() {
               Blue line
             </span>{" "}
             (Fitness/CTL)
-          </strong>
-          {" "}- <em>42-day</em> trend showing your aerobic capacity
-          <br/>
+          </strong>{" "}
+          - <em>42-day</em> trend showing your aerobic capacity
+          <br />
           <strong>
             <span style={{ color: FATIGUE_COLOR }} className="font-semibold">
               Purple line
             </span>{" "}
             (Fatigue/ATL)
-          </strong>
-          {" "}- <em>7-day</em> stress level from recent workouts
-          <br/>
-          <strong>Goal:</strong> Keep purple <em>above</em> blue to build fitness, then rest to recover.
+          </strong>{" "}
+          - <em>7-day</em> stress level from recent workouts
+          <br />
+          <strong>Goal:</strong> Keep purple <em>above</em> blue to build fitness, then rest to
+          recover.
         </p>
         <p>
           <strong>Form (TSB) = Fitness − Fatigue</strong>
-          <br/>
-          ✓ <strong>Optimal zone:</strong> You&apos;re gaining fitness
-          <br/>
-          ✓ <strong>Fresh zone:</strong> Ready to race
-          <br/>
-          ✗ <strong>High-risk zone:</strong> Risk of overtraining - <em>avoid staying long</em>
-          <br/>
-          <strong>Key:</strong> Include <em>rest weeks</em> to recover and peak before goal events. Too much monotony = injury risk.
+          <br />✓ <strong>Optimal zone:</strong> You&apos;re gaining fitness
+          <br />✓ <strong>Fresh zone:</strong> Ready to race
+          <br />✗ <strong>High-risk zone:</strong> Risk of overtraining -{" "}
+          <em>avoid staying long</em>
+          <br />
+          <strong>Key:</strong> Include <em>rest weeks</em> to recover and peak before goal events.
+          Too much monotony = injury risk.
         </p>
       </div>
     </details>
-  );
+  )
 }
 
 export function TrainingLoadSection({
   analysis,
   distanceUnit = "km",
 }: {
-  analysis: TrainingLoadAnalysis;
-  distanceUnit?: string;
+  analysis: TrainingLoadAnalysis
+  distanceUnit?: string
 }) {
-  const isDark = useIsDark();
-  const series = analysis.series;
-  const lastIndex = Math.max(0, series.length - 1);
-  const [activeIndex, setActiveIndex] = useState(lastIndex);
+  const isDark = useIsDark()
+  const series = analysis.series
+  const lastIndex = Math.max(0, series.length - 1)
+  const [activeIndex, setActiveIndex] = useState(lastIndex)
 
   // Reset the hovered day when the underlying window changes (filters/athlete).
   useEffect(() => {
-    setActiveIndex(Math.max(0, series.length - 1));
-  }, [series.length]);
+    setActiveIndex(Math.max(0, series.length - 1))
+  }, [series.length])
 
-  const labels = useMemo(() => series.map((s) => s.date.slice(5)), [series]);
-  const option = useMemo(() => trainingLoadDetailChart(analysis, isDark), [analysis, isDark]);
+  const labels = useMemo(() => series.map((s) => s.date.slice(5)), [series])
+  const option = useMemo(() => trainingLoadDetailChart(analysis, isDark), [analysis, isDark])
 
   const handleAxisPointer = useCallback(
     (params: unknown) => {
       const payload = params as {
-        axesInfo?: { axisDim?: string; value?: number | string }[];
-      };
-      const xAxis = payload.axesInfo?.find((axis) => axis.axisDim === "x");
-      if (!xAxis || xAxis.value == null) return;
+        axesInfo?: { axisDim?: string; value?: number | string }[]
+      }
+      const xAxis = payload.axesInfo?.find((axis) => axis.axisDim === "x")
+      if (!xAxis || xAxis.value == null) return
       const index =
-        typeof xAxis.value === "number" ? xAxis.value : labels.indexOf(String(xAxis.value));
-      if (index < 0 || index >= series.length) return;
-      setActiveIndex(index);
+        typeof xAxis.value === "number" ? xAxis.value : labels.indexOf(String(xAxis.value))
+      if (index < 0 || index >= series.length) return
+      setActiveIndex(index)
     },
     [labels, series.length],
-  );
+  )
 
   const onEvents = useMemo(
     () => ({
@@ -224,11 +224,11 @@ export function TrainingLoadSection({
       globalout: () => setActiveIndex(Math.max(0, series.length - 1)),
     }),
     [handleAxisPointer, series.length],
-  );
+  )
 
-  if (series.length === 0) return null;
+  if (series.length === 0) return null
 
-  const activePoint = series[Math.min(activeIndex, lastIndex)];
+  const activePoint = series[Math.min(activeIndex, lastIndex)]
 
   return (
     <div className="space-y-4">
@@ -267,7 +267,13 @@ export function TrainingLoadSection({
         <MetricCard
           label="Monotony"
           value={String(analysis.monotony)}
-          sub={analysis.monotony < 1.5 ? "Good training variety" : analysis.monotony < 2 ? "Moderate variety" : "Low variety – risk"}
+          sub={
+            analysis.monotony < 1.5
+              ? "Good training variety"
+              : analysis.monotony < 2
+                ? "Moderate variety"
+                : "Low variety – risk"
+          }
           tip="Standard deviation of last 7 days of load divided by the mean. Below 1.5 = good variety. Above 2.0 = injury risk."
           colorClass={
             analysis.monotony < 1.5
@@ -314,5 +320,5 @@ export function TrainingLoadSection({
         <DayPanel point={activePoint} distanceUnit={distanceUnit} />
       </div>
     </div>
-  );
+  )
 }

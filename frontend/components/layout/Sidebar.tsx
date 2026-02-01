@@ -1,15 +1,15 @@
-"use client";
+"use client"
 
-import clsx from "clsx";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import clsx from "clsx"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
 
-import { ImportDialog } from "@/components/import/ImportDialog";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { deleteAthlete, revalidateAll, useMeta } from "@/lib/api";
-import { useAthleteContext } from "@/lib/athlete-context";
-import type { AthleteListItem } from "@/lib/types";
+import { ImportDialog } from "@/components/import/ImportDialog"
+import { ThemeToggle } from "@/components/ui/ThemeToggle"
+import { deleteAthlete, revalidateAll, useMeta } from "@/lib/api"
+import { useAthleteContext } from "@/lib/athlete-context"
+import type { AthleteListItem } from "@/lib/types"
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: "📊" },
@@ -20,32 +20,32 @@ const NAV_ITEMS = [
   { href: "/heatmap", label: "Heatmap", icon: "🗺️" },
   { href: "/milestones", label: "Milestones", icon: "🏆" },
   { href: "/rewind", label: "Rewind", icon: "⏪" },
-];
+]
 
 export function Sidebar() {
-  const pathname = usePathname();
-  const { athleteId, setAthleteId, athletes, setAthletes } = useAthleteContext();
-  const { data: meta } = useMeta(athleteId);
-  const [importOpen, setImportOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname()
+  const { athleteId, setAthleteId, athletes, setAthletes } = useAthleteContext()
+  const { data: meta } = useMeta(athleteId)
+  const [importOpen, setImportOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
-    if (!meta) return;
-    setAthletes(meta.athletes);
+    if (!meta) return
+    setAthletes(meta.athletes)
     if (meta.athletes.length === 0) {
-      if (athleteId) setAthleteId(null);
-      return;
+      if (athleteId) setAthleteId(null)
+      return
     }
-    const exists = meta.athletes.some((a) => a.athlete_id === athleteId);
+    const exists = meta.athletes.some((a) => a.athlete_id === athleteId)
     if (!athleteId || !exists) {
-      setAthleteId(meta.athletes[0].athlete_id);
+      setAthleteId(meta.athletes[0].athlete_id)
     }
-  }, [meta, athleteId, setAthleteId, setAthletes]);
+  }, [meta, athleteId, setAthleteId, setAthletes])
 
   // Close mobile nav on route change
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    setMobileOpen(false)
+  }, [pathname])
 
   const sidebarContent = (
     <>
@@ -62,7 +62,13 @@ export function Sidebar() {
             onClick={() => setMobileOpen(false)}
             className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -70,8 +76,7 @@ export function Sidebar() {
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
         {NAV_ITEMS.map((item) => {
-          const active =
-            item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
           return (
             <Link
               key={item.href}
@@ -86,7 +91,7 @@ export function Sidebar() {
               <span className="text-lg">{item.icon}</span>
               {item.label}
             </Link>
-          );
+          )
         })}
       </nav>
       <div className="border-t border-gray-200 p-3 dark:border-gray-700">
@@ -99,7 +104,7 @@ export function Sidebar() {
       </div>
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
     </>
-  );
+  )
 
   return (
     <>
@@ -115,7 +120,13 @@ export function Sidebar() {
           onClick={() => setMobileOpen(true)}
           className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
         >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
@@ -144,7 +155,7 @@ export function Sidebar() {
         {sidebarContent}
       </aside>
     </>
-  );
+  )
 }
 
 function AthleteSwitcher({
@@ -153,29 +164,29 @@ function AthleteSwitcher({
   onSwitch,
   onImport,
 }: {
-  athletes: AthleteListItem[];
-  activeId: string | null;
-  onSwitch: (id: string | null) => void;
-  onImport: () => void;
+  athletes: AthleteListItem[]
+  activeId: string | null
+  onSwitch: (id: string | null) => void
+  onImport: () => void
 }) {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
       if (ref.current && !ref.current.contains(event.target as Node)) {
-        setOpen(false);
-        setDeleting(null);
+        setOpen(false)
+        setDeleting(null)
       }
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [])
 
-  const active = athletes.find((a) => a.athlete_id === activeId);
-  const hasAthletes = athletes.length > 0;
+  const active = athletes.find((a) => a.athlete_id === activeId)
+  const hasAthletes = athletes.length > 0
 
   const initials = (name: string | null) =>
     (name ?? "?")
@@ -183,20 +194,20 @@ function AthleteSwitcher({
       .map((part) => part[0])
       .join("")
       .slice(0, 2)
-      .toUpperCase();
+      .toUpperCase()
 
   async function handleDelete(id: string) {
     try {
-      await deleteAthlete(id);
-      setDeleting(null);
-      setOpen(false);
+      await deleteAthlete(id)
+      setDeleting(null)
+      setOpen(false)
       if (activeId === id) {
-        const remaining = athletes.filter((a) => a.athlete_id !== id);
-        onSwitch(remaining.length > 0 ? remaining[0].athlete_id : null);
+        const remaining = athletes.filter((a) => a.athlete_id !== id)
+        onSwitch(remaining.length > 0 ? remaining[0].athlete_id : null)
       }
-      revalidateAll();
+      revalidateAll()
     } catch {
-      setDeleting(null);
+      setDeleting(null)
     }
   }
 
@@ -255,8 +266,8 @@ function AthleteSwitcher({
                   <>
                     <button
                       onClick={() => {
-                        onSwitch(athlete.athlete_id);
-                        setOpen(false);
+                        onSwitch(athlete.athlete_id)
+                        setOpen(false)
                       }}
                       className="flex flex-1 items-center gap-2"
                     >
@@ -264,7 +275,9 @@ function AthleteSwitcher({
                         {initials(athlete.name)}
                       </span>
                       <span className="min-w-0 flex-1 text-left">
-                        <span className="block truncate font-medium">{athlete.name ?? "Unknown"}</span>
+                        <span className="block truncate font-medium">
+                          {athlete.name ?? "Unknown"}
+                        </span>
                         <span className="block truncate text-xs text-gray-400">
                           {athlete.activity_count} activities
                         </span>
@@ -282,14 +295,12 @@ function AthleteSwitcher({
               </div>
             ))}
           </div>
-          {hasAthletes && (
-            <div className="border-t border-gray-200 dark:border-gray-700" />
-          )}
+          {hasAthletes && <div className="border-t border-gray-200 dark:border-gray-700" />}
           <div className="p-1">
             <button
               onClick={() => {
-                onImport();
-                setOpen(false);
+                onImport()
+                setOpen(false)
               }}
               className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
             >
@@ -313,5 +324,5 @@ function AthleteSwitcher({
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -1,15 +1,15 @@
-"use client";
+"use client"
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import type { AthleteListItem } from "./types";
+import { createContext, useCallback, useContext, useEffect, useState } from "react"
+import type { AthleteListItem } from "./types"
 
-const STORAGE_KEY = "fitme-athlete-id";
+const STORAGE_KEY = "fitme-athlete-id"
 
 interface AthleteContextValue {
-  athleteId: string | null;
-  setAthleteId: (id: string | null) => void;
-  athletes: AthleteListItem[];
-  setAthletes: (list: AthleteListItem[]) => void;
+  athleteId: string | null
+  setAthleteId: (id: string | null) => void
+  athletes: AthleteListItem[]
+  setAthletes: (list: AthleteListItem[]) => void
 }
 
 const AthleteContext = createContext<AthleteContextValue>({
@@ -17,37 +17,37 @@ const AthleteContext = createContext<AthleteContextValue>({
   setAthleteId: () => {},
   athletes: [],
   setAthletes: () => {},
-});
+})
 
 export function AthleteProvider({ children }: { children: React.ReactNode }) {
-  const [athleteId, setAthleteIdState] = useState<string | null>(null);
-  const [athletes, setAthletes] = useState<AthleteListItem[]>([]);
-  const [initialized, setInitialized] = useState(false);
+  const [athleteId, setAthleteIdState] = useState<string | null>(null)
+  const [athletes, setAthletes] = useState<AthleteListItem[]>([])
+  const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setAthleteIdState(stored);
-    setInitialized(true);
-  }, []);
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) setAthleteIdState(stored)
+    setInitialized(true)
+  }, [])
 
   const setAthleteId = useCallback((id: string | null) => {
-    setAthleteIdState(id);
+    setAthleteIdState(id)
     if (id) {
-      localStorage.setItem(STORAGE_KEY, id);
+      localStorage.setItem(STORAGE_KEY, id)
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY)
     }
-  }, []);
+  }, [])
 
-  if (!initialized) return null;
+  if (!initialized) return null
 
   return (
     <AthleteContext.Provider value={{ athleteId, setAthleteId, athletes, setAthletes }}>
       {children}
     </AthleteContext.Provider>
-  );
+  )
 }
 
 export function useAthleteContext() {
-  return useContext(AthleteContext);
+  return useContext(AthleteContext)
 }

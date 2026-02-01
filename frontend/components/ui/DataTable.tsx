@@ -1,13 +1,13 @@
-"use client";
+"use client"
 
-import clsx from "clsx";
+import clsx from "clsx"
 
 export interface Column<T> {
-  key: string;
-  header: string;
-  sortable?: boolean;
-  align?: "left" | "right" | "center";
-  render: (row: T) => React.ReactNode;
+  key: string
+  header: string
+  sortable?: boolean
+  align?: "left" | "right" | "center"
+  render: (row: T) => React.ReactNode
 }
 
 export function DataTable<T>({
@@ -19,13 +19,13 @@ export function DataTable<T>({
   onRowClick,
   getRowKey,
 }: {
-  columns: Column<T>[];
-  rows: T[];
-  sort?: string;
-  order?: "asc" | "desc";
-  onSort?: (key: string) => void;
-  onRowClick?: (row: T) => void;
-  getRowKey: (row: T) => string;
+  columns: Column<T>[]
+  rows: T[]
+  sort?: string
+  order?: "asc" | "desc"
+  onSort?: (key: string) => void
+  onRowClick?: (row: T) => void
+  getRowKey: (row: T) => string
 }) {
   return (
     <div className="overflow-x-auto">
@@ -81,5 +81,5 @@ export function DataTable<T>({
         <p className="py-8 text-center text-sm text-gray-400">No activities match your filters.</p>
       )}
     </div>
-  );
+  )
 }

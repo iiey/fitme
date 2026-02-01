@@ -1,142 +1,140 @@
-"use client";
+"use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { mutate } from "swr";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { mutate } from "swr"
 
-import { getImportRun, previewImport, startImport } from "@/lib/api";
-import { useAthleteContext } from "@/lib/athlete-context";
-import type { ImportPreview, ImportRunStatus } from "@/lib/types";
+import { getImportRun, previewImport, startImport } from "@/lib/api"
+import { useAthleteContext } from "@/lib/athlete-context"
+import type { ImportPreview, ImportRunStatus } from "@/lib/types"
 
-type Mode = "upload" | "path";
-type Phase = "select" | "confirm" | "importing";
-type MergeChoice = "new" | "merge";
+type Mode = "upload" | "path"
+type Phase = "select" | "confirm" | "importing"
+type MergeChoice = "new" | "merge"
 
-const POLL_INTERVAL_MS = 1500;
+const POLL_INTERVAL_MS = 1500
 
 export function ImportDialog({ onClose }: { onClose: () => void }) {
-  const { athletes } = useAthleteContext();
-  const [phase, setPhase] = useState<Phase>("select");
-  const [mode, setMode] = useState<Mode>("upload");
-  const [file, setFile] = useState<File | null>(null);
-  const [path, setPath] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [mergeChoice, setMergeChoice] = useState<MergeChoice>("new");
-  const [targetAthleteId, setTargetAthleteId] = useState("");
-  const [status, setStatus] = useState<ImportRunStatus | null>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { athletes } = useAthleteContext()
+  const [phase, setPhase] = useState<Phase>("select")
+  const [mode, setMode] = useState<Mode>("upload")
+  const [file, setFile] = useState<File | null>(null)
+  const [path, setPath] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<ImportPreview | null>(null)
+  const [mergeChoice, setMergeChoice] = useState<MergeChoice>("new")
+  const [targetAthleteId, setTargetAthleteId] = useState("")
+  const [status, setStatus] = useState<ImportRunStatus | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     return () => {
-      if (closeTimer.current) clearTimeout(closeTimer.current);
-    };
-  }, []);
+      if (closeTimer.current) clearTimeout(closeTimer.current)
+    }
+  }, [])
 
   const refreshData = useCallback(() => {
     // Revalidate every cached endpoint so the UI reflects the new import.
     mutate((key) => typeof key === "string" && key.startsWith("/api/"), undefined, {
       revalidate: true,
-    });
-  }, []);
+    })
+  }, [])
 
   // Existing athletes this import could merge into (excluding the export's own).
   const mergeTargets = useMemo(
     () => athletes.filter((a) => a.athlete_id !== preview?.source_athlete_id),
     [athletes, preview],
-  );
+  )
 
   // Poll the run while it imports in the background. Each tick refreshes the
   // app's data so newly imported activities appear gradually, and stops once
   // the import finishes or fails.
   useEffect(() => {
-    if (!status || status.status !== "running") return;
-    const runId = status.id;
+    if (!status || status.status !== "running") return
+    const runId = status.id
     const timer = setInterval(async () => {
       try {
-        const next = await getImportRun(runId);
-        setStatus(next);
-        refreshData();
+        const next = await getImportRun(runId)
+        setStatus(next)
+        refreshData()
         if (next.status === "ok" && (next.added > 0 || next.updated > 0)) {
-          closeTimer.current = setTimeout(onClose, 1500);
+          closeTimer.current = setTimeout(onClose, 1500)
         }
       } catch {
         // Transient polling error - keep trying on the next tick.
       }
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [status, refreshData, onClose]);
+    }, POLL_INTERVAL_MS)
+    return () => clearInterval(timer)
+  }, [status, refreshData, onClose])
 
   const continueToPreview = useCallback(async () => {
-    setBusy(true);
-    setError(null);
+    setBusy(true)
+    setError(null)
     try {
       const result =
         mode === "upload" && file
           ? await previewImport({ file })
-          : await previewImport({ source: path.trim() });
-      setPreview(result);
+          : await previewImport({ source: path.trim() })
+      setPreview(result)
       // Default to the suggested merge target when one is offered, else import
       // as a new (own) athlete.
       if (result.suggested_athlete_id) {
-        setMergeChoice("merge");
-        setTargetAthleteId(result.suggested_athlete_id);
+        setMergeChoice("merge")
+        setTargetAthleteId(result.suggested_athlete_id)
       } else {
-        setMergeChoice("new");
-        setTargetAthleteId("");
+        setMergeChoice("new")
+        setTargetAthleteId("")
       }
-      setPhase("confirm");
+      setPhase("confirm")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not read export");
+      setError(err instanceof Error ? err.message : "Could not read export")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  }, [mode, file, path]);
+  }, [mode, file, path])
 
   const runImport = useCallback(async () => {
-    if (!preview) return;
-    setBusy(true);
-    setError(null);
+    if (!preview) return
+    setBusy(true)
+    setError(null)
     try {
       // "merge" targets the chosen athlete; "new" pins the export's own id so a
       // remembered mapping can't silently re-merge it.
       const target =
-        mergeChoice === "merge" && targetAthleteId
-          ? targetAthleteId
-          : preview.source_athlete_id;
-      const started = await startImport(preview.source, target);
-      setStatus(started);
-      setPhase("importing");
+        mergeChoice === "merge" && targetAthleteId ? targetAthleteId : preview.source_athlete_id
+      const started = await startImport(preview.source, target)
+      setStatus(started)
+      setPhase("importing")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Import failed");
+      setError(err instanceof Error ? err.message : "Import failed")
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  }, [preview, mergeChoice, targetAthleteId]);
+  }, [preview, mergeChoice, targetAthleteId])
 
   const handleClose = useCallback(() => {
     // The import keeps running server-side; pull the latest data on the way out.
-    if (status?.status === "running") refreshData();
-    onClose();
-  }, [status, refreshData, onClose]);
+    if (status?.status === "running") refreshData()
+    onClose()
+  }, [status, refreshData, onClose])
 
   const onDrop = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    setDragOver(false);
-    const dropped = event.dataTransfer.files?.[0];
-    if (dropped) setFile(dropped);
-  }, []);
+    event.preventDefault()
+    setDragOver(false)
+    const dropped = event.dataTransfer.files?.[0]
+    if (dropped) setFile(dropped)
+  }, [])
 
-  const canContinue = mode === "upload" ? !!file : path.trim().length > 0;
-  const running = status?.status === "running";
-  const done = status?.status === "ok";
-  const failed = status?.status === "error";
+  const canContinue = mode === "upload" ? !!file : path.trim().length > 0
+  const running = status?.status === "running"
+  const done = status?.status === "ok"
+  const failed = status?.status === "error"
   const percent =
     status && status.total
       ? Math.min(100, Math.round((status.processed / status.total) * 100))
-      : null;
+      : null
 
   return (
     <div
@@ -161,16 +159,10 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         {phase === "select" && (
           <>
             <div className="mb-4 flex gap-1 rounded-lg bg-surface-muted p-1 text-sm">
-              <button
-                onClick={() => setMode("upload")}
-                className={tabClass(mode === "upload")}
-              >
+              <button onClick={() => setMode("upload")} className={tabClass(mode === "upload")}>
                 Upload .zip
               </button>
-              <button
-                onClick={() => setMode("path")}
-                className={tabClass(mode === "path")}
-              >
+              <button onClick={() => setMode("path")} className={tabClass(mode === "path")}>
                 Server path
               </button>
             </div>
@@ -178,8 +170,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
             {mode === "upload" ? (
               <div
                 onDragOver={(event) => {
-                  event.preventDefault();
-                  setDragOver(true);
+                  event.preventDefault()
+                  setDragOver(true)
                 }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={onDrop}
@@ -225,8 +217,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         {phase === "confirm" && preview && (
           <div className="space-y-4">
             <div className="rounded-lg bg-surface-muted px-3 py-2 text-sm">
-              Detected a{" "}
-              <strong>{preview.provider === "garmin" ? "Garmin" : "Strava"}</strong>{" "}
+              Detected a <strong>{preview.provider === "garmin" ? "Garmin" : "Strava"}</strong>{" "}
               export
               {preview.athlete_name ? (
                 <>
@@ -238,9 +229,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="mb-1 text-sm font-medium">
-                Import these activities as
-              </legend>
+              <legend className="mb-1 text-sm font-medium">Import these activities as</legend>
 
               <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-700">
                 <input
@@ -268,9 +257,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                     className="mt-0.5"
                     checked={mergeChoice === "merge"}
                     onChange={() => {
-                      setMergeChoice("merge");
+                      setMergeChoice("merge")
                       if (!targetAthleteId) {
-                        setTargetAthleteId(mergeTargets[0].athlete_id);
+                        setTargetAthleteId(mergeTargets[0].athlete_id)
                       }
                     }}
                   />
@@ -289,8 +278,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                       ))}
                     </select>
                     <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-                      Combines both services under one athlete; workouts you
-                      recorded on both are matched and not duplicated.
+                      Combines both services under one athlete; workouts you recorded on both are
+                      matched and not duplicated.
                     </span>
                   </span>
                 </label>
@@ -299,9 +288,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
             {preview.suggested_athlete_name && mergeChoice === "merge" && (
               <p className="rounded-lg bg-brand/5 px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
-                Suggested merge into <strong>{preview.suggested_athlete_name}</strong>{" "}
-                (matching name). Choose &ldquo;a separate athlete&rdquo; if this is
-                a different person.
+                Suggested merge into <strong>{preview.suggested_athlete_name}</strong> (matching
+                name). Choose &ldquo;a separate athlete&rdquo; if this is a different person.
               </p>
             )}
           </div>
@@ -331,9 +319,8 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                 : "Reading your export…"}
             </p>
             <p className="mt-3 rounded-lg bg-surface-muted px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
-              Large Garmin exports take a little while. You can close this and keep
-              using FitMe - the import continues in the background and your
-              activities appear gradually.
+              Large Garmin exports take a little while. You can close this and keep using FitMe -
+              the import continues in the background and your activities appear gradually.
             </p>
           </div>
         )}
@@ -361,9 +348,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           {phase === "confirm" ? (
             <button
               onClick={() => {
-                setPhase("select");
-                setPreview(null);
-                setError(null);
+                setPhase("select")
+                setPreview(null)
+                setError(null)
               }}
               className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
             >
@@ -406,11 +393,11 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function tabClass(active: boolean): string {
   return active
     ? "flex-1 rounded-md bg-surface px-3 py-1.5 font-medium shadow-sm"
-    : "flex-1 rounded-md px-3 py-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100";
+    : "flex-1 rounded-md px-3 py-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
 }

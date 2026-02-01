@@ -1,21 +1,28 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import Link from "next/link"
+import { useMemo, useState } from "react"
 
-import { ActivityHeatmap } from "@/components/charts/ActivityHeatmap";
-import { EChart } from "@/components/charts/EChart";
-import { EddingtonDetailModal } from "@/components/charts/EddingtonDetailModal";
-import { barChart, donutChart, hrZoneBarChart, lineChart, weekdayAverageChart, yearlyStatsChart } from "@/components/charts/options";
-import { ImportDialog } from "@/components/import/ImportDialog";
-import { Card } from "@/components/ui/Card";
-import { DeferredSection } from "@/components/ui/DeferredSection";
-import { StatCard } from "@/components/ui/StatCard";
-import { EmptyState, ErrorState, Spinner } from "@/components/ui/States";
-import { useDashboard, useMeta } from "@/lib/api";
-import { useAthleteContext } from "@/lib/athlete-context";
-import { formatDate, formatHours, formatNumber } from "@/lib/format";
-import { useIsDark } from "@/lib/use-is-dark";
+import { ActivityHeatmap } from "@/components/charts/ActivityHeatmap"
+import { EChart } from "@/components/charts/EChart"
+import { EddingtonDetailModal } from "@/components/charts/EddingtonDetailModal"
+import {
+  barChart,
+  donutChart,
+  hrZoneBarChart,
+  lineChart,
+  weekdayAverageChart,
+  yearlyStatsChart,
+} from "@/components/charts/options"
+import { ImportDialog } from "@/components/import/ImportDialog"
+import { Card } from "@/components/ui/Card"
+import { DeferredSection } from "@/components/ui/DeferredSection"
+import { StatCard } from "@/components/ui/StatCard"
+import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
+import { useDashboard, useMeta } from "@/lib/api"
+import { useAthleteContext } from "@/lib/athlete-context"
+import { formatDate, formatHours, formatNumber } from "@/lib/format"
+import { useIsDark } from "@/lib/use-is-dark"
 
 const WINDOW_OPTIONS = [
   { value: 7, label: "7 days" },
@@ -26,7 +33,7 @@ const WINDOW_OPTIONS = [
   { value: 120, label: "120 days" },
   { value: 180, label: "180 days" },
   { value: 365, label: "1 year" },
-];
+]
 
 const HR_ZONE_INFO: Record<string, string> = {
   Z1: "Recovery - very light effort, active recovery",
@@ -34,7 +41,7 @@ const HR_ZONE_INFO: Record<string, string> = {
   Z3: "Tempo - moderate effort, sustained pace",
   Z4: "Threshold - hard effort near lactate threshold",
   Z5: "VO2max - maximal effort, anaerobic capacity",
-};
+}
 
 const POWER_DURATION_INFO: Record<string, string> = {
   "5s": "Neuromuscular - peak sprint power",
@@ -42,19 +49,19 @@ const POWER_DURATION_INFO: Record<string, string> = {
   "1m": "Anaerobic power - sustained sprint",
   "5m": "VO2max / MAP - maximal aerobic power",
   "20m": "FTP estimate - functional threshold power",
-};
+}
 
 export default function DashboardPage() {
-  const { athleteId } = useAthleteContext();
-  const { data: meta } = useMeta(athleteId);
-  const isDark = useIsDark();
-  const [importOpen, setImportOpen] = useState(false);
-  const [eddingtonOpen, setEddingtonOpen] = useState(false);
-  const [sportType, setSportType] = useState("");
-  const [year, setYear] = useState("");
-  const [hrWindow, setHrWindow] = useState(30);
-  const [powerWindow, setPowerWindow] = useState(120);
-  const [weeklyMetric, setWeeklyMetric] = useState<"hours" | "km">("hours");
+  const { athleteId } = useAthleteContext()
+  const { data: meta } = useMeta(athleteId)
+  const isDark = useIsDark()
+  const [importOpen, setImportOpen] = useState(false)
+  const [eddingtonOpen, setEddingtonOpen] = useState(false)
+  const [sportType, setSportType] = useState("")
+  const [year, setYear] = useState("")
+  const [hrWindow, setHrWindow] = useState(30)
+  const [powerWindow, setPowerWindow] = useState(120)
+  const [weeklyMetric, setWeeklyMetric] = useState<"hours" | "km">("hours")
 
   const filters = useMemo(
     () => ({
@@ -65,11 +72,11 @@ export default function DashboardPage() {
       power_window: powerWindow,
     }),
     [sportType, year, hrWindow, powerWindow],
-  );
-  const { data, error, isLoading } = useDashboard(athleteId, filters);
+  )
+  const { data, error, isLoading } = useDashboard(athleteId, filters)
 
-  const distanceUnit = meta?.distance_unit ?? "km";
-  const availableYears = data?.available_years ?? [];
+  const distanceUnit = meta?.distance_unit ?? "km"
+  const availableYears = data?.available_years ?? []
 
   if (data?.empty) {
     return (
@@ -87,7 +94,7 @@ export default function DashboardPage() {
         />
         {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
       </>
-    );
+    )
   }
 
   const filterControls = (
@@ -117,7 +124,7 @@ export default function DashboardPage() {
         ))}
       </select>
     </div>
-  );
+  )
 
   const header = (
     <header className="flex flex-wrap items-center justify-between gap-3">
@@ -127,7 +134,7 @@ export default function DashboardPage() {
       </div>
       {filterControls}
     </header>
-  );
+  )
 
   if (isLoading && !data) {
     return (
@@ -135,7 +142,7 @@ export default function DashboardPage() {
         {header}
         <Spinner label="Loading dashboard…" />
       </div>
-    );
+    )
   }
   if (error) {
     return (
@@ -156,7 +163,7 @@ export default function DashboardPage() {
         </div>
         {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
       </>
-    );
+    )
   }
   if (!data || data.filtered_empty) {
     return (
@@ -164,19 +171,15 @@ export default function DashboardPage() {
         {header}
         <EmptyState message="No activities match these filters. Try a different sport or time period." />
       </div>
-    );
+    )
   }
 
-  const monthly = data.monthly_stats.slice(-24);
+  const monthly = data.monthly_stats.slice(-24)
   // Size the physiology row to the number of visible cards so it always fills
   // the row (peak power is absent for athletes without a power meter).
-  const physioCards = (data.hr_zones ? 1 : 0) + (data.peak_power ? 1 : 0) + 1;
+  const physioCards = (data.hr_zones ? 1 : 0) + (data.peak_power ? 1 : 0) + 1
   const physioColsClass =
-    physioCards === 1
-      ? "lg:grid-cols-1"
-      : physioCards === 2
-        ? "lg:grid-cols-2"
-        : "lg:grid-cols-3";
+    physioCards === 1 ? "lg:grid-cols-1" : physioCards === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3"
 
   return (
     <div className="space-y-6">
@@ -185,7 +188,10 @@ export default function DashboardPage() {
       {/* Totals */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Activities" value={formatNumber(data.totals.count)} accent />
-        <StatCard label={`Distance (${distanceUnit})`} value={formatNumber(data.totals.distance, 0)} />
+        <StatCard
+          label={`Distance (${distanceUnit})`}
+          value={formatNumber(data.totals.distance, 0)}
+        />
         <StatCard label="Elevation (m)" value={formatNumber(data.totals.elevation, 0)} />
         <StatCard label="Moving Time" value={formatHours(data.totals.moving_time_s)} />
       </div>
@@ -255,23 +261,23 @@ export default function DashboardPage() {
                   distanceUnit,
                   isDark,
                   true,
-                );
-                const counts = monthly.map((m) => m.count);
+                )
+                const counts = monthly.map((m) => m.count)
                 opt.tooltip = {
-                  ...opt.tooltip as object,
+                  ...(opt.tooltip as object),
                   trigger: "axis",
                   formatter: (params: unknown) => {
-                    const list = params as { dataIndex: number; axisValueLabel: string }[];
-                    const i = Array.isArray(list) ? list[0]?.dataIndex ?? 0 : 0;
-                    const label = Array.isArray(list) ? list[0]?.axisValueLabel ?? "" : "";
-                    const n = counts[i];
+                    const list = params as { dataIndex: number; axisValueLabel: string }[]
+                    const i = Array.isArray(list) ? (list[0]?.dataIndex ?? 0) : 0
+                    const label = Array.isArray(list) ? (list[0]?.axisValueLabel ?? "") : ""
+                    const n = counts[i]
                     return (
                       `<div style="font-weight:600;margin-bottom:4px">${label}</div>` +
                       `<div>${n} ${n === 1 ? "activity" : "activities"}</div>`
-                    );
+                    )
                   },
-                };
-                return opt;
+                }
+                return opt
               })()}
               height={260}
             />
@@ -321,9 +327,7 @@ export default function DashboardPage() {
                   <InfoTooltip text="Time spent in each HR zone. Z1=Recovery, Z2=Endurance, Z3=Tempo, Z4=Threshold, Z5=VO2max" />
                 </div>
               }
-              action={
-                <WindowSelector value={hrWindow} onChange={setHrWindow} />
-              }
+              action={<WindowSelector value={hrWindow} onChange={setHrWindow} />}
             >
               <EChart
                 option={hrZoneBarChart(
@@ -336,7 +340,8 @@ export default function DashboardPage() {
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                 {Object.entries(HR_ZONE_INFO).map(([zone, desc]) => (
                   <span key={zone} className="text-[11px] text-gray-400">
-                    <strong className="text-gray-500 dark:text-gray-300">{zone}</strong> {desc.split("—")[1]?.trim()}
+                    <strong className="text-gray-500 dark:text-gray-300">{zone}</strong>{" "}
+                    {desc.split("—")[1]?.trim()}
                   </span>
                 ))}
               </div>
@@ -350,9 +355,7 @@ export default function DashboardPage() {
                   <InfoTooltip text="Best average watts for each duration. 5s=Sprint, 30s=Anaerobic, 1m=Power, 5m=VO2max, 20m=FTP" />
                 </div>
               }
-              action={
-                <WindowSelector value={powerWindow} onChange={setPowerWindow} />
-              }
+              action={<WindowSelector value={powerWindow} onChange={setPowerWindow} />}
             >
               <EChart
                 option={barChart(
@@ -367,7 +370,8 @@ export default function DashboardPage() {
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                 {Object.entries(POWER_DURATION_INFO).map(([dur, desc]) => (
                   <span key={dur} className="text-[11px] text-gray-400">
-                    <strong className="text-gray-500 dark:text-gray-300">{dur}</strong> {desc.split("—")[1]?.trim()}
+                    <strong className="text-gray-500 dark:text-gray-300">{dur}</strong>{" "}
+                    {desc.split("—")[1]?.trim()}
                   </span>
                 ))}
               </div>
@@ -462,7 +466,9 @@ export default function DashboardPage() {
                   >
                     {activity.name}
                   </Link>
-                  <span className="text-xs text-gray-400">{formatDate(activity.start_date_time)}</span>
+                  <span className="text-xs text-gray-400">
+                    {formatDate(activity.start_date_time)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -487,12 +493,12 @@ export default function DashboardPage() {
         <EddingtonDetailModal athleteId={athleteId} onClose={() => setEddingtonOpen(false)} />
       )}
     </div>
-  );
+  )
 }
 
 function labelForDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.round(seconds / 60)}m`;
+  if (seconds < 60) return `${seconds}s`
+  return `${Math.round(seconds / 60)}m`
 }
 
 function InfoTooltip({ text }: { text: string }) {
@@ -505,7 +511,7 @@ function InfoTooltip({ text }: { text: string }) {
         {text}
       </span>
     </span>
-  );
+  )
 }
 
 function WindowSelector({ value, onChange }: { value: number; onChange: (v: number) => void }) {
@@ -521,5 +527,5 @@ function WindowSelector({ value, onChange }: { value: number; onChange: (v: numb
         </option>
       ))}
     </select>
-  );
+  )
 }

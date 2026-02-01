@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata } from "next"
 
-import "./globals.css";
-import "leaflet/dist/leaflet.css";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { AthleteProvider } from "@/lib/athlete-context";
+import "./globals.css"
+import "leaflet/dist/leaflet.css"
+import { Sidebar } from "@/components/layout/Sidebar"
+import { AthleteProvider } from "@/lib/athlete-context"
 
 export const metadata: Metadata = {
   title: "FitMe",
   description: "Self-hosted fitness statistics",
-};
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,5 +24,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </AthleteProvider>
       </body>
     </html>
-  );
+  )
 }

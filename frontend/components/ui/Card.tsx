@@ -1,4 +1,4 @@
-import clsx from "clsx";
+import clsx from "clsx"
 
 export function Card({
   title,
@@ -6,10 +6,10 @@ export function Card({
   className,
   action,
 }: {
-  title?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-  action?: React.ReactNode;
+  title?: React.ReactNode
+  children: React.ReactNode
+  className?: string
+  action?: React.ReactNode
 }) {
   return (
     <section className={clsx("card p-4", className)}>
@@ -21,5 +21,5 @@ export function Card({
       )}
       {children}
     </section>
-  );
+  )
 }

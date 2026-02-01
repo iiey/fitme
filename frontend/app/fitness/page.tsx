@@ -1,25 +1,22 @@
-"use client";
+"use client"
 
-import { useMemo, useState } from "react";
+import { useMemo, useState } from "react"
 
-import { TrainingLoadSection } from "@/components/charts/TrainingLoadSection";
-import { DeferredSection } from "@/components/ui/DeferredSection";
-import { EmptyState, Spinner } from "@/components/ui/States";
-import { useDashboard, useMeta } from "@/lib/api";
-import { useAthleteContext } from "@/lib/athlete-context";
+import { TrainingLoadSection } from "@/components/charts/TrainingLoadSection"
+import { DeferredSection } from "@/components/ui/DeferredSection"
+import { EmptyState, Spinner } from "@/components/ui/States"
+import { useDashboard, useMeta } from "@/lib/api"
+import { useAthleteContext } from "@/lib/athlete-context"
 
 export default function FitnessPage() {
-  const { athleteId } = useAthleteContext();
-  const { data: meta } = useMeta(athleteId);
-  const [sportType, setSportType] = useState("");
+  const { athleteId } = useAthleteContext()
+  const { data: meta } = useMeta(athleteId)
+  const [sportType, setSportType] = useState("")
 
-  const filters = useMemo(
-    () => ({ sport_type: sportType ? [sportType] : undefined }),
-    [sportType],
-  );
-  const { data, error, isLoading } = useDashboard(athleteId, filters);
+  const filters = useMemo(() => ({ sport_type: sportType ? [sportType] : undefined }), [sportType])
+  const { data, error, isLoading } = useDashboard(athleteId, filters)
 
-  const distanceUnit = meta?.distance_unit ?? "km";
+  const distanceUnit = meta?.distance_unit ?? "km"
 
   const filterControls = (
     <select
@@ -34,7 +31,7 @@ export default function FitnessPage() {
         </option>
       ))}
     </select>
-  );
+  )
 
   const header = (
     <header className="flex flex-wrap items-center justify-between gap-3">
@@ -44,7 +41,7 @@ export default function FitnessPage() {
       </div>
       {filterControls}
     </header>
-  );
+  )
 
   if (isLoading && !data) {
     return (
@@ -52,7 +49,7 @@ export default function FitnessPage() {
         {header}
         <Spinner label="Loading fitness data…" />
       </div>
-    );
+    )
   }
   if (error || !data) {
     return (
@@ -60,7 +57,7 @@ export default function FitnessPage() {
         {header}
         <EmptyState message="Could not load fitness data. Try importing your data." />
       </div>
-    );
+    )
   }
   if (!data.training_load_analysis) {
     return (
@@ -68,7 +65,7 @@ export default function FitnessPage() {
         {header}
         <EmptyState message="Not enough data for training load analysis yet. Import more activities to see fitness trends." />
       </div>
-    );
+    )
   }
 
   return (
@@ -78,5 +75,5 @@ export default function FitnessPage() {
         <TrainingLoadSection analysis={data.training_load_analysis} distanceUnit={distanceUnit} />
       </DeferredSection>
     </div>
-  );
+  )
 }

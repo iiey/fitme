@@ -1,46 +1,46 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from "react"
 
-type Theme = "light" | "dark" | "system";
+type Theme = "light" | "dark" | "system"
 
 function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "system";
-  return (localStorage.getItem("theme") as Theme) ?? "system";
+  if (typeof window === "undefined") return "system"
+  return (localStorage.getItem("theme") as Theme) ?? "system"
 }
 
 function applyTheme(theme: Theme) {
   const isDark =
     theme === "dark" ||
-    (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.classList.toggle("dark", isDark);
+    (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+  document.documentElement.classList.toggle("dark", isDark)
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("system");
+  const [theme, setTheme] = useState<Theme>("system")
 
   useEffect(() => {
-    const stored = getStoredTheme();
-    setTheme(stored);
-    applyTheme(stored);
+    const stored = getStoredTheme()
+    setTheme(stored)
+    applyTheme(stored)
 
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const mq = window.matchMedia("(prefers-color-scheme: dark)")
     const handler = () => {
-      if (getStoredTheme() === "system") applyTheme("system");
-    };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+      if (getStoredTheme() === "system") applyTheme("system")
+    }
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
 
   const cycle = () => {
-    const next: Theme = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
-    setTheme(next);
-    localStorage.setItem("theme", next);
-    applyTheme(next);
-  };
+    const next: Theme = theme === "light" ? "dark" : theme === "dark" ? "system" : "light"
+    setTheme(next)
+    localStorage.setItem("theme", next)
+    applyTheme(next)
+  }
 
-  const label = theme === "light" ? "Light" : theme === "dark" ? "Dark" : "Auto";
-  const icon = theme === "light" ? "☀" : theme === "dark" ? "☾" : "◐";
+  const label = theme === "light" ? "Light" : theme === "dark" ? "Dark" : "Auto"
+  const icon = theme === "light" ? "☀" : theme === "dark" ? "☾" : "◐"
 
   return (
     <button
@@ -52,5 +52,5 @@ export function ThemeToggle() {
       <span className="text-base">{icon}</span>
       <span className="hidden md:inline">{label}</span>
     </button>
-  );
+  )
 }

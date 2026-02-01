@@ -1,19 +1,13 @@
-"use client";
+"use client"
 
-import { useCallback, useState } from "react";
+import { useCallback, useState } from "react"
 
-import { Card } from "@/components/ui/Card";
-import { ErrorState, Spinner } from "@/components/ui/States";
-import {
-  createGoal,
-  deleteGoal,
-  updateGoal,
-  useMeta,
-  useGoalsProgress,
-} from "@/lib/api";
-import { useAthleteContext } from "@/lib/athlete-context";
-import { formatDate, formatDuration, formatNumber } from "@/lib/format";
-import type { GoalCreate, GoalProgressResponse } from "@/lib/types";
+import { Card } from "@/components/ui/Card"
+import { ErrorState, Spinner } from "@/components/ui/States"
+import { createGoal, deleteGoal, updateGoal, useMeta, useGoalsProgress } from "@/lib/api"
+import { useAthleteContext } from "@/lib/athlete-context"
+import { formatDate, formatDuration, formatNumber } from "@/lib/format"
+import type { GoalCreate, GoalProgressResponse } from "@/lib/types"
 
 const METRIC_OPTIONS: { value: string; label: string; unit: string }[] = [
   { value: "count", label: "Activities", unit: "" },
@@ -21,54 +15,47 @@ const METRIC_OPTIONS: { value: string; label: string; unit: string }[] = [
   { value: "elevation_m", label: "Elevation", unit: "m" },
   { value: "moving_time_s", label: "Moving Time", unit: "" },
   { value: "calories", label: "Calories", unit: "kcal" },
-];
+]
 
 function metricLabel(metric: string): string {
-  return METRIC_OPTIONS.find((m) => m.value === metric)?.label ?? metric;
+  return METRIC_OPTIONS.find((m) => m.value === metric)?.label ?? metric
 }
 
 function formatMetricValue(metric: string, value: number): string {
-  if (metric === "distance_m") return `${formatNumber(value / 1000, 1)} km`;
-  if (metric === "elevation_m") return `${formatNumber(value, 0)} m`;
-  if (metric === "moving_time_s") return formatDuration(value);
-  if (metric === "calories") return `${formatNumber(value, 0)} kcal`;
-  return formatNumber(value, 0);
+  if (metric === "distance_m") return `${formatNumber(value / 1000, 1)} km`
+  if (metric === "elevation_m") return `${formatNumber(value, 0)} m`
+  if (metric === "moving_time_s") return formatDuration(value)
+  if (metric === "calories") return `${formatNumber(value, 0)} kcal`
+  return formatNumber(value, 0)
 }
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toISOString().slice(0, 10)
 }
 
 function endOfYearISO(): string {
-  return `${new Date().getFullYear()}-12-31`;
+  return `${new Date().getFullYear()}-12-31`
 }
 
 export default function GoalsPage() {
-  const { athleteId } = useAthleteContext();
-  const { data: meta } = useMeta(athleteId);
-  const {
-    data: goals,
-    error,
-    isLoading,
-    mutate: mutateGoals,
-  } = useGoalsProgress(athleteId);
+  const { athleteId } = useAthleteContext()
+  const { data: meta } = useMeta(athleteId)
+  const { data: goals, error, isLoading, mutate: mutateGoals } = useGoalsProgress(athleteId)
 
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(false)
 
-  if (isLoading) return <Spinner label="Loading goals…" />;
-  if (error) return <ErrorState message="Could not load goals." />;
+  if (isLoading) return <Spinner label="Loading goals…" />
+  if (error) return <ErrorState message="Could not load goals." />
 
-  const activeGoals = (goals ?? []).filter((g) => g.end_date >= todayISO());
-  const pastGoals = (goals ?? []).filter((g) => g.end_date < todayISO());
+  const activeGoals = (goals ?? []).filter((g) => g.end_date >= todayISO())
+  const pastGoals = (goals ?? []).filter((g) => g.end_date < todayISO())
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Goals</h1>
-          <p className="text-sm text-gray-500">
-            Set targets and track your progress.
-          </p>
+          <p className="text-sm text-gray-500">Set targets and track your progress.</p>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
@@ -83,17 +70,15 @@ export default function GoalsPage() {
           athleteId={athleteId}
           sportTypes={meta?.sport_types ?? []}
           onCreated={() => {
-            setShowForm(false);
-            void mutateGoals();
+            setShowForm(false)
+            void mutateGoals()
           }}
         />
       )}
 
       {activeGoals.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Active
-          </h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Active</h2>
           {activeGoals.map((goal) => (
             <GoalCard
               key={goal.id}
@@ -127,14 +112,12 @@ export default function GoalsPage() {
         <Card>
           <div className="py-8 text-center text-gray-400">
             <p className="text-lg">No goals yet</p>
-            <p className="mt-1 text-sm">
-              Create your first goal to start tracking progress.
-            </p>
+            <p className="mt-1 text-sm">Create your first goal to start tracking progress.</p>
           </div>
         </Card>
       )}
     </div>
-  );
+  )
 }
 
 function GoalCard({
@@ -143,28 +126,28 @@ function GoalCard({
   sportTypes,
   onMutate,
 }: {
-  goal: GoalProgressResponse;
-  athleteId: string | null;
-  sportTypes: { value: string; label: string }[];
-  onMutate: () => void;
+  goal: GoalProgressResponse
+  athleteId: string | null
+  sportTypes: { value: string; label: string }[]
+  onMutate: () => void
 }) {
-  const [busy, setBusy] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editing, setEditing] = useState(false)
 
-  const pct = Math.min(goal.percentage, 100);
-  const isComplete = pct >= 100;
-  const barColor = isComplete ? "bg-green-500" : "bg-brand";
+  const pct = Math.min(goal.percentage, 100)
+  const isComplete = pct >= 100
+  const barColor = isComplete ? "bg-green-500" : "bg-brand"
 
   async function handleDelete() {
-    if (!athleteId) return;
-    setBusy(true);
+    if (!athleteId) return
+    setBusy(true)
     try {
-      await deleteGoal(athleteId, goal.id);
-      onMutate();
+      await deleteGoal(athleteId, goal.id)
+      onMutate()
     } finally {
-      setBusy(false);
-      setConfirmDelete(false);
+      setBusy(false)
+      setConfirmDelete(false)
     }
   }
 
@@ -174,10 +157,13 @@ function GoalCard({
         goal={goal}
         athleteId={athleteId!}
         sportTypes={sportTypes}
-        onSaved={() => { setEditing(false); onMutate(); }}
+        onSaved={() => {
+          setEditing(false)
+          onMutate()
+        }}
         onCancel={() => setEditing(false)}
       />
-    );
+    )
   }
 
   return (
@@ -204,9 +190,7 @@ function GoalCard({
               {formatDate(goal.start_date, "MMM d, yyyy")} &ndash;{" "}
               {formatDate(goal.end_date, "MMM d, yyyy")}
             </p>
-            {goal.note && (
-              <p className="mt-1 text-sm text-gray-500 italic">{goal.note}</p>
-            )}
+            {goal.note && <p className="mt-1 text-sm text-gray-500 italic">{goal.note}</p>}
           </div>
           <div className="text-right shrink-0">
             <div className="text-lg font-bold tabular-nums">
@@ -269,7 +253,7 @@ function GoalCard({
         </div>
       </div>
     </Card>
-  );
+  )
 }
 
 function EditGoalForm({
@@ -279,44 +263,41 @@ function EditGoalForm({
   onSaved,
   onCancel,
 }: {
-  goal: GoalProgressResponse;
-  athleteId: string;
-  sportTypes: { value: string; label: string }[];
-  onSaved: () => void;
-  onCancel: () => void;
+  goal: GoalProgressResponse
+  athleteId: string
+  sportTypes: { value: string; label: string }[]
+  onSaved: () => void
+  onCancel: () => void
 }) {
-  const displayTarget = goal.metric === "distance_m"
-    ? goal.target_value / 1000
-    : goal.target_value;
+  const displayTarget = goal.metric === "distance_m" ? goal.target_value / 1000 : goal.target_value
 
-  const [metric, setMetric] = useState(goal.metric);
-  const [targetValue, setTargetValue] = useState(String(displayTarget));
-  const [sportType, setSportType] = useState(goal.sport_type ?? "");
-  const [startDate, setStartDate] = useState(goal.start_date);
-  const [endDate, setEndDate] = useState(goal.end_date);
-  const [note, setNote] = useState(goal.note ?? "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [metric, setMetric] = useState(goal.metric)
+  const [targetValue, setTargetValue] = useState(String(displayTarget))
+  const [sportType, setSportType] = useState(goal.sport_type ?? "")
+  const [startDate, setStartDate] = useState(goal.start_date)
+  const [endDate, setEndDate] = useState(goal.end_date)
+  const [note, setNote] = useState(goal.note ?? "")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const targetUnit =
-    METRIC_OPTIONS.find((m) => m.value === metric)?.unit ?? "";
+  const targetUnit = METRIC_OPTIONS.find((m) => m.value === metric)?.unit ?? ""
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const raw = parseFloat(targetValue);
+    e.preventDefault()
+    setError(null)
+    const raw = parseFloat(targetValue)
     if (isNaN(raw) || raw <= 0) {
-      setError("Target must be a positive number.");
-      return;
+      setError("Target must be a positive number.")
+      return
     }
     if (endDate < startDate) {
-      setError("End date must be after start date.");
-      return;
+      setError("End date must be after start date.")
+      return
     }
 
-    const apiTarget = metric === "distance_m" ? raw * 1000 : raw;
+    const apiTarget = metric === "distance_m" ? raw * 1000 : raw
 
-    setSaving(true);
+    setSaving(true)
     try {
       await updateGoal(athleteId, goal.id, {
         start_date: startDate,
@@ -325,12 +306,12 @@ function EditGoalForm({
         metric,
         target_value: apiTarget,
         note: note.trim() || null,
-      });
-      onSaved();
+      })
+      onSaved()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update goal");
+      setError(err instanceof Error ? err.message : "Could not update goal")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
@@ -370,8 +351,7 @@ function EditGoalForm({
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium">
-              Sport{" "}
-              <span className="font-normal text-gray-400">(optional)</span>
+              Sport <span className="font-normal text-gray-400">(optional)</span>
             </span>
             <select
               value={sportType}
@@ -442,7 +422,7 @@ function EditGoalForm({
         </div>
       </form>
     </Card>
-  );
+  )
 }
 
 function NewGoalForm({
@@ -450,43 +430,42 @@ function NewGoalForm({
   sportTypes,
   onCreated,
 }: {
-  athleteId: string;
-  sportTypes: { value: string; label: string }[];
-  onCreated: () => void;
+  athleteId: string
+  sportTypes: { value: string; label: string }[]
+  onCreated: () => void
 }) {
-  const [metric, setMetric] = useState("distance_m");
-  const [targetValue, setTargetValue] = useState("");
-  const [sportType, setSportType] = useState("");
-  const [startDate, setStartDate] = useState(todayISO);
-  const [endDate, setEndDate] = useState(endOfYearISO);
-  const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [metric, setMetric] = useState("distance_m")
+  const [targetValue, setTargetValue] = useState("")
+  const [sportType, setSportType] = useState("")
+  const [startDate, setStartDate] = useState(todayISO)
+  const [endDate, setEndDate] = useState(endOfYearISO)
+  const [note, setNote] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const targetForApi = useCallback((): number => {
-    const raw = parseFloat(targetValue);
-    if (isNaN(raw) || raw <= 0) return 0;
-    if (metric === "distance_m") return raw * 1000;
-    return raw;
-  }, [targetValue, metric]);
+    const raw = parseFloat(targetValue)
+    if (isNaN(raw) || raw <= 0) return 0
+    if (metric === "distance_m") return raw * 1000
+    return raw
+  }, [targetValue, metric])
 
-  const targetUnit =
-    METRIC_OPTIONS.find((m) => m.value === metric)?.unit ?? "";
+  const targetUnit = METRIC_OPTIONS.find((m) => m.value === metric)?.unit ?? ""
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const apiTarget = targetForApi();
+    e.preventDefault()
+    setError(null)
+    const apiTarget = targetForApi()
     if (apiTarget <= 0) {
-      setError("Target must be a positive number.");
-      return;
+      setError("Target must be a positive number.")
+      return
     }
     if (endDate < startDate) {
-      setError("End date must be after start date.");
-      return;
+      setError("End date must be after start date.")
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
     try {
       const goal: GoalCreate = {
         start_date: startDate,
@@ -495,13 +474,13 @@ function NewGoalForm({
         metric,
         target_value: apiTarget,
         note: note.trim() || null,
-      };
-      await createGoal(athleteId, goal);
-      onCreated();
+      }
+      await createGoal(athleteId, goal)
+      onCreated()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create goal");
+      setError(err instanceof Error ? err.message : "Could not create goal")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
@@ -548,8 +527,7 @@ function NewGoalForm({
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium">
-              Sport{" "}
-              <span className="font-normal text-gray-400">(optional)</span>
+              Sport <span className="font-normal text-gray-400">(optional)</span>
             </span>
             <select
               value={sportType}
@@ -612,5 +590,5 @@ function NewGoalForm({
         </div>
       </form>
     </Card>
-  );
+  )
 }

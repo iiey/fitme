@@ -1,27 +1,27 @@
-"use client";
+"use client"
 
-import dynamic from "next/dynamic";
-import Link from "next/link";
-import { use, useCallback, useState } from "react";
-import type { EChartsOption } from "echarts";
-import { mutate } from "swr";
+import dynamic from "next/dynamic"
+import Link from "next/link"
+import { use, useCallback, useState } from "react"
+import type { EChartsOption } from "echarts"
+import { mutate } from "swr"
 
-import { EChart } from "@/components/charts/EChart";
-import { Card } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
-import { ErrorState, Spinner } from "@/components/ui/States";
-import { updateActivityNote, useActivity, useMeta } from "@/lib/api";
-import { useAthleteContext } from "@/lib/athlete-context";
+import { EChart } from "@/components/charts/EChart"
+import { Card } from "@/components/ui/Card"
+import { StatCard } from "@/components/ui/StatCard"
+import { ErrorState, Spinner } from "@/components/ui/States"
+import { updateActivityNote, useActivity, useMeta } from "@/lib/api"
+import { useAthleteContext } from "@/lib/athlete-context"
 import {
   colorForActivityType,
   formatActivityPace,
   formatDate,
   formatDuration,
   formatNumber,
-} from "@/lib/format";
-import type { ActivityDetail, HrCurvePoint, HrZoneItem, PaceZoneItem } from "@/lib/types";
+} from "@/lib/format"
+import type { ActivityDetail, HrCurvePoint, HrZoneItem, PaceZoneItem } from "@/lib/types"
 
-const RouteMap = dynamic(() => import("@/components/map/RouteMap"), { ssr: false });
+const RouteMap = dynamic(() => import("@/components/map/RouteMap"), { ssr: false })
 
 function streamChart(
   distance: (number | null)[],
@@ -29,7 +29,7 @@ function streamChart(
   color: string,
   unit: string,
 ): EChartsOption {
-  const data = distance.map((d, index) => [d ? d / 1000 : 0, values[index]]);
+  const data = distance.map((d, index) => [d ? d / 1000 : 0, values[index]])
   return {
     grid: { left: 50, right: 20, top: 12, bottom: 36 },
     tooltip: {
@@ -38,9 +38,9 @@ function streamChart(
       borderColor: "#e5e7eb",
       textStyle: { color: "#374151", fontSize: 12 },
       formatter: (params: unknown) => {
-        const p = Array.isArray(params) ? params[0] : params;
-        const val = (p as { value: [number, number] }).value;
-        return `<strong>${formatNumber(val[1], 1)} ${unit}</strong><br/><span style="color:#9ca3af">${formatNumber(val[0], 2)} km</span>`;
+        const p = Array.isArray(params) ? params[0] : params
+        const val = (p as { value: [number, number] }).value
+        return `<strong>${formatNumber(val[1], 1)} ${unit}</strong><br/><span style="color:#9ca3af">${formatNumber(val[0], 2)} km</span>`
       },
     },
     xAxis: {
@@ -71,7 +71,10 @@ function streamChart(
         areaStyle: {
           color: {
             type: "linear",
-            x: 0, y: 0, x2: 0, y2: 1,
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
             colorStops: [
               { offset: 0, color: color + "40" },
               { offset: 1, color: color + "05" },
@@ -80,15 +83,15 @@ function streamChart(
         },
       },
     ],
-  };
+  }
 }
 
 /** Format a window length (seconds) compactly: "15s", "5m", "1.5h". */
 function formatWindowLabel(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
-  const hours = seconds / 3600;
-  return hours % 1 === 0 ? `${hours}h` : `${hours.toFixed(1)}h`;
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`
+  const hours = seconds / 3600
+  return hours % 1 === 0 ? `${hours}h` : `${hours.toFixed(1)}h`
 }
 
 const HR_CURVE_HELP =
@@ -98,17 +101,17 @@ const HR_CURVE_HELP =
   "• Right (long windows) ≈ your average HR.\n" +
   "• It always slopes down by definition - it does NOT mean HR fell during the run.\n\n" +
   "Use it: a higher curve = a harder, more sustained effort. Compare the 5–60 min range across runs to gauge fitness or fatigue.\n\n" +
-  "It shows WHAT you sustained, not WHEN.";
+  "It shows WHAT you sustained, not WHEN."
 
-const HR_CURVE_TICKS = [1, 5, 15, 60, 120, 300, 600, 1200, 1800, 3600, 7200, 10800];
+const HR_CURVE_TICKS = [1, 5, 15, 60, 120, 300, 600, 1200, 1800, 3600, 7200, 10800]
 
 /** Mean-maximal HR curve: best sustained average HR vs window duration (log x). */
 function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
-  const color = "#dc2626";
-  const maxDuration = Math.max(...curve.map((p) => p.duration_s));
-  const ticks = HR_CURVE_TICKS.filter((t) => t <= maxDuration * 1.1);
-  const toLog = (v: number) => Math.log10(v);
-  const data = curve.map((p) => [toLog(p.duration_s), p.bpm]);
+  const color = "#dc2626"
+  const maxDuration = Math.max(...curve.map((p) => p.duration_s))
+  const ticks = HR_CURVE_TICKS.filter((t) => t <= maxDuration * 1.1)
+  const toLog = (v: number) => Math.log10(v)
+  const data = curve.map((p) => [toLog(p.duration_s), p.bpm])
   return {
     grid: { left: 50, right: 20, top: 12, bottom: 36 },
     tooltip: {
@@ -117,10 +120,10 @@ function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
       borderColor: "#e5e7eb",
       textStyle: { color: "#374151", fontSize: 12 },
       formatter: (params: unknown) => {
-        const p = Array.isArray(params) ? params[0] : params;
-        const val = (p as { value: [number, number] }).value;
-        const seconds = Math.pow(10, val[0]);
-        return `<strong>${Math.round(val[1])} bpm</strong><br/><span style="color:#9ca3af">best average over ${formatWindowLabel(seconds)}</span>`;
+        const p = Array.isArray(params) ? params[0] : params
+        const val = (p as { value: [number, number] }).value
+        const seconds = Math.pow(10, val[0])
+        return `<strong>${Math.round(val[1])} bpm</strong><br/><span style="color:#9ca3af">best average over ${formatWindowLabel(seconds)}</span>`
       },
     },
     xAxis: {
@@ -160,7 +163,10 @@ function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
         areaStyle: {
           color: {
             type: "linear",
-            x: 0, y: 0, x2: 0, y2: 1,
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
             colorStops: [
               { offset: 0, color: color + "40" },
               { offset: 1, color: color + "05" },
@@ -169,13 +175,13 @@ function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
         },
       },
     ],
-  };
+  }
 }
 
-const ZONE_COLORS = ["#9ca3af", "#3b82f6", "#22c55e", "#f97316", "#ef4444"];
+const ZONE_COLORS = ["#9ca3af", "#3b82f6", "#22c55e", "#f97316", "#ef4444"]
 
 function HrZones({ zones }: { zones: HrZoneItem[] }) {
-  const maxPct = Math.max(...zones.map((z) => z.percentage), 1);
+  const maxPct = Math.max(...zones.map((z) => z.percentage), 1)
   return (
     <div className="space-y-2.5">
       {[...zones].reverse().map((z) => (
@@ -198,26 +204,22 @@ function HrZones({ zones }: { zones: HrZoneItem[] }) {
               }}
             />
           </div>
-          <div className="w-16 text-right text-sm tabular-nums">
-            {formatDuration(z.seconds)}
-          </div>
-          <div className="w-10 text-right text-sm font-medium tabular-nums">
-            {z.percentage}%
-          </div>
+          <div className="w-16 text-right text-sm tabular-nums">{formatDuration(z.seconds)}</div>
+          <div className="w-10 text-right text-sm font-medium tabular-nums">{z.percentage}%</div>
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 function formatZonePace(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  return `${mins}:${String(secs).padStart(2, "0")}`;
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.round(seconds % 60)
+  return `${mins}:${String(secs).padStart(2, "0")}`
 }
 
 function PaceZones({ zones }: { zones: PaceZoneItem[] }) {
-  const maxPct = Math.max(...zones.map((z) => z.percentage), 1);
+  const maxPct = Math.max(...zones.map((z) => z.percentage), 1)
   return (
     <div className="space-y-2.5">
       {[...zones].reverse().map((z) => (
@@ -244,49 +246,41 @@ function PaceZones({ zones }: { zones: PaceZoneItem[] }) {
               }}
             />
           </div>
-          <div className="w-16 text-right text-sm tabular-nums">
-            {formatDuration(z.seconds)}
-          </div>
-          <div className="w-10 text-right text-sm font-medium tabular-nums">
-            {z.percentage}%
-          </div>
+          <div className="w-16 text-right text-sm tabular-nums">{formatDuration(z.seconds)}</div>
+          <div className="w-10 text-right text-sm font-medium tabular-nums">{z.percentage}%</div>
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value || value === "-") return null;
+  if (!value || value === "-") return null
   return (
     <div className="flex items-center justify-between border-b border-gray-100 py-2 last:border-0">
       <span className="text-sm text-gray-500">{label}</span>
       <span className="text-sm font-medium">{value}</span>
     </div>
-  );
+  )
 }
 
-export default function ActivityDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
-  const { athleteId } = useAthleteContext();
-  const { data: activity, error, isLoading } = useActivity(athleteId, id);
-  const { data: meta } = useMeta(athleteId);
+export default function ActivityDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const { athleteId } = useAthleteContext()
+  const { data: activity, error, isLoading } = useActivity(athleteId, id)
+  const { data: meta } = useMeta(athleteId)
 
-  if (isLoading) return <Spinner label="Loading activity…" />;
-  if (error || !activity) return <ErrorState message="Activity not found." />;
+  if (isLoading) return <Spinner label="Loading activity…" />
+  if (error || !activity) return <ErrorState message="Activity not found." />
 
-  const distanceUnit = meta?.distance_unit ?? "km";
-  const distance = distanceUnit === "mi" ? activity.distance_mi : activity.distance_km;
-  const color = colorForActivityType(activity.activity_type);
-  const distanceStream = activity.streams.distance ?? [];
+  const distanceUnit = meta?.distance_unit ?? "km"
+  const distance = distanceUnit === "mi" ? activity.distance_mi : activity.distance_km
+  const color = colorForActivityType(activity.activity_type)
+  const distanceStream = activity.streams.distance ?? []
 
-  const hasHr = activity.average_heart_rate != null;
-  const hasCadence = activity.average_cadence != null;
-  const hasPower = activity.average_power != null;
+  const hasHr = activity.average_heart_rate != null
+  const hasCadence = activity.average_cadence != null
+  const hasPower = activity.average_power != null
 
   return (
     <div className="space-y-6">
@@ -330,7 +324,10 @@ export default function ActivityDetailPage({
           <Card title="Heart Rate">
             <div className="mb-4 grid grid-cols-2 gap-3">
               <StatCard label="Average" value={`${activity.average_heart_rate} bpm`} />
-              <StatCard label="Maximum" value={activity.max_heart_rate ? `${activity.max_heart_rate} bpm` : "-"} />
+              <StatCard
+                label="Maximum"
+                value={activity.max_heart_rate ? `${activity.max_heart_rate} bpm` : "-"}
+              />
             </div>
             {activity.streams.heartrate && (
               <EChart
@@ -364,7 +361,8 @@ export default function ActivityDetailPage({
       )}
 
       {/* Pace + Pace Zones row */}
-      {(activity.streams.velocity_smooth || (activity.pace_zones && activity.pace_zones.length > 0)) && (
+      {(activity.streams.velocity_smooth ||
+        (activity.pace_zones && activity.pace_zones.length > 0)) && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {activity.streams.velocity_smooth && (
             <Card title="Pace">
@@ -372,7 +370,9 @@ export default function ActivityDetailPage({
                 <StatCard label="Average" value={formatActivityPace(activity)} />
                 <StatCard
                   label="Max Speed"
-                  value={activity.max_speed_kmh ? `${formatNumber(activity.max_speed_kmh, 1)} km/h` : "-"}
+                  value={
+                    activity.max_speed_kmh ? `${formatNumber(activity.max_speed_kmh, 1)} km/h` : "-"
+                  }
                 />
               </div>
               <EChart
@@ -389,7 +389,11 @@ export default function ActivityDetailPage({
           {activity.pace_zones && activity.pace_zones.length > 0 && (
             <Card
               title={
-                <span title={"Joe Friel, The Triathlete's Training Bible\n\nZones = % of Functional Threshold Pace (FTP):\n  Z1 Recovery:       FTP × 1.29  (>129%)\n  Z2 Aerobic:        FTP × 1.14  (114–129%)\n  Z3 Tempo:          FTP × 1.06  (106–113%)\n  Z4 Sub-Threshold:  FTP × 0.99  (99–105%)\n  Z5 VO2 Max:        FTP × 0.95  (<99%)"}>
+                <span
+                  title={
+                    "Joe Friel, The Triathlete's Training Bible\n\nZones = % of Functional Threshold Pace (FTP):\n  Z1 Recovery:       FTP × 1.29  (>129%)\n  Z2 Aerobic:        FTP × 1.14  (114–129%)\n  Z3 Tempo:          FTP × 1.06  (106–113%)\n  Z4 Sub-Threshold:  FTP × 0.99  (99–105%)\n  Z5 VO2 Max:        FTP × 0.95  (<99%)"
+                  }
+                >
                   Pace Zones
                 </span>
               }
@@ -422,7 +426,10 @@ export default function ActivityDetailPage({
             <Card title="Power">
               <div className="mb-4 grid grid-cols-2 gap-3">
                 <StatCard label="Average" value={`${activity.average_power} W`} />
-                <StatCard label="Max" value={activity.max_power ? `${activity.max_power} W` : "-"} />
+                <StatCard
+                  label="Max"
+                  value={activity.max_power ? `${activity.max_power} W` : "-"}
+                />
               </div>
               {activity.streams.watts && (
                 <EChart
@@ -440,7 +447,10 @@ export default function ActivityDetailPage({
         <Card title="Cadence">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatCard label="Average" value={`${activity.average_cadence} rpm`} />
-            <StatCard label="Maximum" value={activity.max_cadence ? `${activity.max_cadence} rpm` : "-"} />
+            <StatCard
+              label="Maximum"
+              value={activity.max_cadence ? `${activity.max_cadence} rpm` : "-"}
+            />
           </div>
         </Card>
       )}
@@ -454,7 +464,10 @@ export default function ActivityDetailPage({
           <div>
             <DetailRow label="Elapsed Time" value={formatDuration(activity.elapsed_time_s)} />
             <DetailRow label="Moving Time" value={formatDuration(activity.moving_time_s)} />
-            <DetailRow label="Calories" value={activity.calories ? `${formatNumber(activity.calories, 0)} kcal` : null} />
+            <DetailRow
+              label="Calories"
+              value={activity.calories ? `${formatNumber(activity.calories, 0)} kcal` : null}
+            />
             <DetailRow label="Sport" value={activity.sport_label} />
           </div>
           <div>
@@ -469,7 +482,7 @@ export default function ActivityDetailPage({
         </div>
       </Card>
     </div>
-  );
+  )
 }
 
 function BestEfforts({ activity }: { activity: ActivityDetail }) {
@@ -484,7 +497,7 @@ function BestEfforts({ activity }: { activity: ActivityDetail }) {
         ))}
       </div>
     </Card>
-  );
+  )
 }
 
 function ActivityNote({
@@ -493,65 +506,72 @@ function ActivityNote({
   note,
   children,
 }: {
-  activityId: string;
-  athleteId: string | null;
-  note: string | null;
-  children?: React.ReactNode;
+  activityId: string
+  athleteId: string | null
+  note: string | null
+  children?: React.ReactNode
 }) {
-  const hasNote = !!note;
-  const [open, setOpen] = useState(hasNote);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(note ?? "");
-  const [saving, setSaving] = useState(false);
+  const hasNote = !!note
+  const [open, setOpen] = useState(hasNote)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(note ?? "")
+  const [saving, setSaving] = useState(false)
 
   const save = useCallback(async () => {
-    if (!athleteId) return;
-    setSaving(true);
+    if (!athleteId) return
+    setSaving(true)
     try {
-      const value = draft.trim() || null;
-      await updateActivityNote(athleteId, activityId, value);
-      mutate((key: unknown) => typeof key === "string" && key.startsWith(`/api/activities/${activityId}`));
-      setEditing(false);
-      if (!value) setOpen(false);
+      const value = draft.trim() || null
+      await updateActivityNote(athleteId, activityId, value)
+      mutate(
+        (key: unknown) =>
+          typeof key === "string" && key.startsWith(`/api/activities/${activityId}`),
+      )
+      setEditing(false)
+      if (!value) setOpen(false)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  }, [athleteId, activityId, draft]);
+  }, [athleteId, activityId, draft])
 
   const cancel = useCallback(() => {
-    setDraft(note ?? "");
-    setEditing(false);
-    if (!hasNote) setOpen(false);
-  }, [note, hasNote]);
+    setDraft(note ?? "")
+    setEditing(false)
+    if (!hasNote) setOpen(false)
+  }, [note, hasNote])
 
   const beginEdit = useCallback(() => {
-    setDraft(note ?? "");
-    setOpen(true);
-    setEditing(true);
-  }, [note]);
+    setDraft(note ?? "")
+    setOpen(true)
+    setEditing(true)
+  }, [note])
 
   if (!children) {
     return (
       <div className="card p-4">
         {editing ? (
-          <NoteEditor draft={draft} setDraft={setDraft} save={save} cancel={cancel} saving={saving} />
+          <NoteEditor
+            draft={draft}
+            setDraft={setDraft}
+            save={save}
+            cancel={cancel}
+            saving={saving}
+          />
         ) : (
           <NoteDisplay note={note} onEdit={beginEdit} />
         )}
       </div>
-    );
+    )
   }
 
-  const panelOpen = open || editing;
+  const panelOpen = open || editing
 
   return (
     <div className="relative flex gap-6">
       {children}
       <div
         className={`hidden transition-all duration-300 ease-in-out lg:block ${
-          panelOpen
-            ? "w-[33%] min-w-[260px] opacity-100"
-            : "w-0 min-w-0 overflow-hidden opacity-0"
+          panelOpen ? "w-[33%] min-w-[260px] opacity-100" : "w-0 min-w-0 overflow-hidden opacity-0"
         }`}
       >
         {panelOpen && (
@@ -565,13 +585,27 @@ function ActivityNote({
                   className="rounded p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   aria-label="Close note"
                 >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M6 18 18 6M6 6l12 12" /></svg>
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M6 18 18 6M6 6l12 12" />
+                  </svg>
                 </button>
               )}
             </header>
             <div className="flex flex-1 flex-col">
               {editing ? (
-                <NoteEditor draft={draft} setDraft={setDraft} save={save} cancel={cancel} saving={saving} />
+                <NoteEditor
+                  draft={draft}
+                  setDraft={setDraft}
+                  save={save}
+                  cancel={cancel}
+                  saving={saving}
+                />
               ) : (
                 <NoteDisplay note={note} onEdit={beginEdit} />
               )}
@@ -586,7 +620,16 @@ function ActivityNote({
           className="absolute right-3 top-3 hidden items-center gap-1.5 rounded-lg bg-gray-900/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-gray-900/80 lg:flex"
           aria-label="Add note"
         >
-          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+          <svg
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
           Note
         </button>
       )}
@@ -594,7 +637,13 @@ function ActivityNote({
         {(hasNote || editing) && (
           <div className="card p-4">
             {editing ? (
-              <NoteEditor draft={draft} setDraft={setDraft} save={save} cancel={cancel} saving={saving} />
+              <NoteEditor
+                draft={draft}
+                setDraft={setDraft}
+                save={save}
+                cancel={cancel}
+                saving={saving}
+              />
             ) : (
               <NoteDisplay note={note} onEdit={beginEdit} />
             )}
@@ -602,7 +651,7 @@ function ActivityNote({
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function NoteDisplay({ note, onEdit }: { note: string | null; onEdit: () => void }) {
@@ -618,7 +667,7 @@ function NoteDisplay({ note, onEdit }: { note: string | null; onEdit: () => void
         "Add a note…"
       )}
     </button>
-  );
+  )
 }
 
 function NoteEditor({
@@ -628,11 +677,11 @@ function NoteEditor({
   cancel,
   saving,
 }: {
-  draft: string;
-  setDraft: (v: string) => void;
-  save: () => void;
-  cancel: () => void;
-  saving: boolean;
+  draft: string
+  setDraft: (v: string) => void
+  save: () => void
+  cancel: () => void
+  saving: boolean
 }) {
   return (
     <div className="flex flex-1 flex-col gap-2">
@@ -662,5 +711,5 @@ function NoteEditor({
         </button>
       </div>
     </div>
-  );
+  )
 }

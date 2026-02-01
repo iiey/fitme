@@ -1,30 +1,30 @@
-"use client";
+"use client"
 
-import { useEffect } from "react";
-import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet";
-import type { LatLngBoundsExpression } from "leaflet";
+import { useEffect } from "react"
+import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet"
+import type { LatLngBoundsExpression } from "leaflet"
 
-import { decodePolyline } from "@/lib/polyline";
+import { decodePolyline } from "@/lib/polyline"
 
 function FitBounds({ bounds }: { bounds: LatLngBoundsExpression }) {
-  const map = useMap();
+  const map = useMap()
   useEffect(() => {
-    map.fitBounds(bounds, { padding: [20, 20] });
-  }, [map, bounds]);
-  return null;
+    map.fitBounds(bounds, { padding: [20, 20] })
+  }, [map, bounds])
+  return null
 }
 
 function InvalidateOnResize() {
-  const map = useMap();
+  const map = useMap()
   useEffect(() => {
-    const container = map.getContainer();
+    const container = map.getContainer()
     const observer = new ResizeObserver(() => {
-      map.invalidateSize();
-    });
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [map]);
-  return null;
+      map.invalidateSize()
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [map])
+  return null
 }
 
 export default function RouteMap({
@@ -32,11 +32,11 @@ export default function RouteMap({
   color = "#3b82f6",
   height = 320,
 }: {
-  polyline: string;
-  color?: string;
-  height?: number;
+  polyline: string
+  color?: string
+  height?: number
 }) {
-  const points = decodePolyline(polyline);
+  const points = decodePolyline(polyline)
   if (points.length < 2) {
     return (
       <div
@@ -45,10 +45,10 @@ export default function RouteMap({
       >
         No route data
       </div>
-    );
+    )
   }
 
-  const bounds = points as LatLngBoundsExpression;
+  const bounds = points as LatLngBoundsExpression
 
   return (
     <div className="overflow-hidden rounded-lg" style={{ height }}>
@@ -59,7 +59,7 @@ export default function RouteMap({
         zoom={13}
       >
         <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
+          attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <Polyline positions={points} pathOptions={{ color, weight: 4 }} />
@@ -67,5 +67,5 @@ export default function RouteMap({
         <InvalidateOnResize />
       </MapContainer>
     </div>
-  );
+  )
 }
