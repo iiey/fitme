@@ -3,8 +3,11 @@ import type { ZodType } from "zod";
 
 import type {
   ActivityDetail,
+  AthleteConfig,
   Dashboard,
   EddingtonResponse,
+  GoalCreate,
+  GoalProgressResponse,
   HeatmapResponse,
   ImportPreview,
   ImportRunStatus,
@@ -19,7 +22,9 @@ import type {
 } from "./types";
 import {
   ActivityDetailSchema,
+  AthleteConfigSchema,
   DashboardSchema,
+  GoalProgressResponseSchema,
   ImportPreviewSchema,
   ImportRunStatusSchema,
   MetaSchema,
@@ -270,4 +275,94 @@ export async function triggerSync(fullResync = false): Promise<SyncRunResult> {
     throw new ApiError(response.status, await readErrorDetail(response, "Could not start sync"));
   }
   return SyncRunResultSchema.parse(await response.json());
+}
+
+// -- Activity notes ---------------------------------------------------------
+
+export async function updateActivityNote(
+  athleteId: string,
+  activityId: string,
+  note: string | null,
+): Promise<void> {
+  const query = buildQuery({ athlete: athleteId });
+  const response = await fetch(`/api/activities/${activityId}/note${query}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note }),
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await readErrorDetail(response, "Could not save note"));
+  }
+}
+
+// -- Goals ------------------------------------------------------------------
+
+export function useGoalsProgress(athleteId: string | null, activeOn?: string) {
+  const query = buildQuery({ athlete: athleteId ?? undefined, active_on: activeOn });
+  return useSWR<GoalProgressResponse[]>(
+    `/api/goals/progress${query}`,
+    validated(GoalProgressResponseSchema.array()),
+  );
+}
+
+export async function createGoal(athleteId: string, goal: GoalCreate): Promise<void> {
+  const query = buildQuery({ athlete: athleteId });
+  const response = await fetch(`/api/goals${query}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(goal),
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await readErrorDetail(response, "Could not create goal"));
+  }
+}
+
+export async function updateGoal(
+  athleteId: string,
+  goalId: number,
+  updates: Partial<GoalCreate>,
+): Promise<void> {
+  const query = buildQuery({ athlete: athleteId });
+  const response = await fetch(`/api/goals/${goalId}${query}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await readErrorDetail(response, "Could not update goal"));
+  }
+}
+
+export async function deleteGoal(athleteId: string, goalId: number): Promise<void> {
+  const query = buildQuery({ athlete: athleteId });
+  const response = await fetch(`/api/goals/${goalId}${query}`, { method: "DELETE" });
+  if (!response.ok) {
+    throw new ApiError(response.status, await readErrorDetail(response, "Could not delete goal"));
+  }
+}
+
+// -- Athlete config ---------------------------------------------------------
+
+export function useAthleteConfig(athleteId: string | null) {
+  const query = buildQuery({ athlete: athleteId ?? undefined });
+  return useSWR<AthleteConfig>(
+    athleteId ? `/api/athletes/config${query}` : null,
+    validated(AthleteConfigSchema),
+  );
+}
+
+export async function updateAthleteConfig(
+  athleteId: string,
+  config: Partial<AthleteConfig>,
+): Promise<AthleteConfig> {
+  const query = buildQuery({ athlete: athleteId });
+  const response = await fetch(`/api/athletes/config${query}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, await readErrorDetail(response, "Could not save config"));
+  }
+  return AthleteConfigSchema.parse(await response.json());
 }

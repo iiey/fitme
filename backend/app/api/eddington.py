@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import repository
 from app.api.athletes import get_required_athlete_id as get_athlete_id
-from app.athlete import get_athlete
+from app.athlete import get_athlete_config
 from app.db import get_db
 from app.domain.eddington import compute_eddington
 from app.domain.units import distance_for_unit, distance_unit_label
@@ -34,7 +34,7 @@ def get_eddington(
     athlete_id: str = Depends(get_athlete_id),
     unit: str | None = None,
 ) -> dict:
-    athlete = get_athlete()
+    athlete = get_athlete_config(db, athlete_id)
     unit_system = "imperial" if (unit or athlete.unit_system) == "imperial" else "metric"
     unit_label = distance_unit_label(unit_system)
 

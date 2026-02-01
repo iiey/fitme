@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Activity, ActivityStream, BestEffort, Gear
+from app.models import Activity, ActivityStream, BestEffort, Gear, Goal
 
 
 def list_activities(
@@ -191,6 +192,108 @@ def date_range(db: Session, athlete_id: str) -> tuple[datetime | None, datetime 
         )
     ).one()
     return row[0], row[1]
+
+
+def update_activity_note(
+    db: Session, athlete_id: str, activity_id: str, note: str | None
+) -> Activity | None:
+    activity = get_activity(db, athlete_id, activity_id)
+    if activity is None:
+        return None
+    activity.user_note = note
+    db.commit()
+    db.refresh(activity)
+    return activity
+
+
+# -- Goals ------------------------------------------------------------------
+
+
+_METRIC_COLUMNS = {
+    "distance_m": Activity.distance_m,
+    "elevation_m": Activity.elevation_m,
+    "moving_time_s": Activity.moving_time_s,
+    "calories": Activity.calories,
+}
+
+
+def list_goals(
+    db: Session,
+    athlete_id: str,
+    *,
+    active_on: date | None = None,
+) -> list[Goal]:
+    stmt = select(Goal).where(Goal.athlete_id == athlete_id)
+    if active_on is not None:
+        stmt = stmt.where(Goal.start_date <= active_on, Goal.end_date >= active_on)
+    stmt = stmt.order_by(Goal.end_date.asc())
+    return list(db.execute(stmt).scalars().all())
+
+
+def get_goal(db: Session, athlete_id: str, goal_id: int) -> Goal | None:
+    goal = db.get(Goal, goal_id)
+    if goal is not None and goal.athlete_id != athlete_id:
+        return None
+    return goal
+
+
+def create_goal(db: Session, goal: Goal) -> Goal:
+    db.add(goal)
+    db.commit()
+    db.refresh(goal)
+    return goal
+
+
+def update_goal(db: Session, goal: Goal) -> Goal:
+    db.commit()
+    db.refresh(goal)
+    return goal
+
+
+def delete_goal(db: Session, athlete_id: str, goal_id: int) -> bool:
+    result = db.execute(sa_delete(Goal).where(Goal.id == goal_id, Goal.athlete_id == athlete_id))
+    db.commit()
+    return result.rowcount > 0
+
+
+def goal_progress(
+    db: Session,
+    athlete_id: str,
+    goal: Goal,
+) -> float:
+    start_dt = datetime.combine(goal.start_date, datetime.min.time())
+    end_dt = datetime.combine(goal.end_date, datetime.max.time())
+
+    base = (
+        select(func.count())
+        .select_from(Activity)
+        .where(
+            Activity.athlete_id == athlete_id,
+            Activity.start_date_time >= start_dt,
+            Activity.start_date_time <= end_dt,
+        )
+    )
+    if goal.sport_type:
+        base = base.where(Activity.sport_type == goal.sport_type)
+
+    if goal.metric == "count":
+        return float(db.execute(base).scalar_one())
+
+    col = _METRIC_COLUMNS.get(goal.metric)
+    if col is None:
+        return 0.0
+    stmt = (
+        select(func.coalesce(func.sum(col), 0.0))
+        .select_from(Activity)
+        .where(
+            Activity.athlete_id == athlete_id,
+            Activity.start_date_time >= start_dt,
+            Activity.start_date_time <= end_dt,
+        )
+    )
+    if goal.sport_type:
+        stmt = stmt.where(Activity.sport_type == goal.sport_type)
+    return float(db.execute(stmt).scalar_one())
 
 
 def _apply_filters(

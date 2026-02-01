@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -54,6 +54,7 @@ class HrCurvePoint(BaseModel):
 
 class ActivityDetail(ActivitySummary):
     description: str | None
+    user_note: str | None = None
     max_speed_kmh: float | None
     average_cadence: int | None
     max_cadence: int | None
@@ -239,6 +240,81 @@ class SyncStatusResponse(BaseModel):
     last_run_at: datetime | None = None
     last_status: str | None = None
     last_message: str | None = None
+
+
+# -- Activity note ----------------------------------------------------------
+
+
+class ActivityNoteUpdate(BaseModel):
+    note: str | None = None
+
+
+# -- Goals ------------------------------------------------------------------
+
+
+class GoalCreate(BaseModel):
+    start_date: date
+    end_date: date
+    sport_type: str | None = None
+    metric: str
+    target_value: float
+    note: str | None = None
+
+
+class GoalUpdate(BaseModel):
+    start_date: date | None = None
+    end_date: date | None = None
+    sport_type: str | None = None
+    metric: str | None = None
+    target_value: float | None = None
+    note: str | None = None
+
+
+class GoalResponse(BaseModel):
+    id: int
+    athlete_id: str
+    start_date: date
+    end_date: date
+    sport_type: str | None
+    metric: str
+    target_value: float
+    note: str | None
+    created_on: datetime
+    updated_on: datetime
+
+
+class GoalProgressResponse(GoalResponse):
+    current_value: float
+    percentage: float
+
+
+# -- Athlete config ---------------------------------------------------------
+
+
+class AthleteConfigResponse(BaseModel):
+    birthday: date | None = None
+    weight_kg: float | None = None
+    ftp: int | None = None
+    max_heart_rate: int | None = None
+    resting_heart_rate: int | None = None
+    unit_system: str = "metric"
+    threshold_pace: int | None = None
+    heart_rate_zones: list[float] | None = None
+    power_zones: list[float] | None = None
+    pace_zones: list[float] | None = None
+
+
+class AthleteConfigUpdate(BaseModel):
+    birthday: date | None = None
+    weight_kg: float | None = None
+    ftp: int | None = None
+    max_heart_rate: int | None = None
+    resting_heart_rate: int | None = None
+    unit_system: str | None = None
+    threshold_pace: int | None = None
+    heart_rate_zones: list[float] | None = None
+    power_zones: list[float] | None = None
+    pace_zones: list[float] | None = None
 
 
 ActivityDetail.model_rebuild()

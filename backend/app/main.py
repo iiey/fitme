@@ -68,6 +68,7 @@ def create_app() -> FastAPI:
         calendar,
         dashboard,
         eddington,
+        goals,
         heatmap,
         imports,
         meta,
@@ -80,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(athletes.router)
     app.include_router(imports.router)
     app.include_router(activities.router)
+    app.include_router(goals.router)
     app.include_router(dashboard.router)
     app.include_router(calendar.router)
     app.include_router(eddington.router)

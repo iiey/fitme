@@ -101,9 +101,9 @@ from `profile.csv` in the export, when present.
 ## Athlete configuration
 
 Some stats (training load, HR/power/pace zones, W/kg) need data that isn't in
-the export. Edit [`backend/config/athlete.yaml`](backend/config/athlete.yaml) to
-set your birthday, sex, weight, FTP, max/resting heart rate, threshold pace, zone
-boundaries and unit system.
+the export. Open the **Settings** page in the UI to set your birthday, sex,
+weight, FTP, max/resting heart rate, threshold pace, zone boundaries and unit
+system.
 
 ## Running with Docker
 

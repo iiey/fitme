@@ -14,6 +14,19 @@ function FitBounds({ bounds }: { bounds: LatLngBoundsExpression }) {
   return null;
 }
 
+function InvalidateOnResize() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 export default function RouteMap({
   polyline,
   color = "#3b82f6",
@@ -51,6 +64,7 @@ export default function RouteMap({
         />
         <Polyline positions={points} pathOptions={{ color, weight: 4 }} />
         <FitBounds bounds={bounds} />
+        <InvalidateOnResize />
       </MapContainer>
     </div>
   );

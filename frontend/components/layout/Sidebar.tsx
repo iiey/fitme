@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/fitness", label: "Fitness", icon: "📈 " },
   { href: "/activities", label: "Activities", icon: "📋" },
   { href: "/calendar", label: "Calendar", icon: "🗓️" },
+  { href: "/goals", label: "Goals", icon: "🎯" },
   { href: "/heatmap", label: "Heatmap", icon: "🗺️" },
   { href: "/milestones", label: "Milestones", icon: "🏆" },
   { href: "/rewind", label: "Rewind", icon: "⏪" },

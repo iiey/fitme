@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -39,6 +39,7 @@ class Activity(Base):
 
     name: Mapped[str] = mapped_column(String, default="")
     description: Mapped[str | None] = mapped_column(String, nullable=True)
+    user_note: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Stored in SI base units: metres, metres/second, seconds.
     distance_m: Mapped[float] = mapped_column(Float, default=0.0)
@@ -169,6 +170,19 @@ class AthleteProfile(Base):
     state: Mapped[str | None] = mapped_column(String, nullable=True)
     country: Mapped[str | None] = mapped_column(String, nullable=True)
     sex: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Training parameters (editable via Settings UI).
+    birthday: Mapped[date | None] = mapped_column(Date, nullable=True)
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ftp: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_heart_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    resting_heart_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    unit_system: Mapped[str | None] = mapped_column(String, nullable=True)
+    threshold_pace: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    heart_rate_zones: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    power_zones: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    pace_zones: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
     updated_on: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
@@ -197,6 +211,27 @@ class SourceIdentity(Base):
     updated_on: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+
+class Goal(Base):
+    """A training goal over a flexible date range."""
+
+    __tablename__ = "goal"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    athlete_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    sport_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    metric: Mapped[str] = mapped_column(String, nullable=False)
+    target_value: Mapped[float] = mapped_column(Float, nullable=False)
+    note: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_on: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (Index("ix_goal_athlete_dates", "athlete_id", "start_date", "end_date"),)
 
 
 class SyncConfig(Base):

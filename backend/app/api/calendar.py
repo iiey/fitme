@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app import repository
 from app.api.athletes import get_required_athlete_id as get_athlete_id
 from app.api.serializers import serialize_activity_summary
-from app.athlete import get_athlete
+from app.athlete import get_athlete_config
 from app.db import get_db
 from app.domain.stats import calendar_days
 from app.domain.training_load import activity_training_load
@@ -29,7 +29,7 @@ def get_month(
     if not 1 <= month <= 12:
         return {"error": "month must be between 1 and 12"}
 
-    athlete = get_athlete()
+    athlete = get_athlete_config(db, athlete_id)
     unit_system = athlete.unit_system
 
     start = date(year, month, 1)

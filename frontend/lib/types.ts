@@ -152,6 +152,7 @@ export interface HrCurvePoint {
 
 export interface ActivityDetail extends ActivitySummary {
   description: string | null;
+  user_note: string | null;
   max_speed_kmh: number | null;
   average_cadence: number | null;
   max_cadence: number | null;
@@ -394,4 +395,48 @@ export interface Rewind {
   carbon_saved: { co2_kg: number; google_searches: number; plastic_bottles: number };
   active_vs_rest: { active_days: number; rest_days: number; total_days: number };
   longest_streak: { length: number; start: string; end: string } | null;
+}
+
+// -- Goals ------------------------------------------------------------------
+
+export interface GoalResponse {
+  id: number;
+  athlete_id: string;
+  start_date: string;
+  end_date: string;
+  sport_type: string | null;
+  metric: string;
+  target_value: number;
+  note: string | null;
+  created_on: string;
+  updated_on: string;
+}
+
+export interface GoalProgressResponse extends GoalResponse {
+  current_value: number;
+  percentage: number;
+}
+
+export interface GoalCreate {
+  start_date: string;
+  end_date: string;
+  sport_type?: string | null;
+  metric: string;
+  target_value: number;
+  note?: string | null;
+}
+
+// -- Athlete config ---------------------------------------------------------
+
+export interface AthleteConfig {
+  birthday: string | null;
+  weight_kg: number | null;
+  ftp: number | null;
+  max_heart_rate: number | null;
+  resting_heart_rate: number | null;
+  unit_system: string;
+  threshold_pace: number | null;
+  heart_rate_zones: number[] | null;
+  power_zones: number[] | null;
+  pace_zones: number[] | null;
 }

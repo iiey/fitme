@@ -8,14 +8,14 @@ from sqlalchemy.orm import Session
 from app import repository
 from app.api.athletes import get_required_athlete_id as get_athlete_id
 from app.api.serializers import serialize_activity_detail, serialize_activity_summary
-from app.athlete import get_athlete
+from app.athlete import get_athlete_config
 from app.db import get_db
 from app.domain.best_efforts import (  # noqa: F401  (kept for label parity)
     DISTANCE_LABELS,
 )
 from app.domain.search import parse_activity_search
 from app.models import BestEffort
-from app.schemas import ActivityDetail, PaginatedActivities
+from app.schemas import ActivityDetail, ActivityNoteUpdate, PaginatedActivities
 
 router = APIRouter(prefix="/api/activities", tags=["activities"])
 
@@ -101,7 +101,7 @@ def get_activity(
         .all()
     )
     best_efforts = [(e.distance_m, e.time_s) for e in efforts]
-    athlete = get_athlete()
+    athlete = get_athlete_config(db, athlete_id)
     return serialize_activity_detail(
         activity,
         streams,
@@ -109,3 +109,16 @@ def get_activity(
         hr_zone_bounds=athlete.hr_zone_boundaries(),
         pace_zone_bounds=athlete.pace_zone_boundaries(),
     )
+
+
+@router.put("/{activity_id}/note")
+def update_note(
+    activity_id: str,
+    body: ActivityNoteUpdate,
+    db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_athlete_id),
+) -> dict[str, str | None]:
+    activity = repository.update_activity_note(db, athlete_id, activity_id, body.note)
+    if activity is None:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    return {"activity_id": activity.activity_id, "user_note": activity.user_note}

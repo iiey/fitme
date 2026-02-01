@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app import repository
 from app.api.athletes import get_required_athlete_id as get_athlete_id
-from app.athlete import get_athlete
+from app.athlete import get_athlete_config
 from app.db import get_db
 from app.domain.rewind import available_years, build_rewind
 
@@ -19,7 +19,7 @@ def get_rewind(
     year: int | None = None,
     days: int | None = None,
 ) -> dict:
-    athlete = get_athlete()
+    athlete = get_athlete_config(db, athlete_id)
     activities = repository.all_activities(db, athlete_id)
     best_efforts = repository.best_efforts_for_athlete(db, athlete_id)
     years = available_years(activities)

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app import repository
 from app.api.athletes import get_athlete_id
 from app.api.serializers import serialize_activity_summary, serialize_gear
-from app.athlete import get_athlete
+from app.athlete import get_athlete_config
 from app.db import get_db
 from app.domain import stats
 from app.domain.eddington import compute_eddington
@@ -223,7 +223,7 @@ def get_dashboard(
     hr_window: int | None = Query(default=None, ge=7, le=365),
     power_window: int | None = Query(default=None, ge=7, le=365),
 ) -> dict:
-    athlete = get_athlete()
+    athlete = get_athlete_config(db, athlete_id)
     unit_system = athlete.unit_system
 
     if athlete_id is None:

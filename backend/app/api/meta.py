@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app import repository
 from app.api.athletes import get_athlete_id, list_athletes
-from app.athlete import get_athlete
+from app.athlete import get_athlete_config
 from app.config import settings
 from app.db import get_db
 from app.domain.units import distance_unit_label, elevation_unit_label
@@ -38,7 +38,7 @@ def get_meta(
     db: Session = Depends(get_db),
     athlete_id: str | None = Depends(get_athlete_id),
 ) -> MetaResponse:
-    athlete = get_athlete()
+    athlete = get_athlete_config(db, athlete_id)
     unit_system = athlete.unit_system
 
     if athlete_id is None:

@@ -31,7 +31,7 @@ changed ones updated, new ones added. Safe to run on a schedule.
 ## Athlete configuration
 
 Some statistics (training load, HR/power zones, W/kg) need data not present in
-the export. Edit [`config/athlete.yaml`](config/athlete.yaml).
+the export. Configure these from the **Settings** page in the UI.
 
 ## Tests
 

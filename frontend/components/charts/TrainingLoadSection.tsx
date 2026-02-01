@@ -189,7 +189,7 @@ function HowToRead() {
         <p>
           <strong>Form (TSB) = Fitness − Fatigue</strong>
           <br/>
-          ✓ <strong>Optimal zone:</strong> You're gaining fitness
+          ✓ <strong>Optimal zone:</strong> You&apos;re gaining fitness
           <br/>
           ✓ <strong>Fresh zone:</strong> Ready to race
           <br/>

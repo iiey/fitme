@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import repository
 from app.api.athletes import get_required_athlete_id as get_athlete_id
-from app.athlete import get_athlete
+from app.athlete import get_athlete_config
 from app.db import get_db
 from app.domain.milestones import MilestoneGroup, discover_milestones
 from app.models import BestEffort
@@ -21,7 +21,7 @@ def get_milestones(
     db: Session = Depends(get_db),
     athlete_id: str = Depends(get_athlete_id),
 ) -> dict:
-    athlete = get_athlete()
+    athlete = get_athlete_config(db, athlete_id)
     activities = repository.all_activities(db, athlete_id)
     activity_ids = [a.activity_id for a in activities]
     best_efforts = (

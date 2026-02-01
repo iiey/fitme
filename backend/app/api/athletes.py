@@ -11,9 +11,11 @@ from app.models import (
     AthleteProfile,
     BestEffort,
     Gear,
+    Goal,
     ImportRun,
     SourceIdentity,
 )
+from app.schemas import AthleteConfigResponse, AthleteConfigUpdate
 
 router = APIRouter(prefix="/api/athletes", tags=["athletes"])
 
@@ -102,5 +104,56 @@ def delete_athlete(athlete_id: str, db: Session = Depends(get_db)) -> None:
     db.execute(delete(Gear).where(Gear.athlete_id == athlete_id))
     db.execute(delete(ImportRun).where(ImportRun.athlete_id == athlete_id))
     db.execute(delete(SourceIdentity).where(SourceIdentity.athlete_id == athlete_id))
+    db.execute(delete(Goal).where(Goal.athlete_id == athlete_id))
     db.delete(profile)
     db.commit()
+
+
+@router.get("/config", response_model=AthleteConfigResponse)
+def get_athlete_config(
+    db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> AthleteConfigResponse:
+    profile = db.get(AthleteProfile, athlete_id)
+    if profile is None:
+        raise HTTPException(404, "Athlete not found")
+    return AthleteConfigResponse(
+        birthday=profile.birthday,
+        weight_kg=profile.weight_kg,
+        ftp=profile.ftp,
+        max_heart_rate=profile.max_heart_rate,
+        resting_heart_rate=profile.resting_heart_rate,
+        unit_system=profile.unit_system or "metric",
+        threshold_pace=profile.threshold_pace,
+        heart_rate_zones=profile.heart_rate_zones,
+        power_zones=profile.power_zones,
+        pace_zones=profile.pace_zones,
+    )
+
+
+@router.put("/config", response_model=AthleteConfigResponse)
+def update_athlete_config(
+    body: AthleteConfigUpdate,
+    db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> AthleteConfigResponse:
+    profile = db.get(AthleteProfile, athlete_id)
+    if profile is None:
+        raise HTTPException(404, "Athlete not found")
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(profile, field, value)
+    db.commit()
+    db.refresh(profile)
+    return AthleteConfigResponse(
+        birthday=profile.birthday,
+        weight_kg=profile.weight_kg,
+        ftp=profile.ftp,
+        max_heart_rate=profile.max_heart_rate,
+        resting_heart_rate=profile.resting_heart_rate,
+        unit_system=profile.unit_system or "metric",
+        threshold_pace=profile.threshold_pace,
+        heart_rate_zones=profile.heart_rate_zones,
+        power_zones=profile.power_zones,
+        pace_zones=profile.pace_zones,
+    )

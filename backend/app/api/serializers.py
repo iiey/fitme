@@ -131,6 +131,7 @@ def serialize_activity_detail(
     return ActivityDetail(
         **summary.model_dump(),
         description=activity.description,
+        user_note=activity.user_note,
         max_speed_kmh=(
             round(ms_to_kmh(activity.max_speed_ms), 2) if activity.max_speed_ms else None
         ),

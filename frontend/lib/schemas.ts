@@ -183,6 +183,7 @@ const PaceZoneItemSchema = z.object({
 
 export const ActivityDetailSchema = ActivitySummarySchema.extend({
   description: z.string().nullable(),
+  user_note: z.string().nullable().default(null),
   max_speed_kmh: z.number().nullable(),
   average_cadence: z.number().nullable(),
   max_cadence: z.number().nullable(),
@@ -266,4 +267,39 @@ export const SyncRunResultSchema = z.object({
   deduped: z.number(),
   enriched: z.number(),
   message: z.string().nullable(),
+});
+
+// -- Goals ------------------------------------------------------------------
+
+export const GoalResponseSchema = z.object({
+  id: z.number(),
+  athlete_id: z.string(),
+  start_date: z.string(),
+  end_date: z.string(),
+  sport_type: z.string().nullable(),
+  metric: z.string(),
+  target_value: z.number(),
+  note: z.string().nullable(),
+  created_on: z.string(),
+  updated_on: z.string(),
+});
+
+export const GoalProgressResponseSchema = GoalResponseSchema.extend({
+  current_value: z.number(),
+  percentage: z.number(),
+});
+
+// -- Athlete config ---------------------------------------------------------
+
+export const AthleteConfigSchema = z.object({
+  birthday: z.string().nullable(),
+  weight_kg: z.number().nullable(),
+  ftp: z.number().nullable(),
+  max_heart_rate: z.number().nullable(),
+  resting_heart_rate: z.number().nullable(),
+  unit_system: z.string(),
+  threshold_pace: z.number().nullable(),
+  heart_rate_zones: z.array(z.number()).nullable(),
+  power_zones: z.array(z.number()).nullable(),
+  pace_zones: z.array(z.number()).nullable(),
 });

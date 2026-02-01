@@ -1,17 +1,27 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from functools import lru_cache
-from pathlib import Path
 
-import yaml
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
-from app.config import settings
+_DB_FIELDS = (
+    "birthday",
+    "sex",
+    "weight_kg",
+    "ftp",
+    "max_heart_rate",
+    "resting_heart_rate",
+    "unit_system",
+    "threshold_pace",
+    "heart_rate_zones",
+    "power_zones",
+    "pace_zones",
+)
 
 
 class AthleteConfig(BaseModel):
-    """Athlete profile loaded from ``config/athlete.yaml``."""
+    """Athlete profile loaded from the database."""
 
     birthday: date | None = None
     sex: str = "M"
@@ -65,14 +75,20 @@ class AthleteConfig(BaseModel):
         return [round(frac * self.threshold_pace) for frac in self.pace_zones]
 
 
-def _load_from_disk(path: Path) -> AthleteConfig:
-    if not path.exists():
+def get_athlete_config(db: Session, athlete_id: str | None) -> AthleteConfig:
+    """Load athlete config from the database, using model defaults for unset fields."""
+    from app.models import AthleteProfile
+
+    if athlete_id is None:
         return AthleteConfig()
-    with path.open("r", encoding="utf-8") as fh:
-        raw = yaml.safe_load(fh) or {}
-    return AthleteConfig.model_validate(raw)
+    profile = db.get(AthleteProfile, athlete_id)
+    if profile is None:
+        return AthleteConfig()
 
+    overrides: dict = {}
+    for field in _DB_FIELDS:
+        db_value = getattr(profile, field, None)
+        if db_value is not None:
+            overrides[field] = db_value
 
-@lru_cache
-def get_athlete() -> AthleteConfig:
-    return _load_from_disk(settings.athlete_config_path)
+    return AthleteConfig.model_validate(overrides)
