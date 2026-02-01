@@ -98,7 +98,7 @@ const RETRY_INTERVAL_MS = 2000
 /**
  * Whether a failed request is worth retrying. A backend that is still starting
  * up (or briefly unreachable) surfaces as a network ``TypeError`` with no status
- * or as a 5xx from the proxy — both are transient. A 4xx means the request
+ * or as a 5xx from the proxy - both are transient. A 4xx means the request
  * itself is wrong, so retrying would just loop forever.
  */
 export function isTransientError(error: unknown): boolean {
