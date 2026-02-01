@@ -1,5 +1,6 @@
 "use client"
 
+import { FileArchive, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { mutate } from "swr"
 
@@ -148,11 +149,12 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">Import activity data</h2>
           <button
+            type="button"
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
             aria-label="Close"
           >
-            ✕
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -189,7 +191,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                   className="hidden"
                   onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 />
-                <span className="text-3xl">📦</span>
+                <FileArchive className="h-9 w-9 text-gray-400" strokeWidth={1.5} />
                 <p className="mt-2 text-sm font-medium">
                   {file ? file.name : "Drop your export_*.zip here or click to choose"}
                 </p>

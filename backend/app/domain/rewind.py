@@ -109,26 +109,26 @@ def _best_achievements(
     if longest.distance_m:
         add(
             "Longest distance",
-            "📏",
+            "ruler",
             longest,
             round(distance_for_unit(longest.distance_m, unit_system), 1),
             distance_unit,
         )
     climb = max(activities, key=lambda a: a.elevation_m or 0.0)
     if climb.elevation_m:
-        add("Biggest climb", "⛰️", climb, round(climb.elevation_m, 0), "m")
+        add("Biggest climb", "mountain", climb, round(climb.elevation_m, 0), "m")
     longest_time = max(activities, key=lambda a: a.moving_time_s or 0)
     if longest_time.moving_time_s:
         add(
             "Longest duration",
-            "⏱️",
+            "timer",
             longest_time,
             longest_time.moving_time_s,
             "duration",
         )
     most_cal = max(activities, key=lambda a: a.calories or 0)
     if most_cal.calories:
-        add("Most calories", "🔥", most_cal, most_cal.calories, "kcal")
+        add("Most calories", "flame", most_cal, most_cal.calories, "kcal")
 
     scoped_ids = {a.activity_id for a in activities}
     fastest: dict[int, BestEffort] = {}

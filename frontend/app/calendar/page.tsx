@@ -2,6 +2,7 @@
 
 import clsx from "clsx"
 import { getISOWeek, parseISO } from "date-fns"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
@@ -85,19 +86,23 @@ export default function CalendarPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={goPrev}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100"
+            className="rounded-lg border border-gray-300 p-1.5 text-sm hover:bg-gray-100"
+            aria-label="Previous month"
           >
-            ←
+            <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="min-w-[140px] text-center text-sm font-semibold">
             {data?.month_name ?? ""} {year}
           </span>
           <button
+            type="button"
             onClick={goNext}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100"
+            className="rounded-lg border border-gray-300 p-1.5 text-sm hover:bg-gray-100"
+            aria-label="Next month"
           >
-            →
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </header>

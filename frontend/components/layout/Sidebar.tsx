@@ -1,6 +1,26 @@
 "use client"
 
 import clsx from "clsx"
+import {
+  Activity,
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
+  LayoutDashboard,
+  type LucideIcon,
+  Map as MapIcon,
+  Menu,
+  Rewind,
+  Settings,
+  Target,
+  Trash2,
+  TrendingUp,
+  Trophy,
+  Upload,
+  User,
+  X,
+} from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
@@ -11,15 +31,15 @@ import { deleteAthlete, revalidateAll, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import type { AthleteListItem } from "@/lib/types"
 
-const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: "📊" },
-  { href: "/fitness", label: "Fitness", icon: "📈 " },
-  { href: "/activities", label: "Activities", icon: "📋" },
-  { href: "/calendar", label: "Calendar", icon: "🗓️" },
-  { href: "/goals", label: "Goals", icon: "🎯" },
-  { href: "/heatmap", label: "Heatmap", icon: "🗺️" },
-  { href: "/milestones", label: "Milestones", icon: "🏆" },
-  { href: "/rewind", label: "Rewind", icon: "⏪" },
+const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/fitness", label: "Fitness", icon: TrendingUp },
+  { href: "/activities", label: "Activities", icon: ClipboardList },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/goals", label: "Goals", icon: Target },
+  { href: "/heatmap", label: "Heatmap", icon: MapIcon },
+  { href: "/milestones", label: "Milestones", icon: Trophy },
+  { href: "/rewind", label: "Rewind", icon: Rewind },
 ]
 
 export function Sidebar() {
@@ -51,7 +71,9 @@ export function Sidebar() {
     <>
       <div className="flex items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">🏃</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
+            <Activity className="h-5 w-5" strokeWidth={2.5} />
+          </span>
           <span className="text-xl font-bold tracking-tight">
             Fit<span className="text-brand">Me</span>
           </span>
@@ -61,22 +83,16 @@ export function Sidebar() {
           <button
             onClick={() => setMobileOpen(false)}
             className="rounded-lg p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 lg:hidden"
+            aria-label="Close menu"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-5 w-5" />
           </button>
         </div>
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
         {NAV_ITEMS.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+          const Icon = item.icon
           return (
             <Link
               key={item.href}
@@ -88,7 +104,7 @@ export function Sidebar() {
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200",
               )}
             >
-              <span className="text-lg">{item.icon}</span>
+              <Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.25 : 2} />
               {item.label}
             </Link>
           )
@@ -111,7 +127,9 @@ export function Sidebar() {
       {/* Mobile top bar */}
       <div className="fixed left-0 right-0 top-0 z-30 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 lg:hidden">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🏃</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-white">
+            <Activity className="h-4 w-4" strokeWidth={2.5} />
+          </span>
           <span className="text-lg font-bold tracking-tight">
             Fit<span className="text-brand">Me</span>
           </span>
@@ -119,16 +137,9 @@ export function Sidebar() {
         <button
           onClick={() => setMobileOpen(true)}
           className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+          aria-label="Open menu"
         >
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <Menu className="h-6 w-6" />
         </button>
       </div>
 
@@ -218,7 +229,7 @@ function AthleteSwitcher({
         className="flex w-full items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">
-          {active ? initials(active.name) : "👤"}
+          {active ? initials(active.name) : <User className="h-4 w-4" />}
         </span>
         <span className="min-w-0 flex-1 text-left">
           <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-200">
@@ -228,7 +239,9 @@ function AthleteSwitcher({
             {active?.location ?? "Self-hosted"}
           </span>
         </span>
-        <span className="text-xs text-gray-400">{open ? "▲" : "▼"}</span>
+        <span className="text-gray-400">
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </span>
       </button>
 
       {open && (
@@ -288,7 +301,7 @@ function AthleteSwitcher({
                       className="hidden rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 group-hover:block dark:hover:bg-red-900/20"
                       title="Delete athlete"
                     >
-                      ✕
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </>
                 )}
@@ -304,7 +317,7 @@ function AthleteSwitcher({
               }}
               className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              <span className="text-base">⬆️</span>
+              <Upload className="h-4 w-4 shrink-0" />
               Import data
             </button>
             <Link
@@ -317,7 +330,7 @@ function AthleteSwitcher({
                   : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800",
               )}
             >
-              <span className="text-base">⚙️</span>
+              <Settings className="h-4 w-4 shrink-0" />
               Settings
             </Link>
           </div>

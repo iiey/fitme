@@ -1,5 +1,6 @@
 "use client"
 
+import { Monitor, Moon, Sun } from "lucide-react"
 import { useEffect, useState } from "react"
 
 type Theme = "light" | "dark" | "system"
@@ -40,16 +41,17 @@ export function ThemeToggle() {
   }
 
   const label = theme === "light" ? "Light" : theme === "dark" ? "Dark" : "Auto"
-  const icon = theme === "light" ? "☀" : theme === "dark" ? "☾" : "◐"
+  const Icon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor
 
   return (
     <button
+      type="button"
       onClick={cycle}
       className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
       aria-label={`Theme: ${label}`}
       title={`Theme: ${label}`}
     >
-      <span className="text-base">{icon}</span>
+      <Icon className="h-4 w-4" />
       <span className="hidden md:inline">{label}</span>
     </button>
   )

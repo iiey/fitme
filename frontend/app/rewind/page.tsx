@@ -1,5 +1,6 @@
 "use client"
 
+import { Award, Flame, type LucideIcon, Mountain, Ruler, Timer } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 
@@ -159,13 +160,32 @@ function formatHighlightValue(value: number, unit: string): string {
   return `${formatNumber(value, value < 100 ? 1 : 0)} ${unit}`
 }
 
+const HIGHLIGHT_ICONS: Record<string, LucideIcon> = {
+  ruler: Ruler,
+  mountain: Mountain,
+  timer: Timer,
+  flame: Flame,
+}
+
+function HighlightIcon({ icon, className }: { icon: string; className?: string }) {
+  const Icon = HIGHLIGHT_ICONS[icon] ?? Award
+  return <Icon className={className} />
+}
+
 function AchievementsSection({ rewind }: { rewind: Rewind }) {
   const { highlights, personal_records } = rewind.achievements
   if (highlights.length === 0 && personal_records.length === 0 && !rewind.longest_streak)
     return null
 
   return (
-    <Card title="🏅 Best efforts">
+    <Card
+      title={
+        <span className="flex items-center gap-2">
+          <Award className="h-4 w-4 text-brand" />
+          Best efforts
+        </span>
+      }
+    >
       {highlights.length > 0 && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {highlights.map((item) => (
@@ -174,8 +194,9 @@ function AchievementsSection({ rewind }: { rewind: Rewind }) {
               href={`/activities/${item.activity_id}`}
               className="rounded-lg bg-surface-muted p-3 transition-colors hover:bg-brand/10"
             >
-              <p className="text-xs uppercase tracking-wide text-gray-500">
-                {item.icon} {item.label}
+              <p className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-gray-500">
+                <HighlightIcon icon={item.icon} className="h-3.5 w-3.5" />
+                {item.label}
               </p>
               <p className="mt-1 text-lg font-bold">
                 {formatHighlightValue(item.value, item.unit)}

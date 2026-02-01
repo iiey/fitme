@@ -1,6 +1,18 @@
 "use client"
 
 import clsx from "clsx"
+import {
+  Circle,
+  Clock,
+  Flag,
+  Flame,
+  Hash,
+  type LucideIcon,
+  Medal,
+  Mountain,
+  Route,
+  TrendingUp,
+} from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { Card } from "@/components/ui/Card"
@@ -9,15 +21,20 @@ import { useMilestones } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDate } from "@/lib/format"
 
-const GROUP_ICONS: Record<string, string> = {
-  Firsts: "🚩",
-  Distance: "🛣️",
-  Elevation: "⛰️",
-  Time: "⏱️",
-  Count: "#️⃣",
-  "Personal Bests": "🥇",
-  Eddington: "📈",
-  Streaks: "🔥",
+const GROUP_ICONS: Record<string, LucideIcon> = {
+  Firsts: Flag,
+  Distance: Route,
+  Elevation: Mountain,
+  Time: Clock,
+  Count: Hash,
+  "Personal Bests": Medal,
+  Eddington: TrendingUp,
+  Streaks: Flame,
+}
+
+function GroupIcon({ group, className }: { group: string; className?: string }) {
+  const Icon = GROUP_ICONS[group] ?? Circle
+  return <Icon className={className} />
 }
 
 export default function MilestonesPage() {
@@ -55,15 +72,17 @@ export default function MilestonesPage() {
         {["All", ...data.groups].map((group) => (
           <button
             key={group}
+            type="button"
             onClick={() => setActiveGroup(group)}
             className={clsx(
-              "rounded-full px-3 py-1.5 text-sm",
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm",
               group === activeGroup
                 ? "bg-brand text-white"
                 : "border border-gray-300 hover:bg-gray-100",
             )}
           >
-            {group === "All" ? "All" : `${GROUP_ICONS[group] ?? ""} ${group}`}
+            {group !== "All" && <GroupIcon group={group} className="h-3.5 w-3.5" />}
+            {group}
           </button>
         ))}
       </div>
@@ -75,8 +94,8 @@ export default function MilestonesPage() {
             <div className="space-y-3 border-l-2 border-gray-200 pl-5">
               {yearGroup.milestones.map((milestone, index) => (
                 <Card key={index} className="relative">
-                  <span className="absolute -left-[27px] top-5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs ring-2 ring-brand">
-                    {GROUP_ICONS[milestone.group] ?? "•"}
+                  <span className="absolute -left-[27px] top-5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-brand ring-2 ring-brand dark:bg-gray-900">
+                    <GroupIcon group={milestone.group} className="h-3 w-3" />
                   </span>
                   <div className="flex items-start justify-between gap-3">
                     <div>

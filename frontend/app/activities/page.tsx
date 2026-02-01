@@ -1,5 +1,6 @@
 "use client"
 
+import { X } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useState } from "react"
@@ -249,7 +250,7 @@ export default function ActivitiesPage() {
                 setShowDateFilter(!showDateFilter)
               }
             }}
-            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+            className={`inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
               hasDateFilter
                 ? "border-brand bg-brand/10 text-brand"
                 : showDateFilter
@@ -257,7 +258,8 @@ export default function ActivitiesPage() {
                   : "border-gray-300 text-gray-600 hover:border-gray-400"
             }`}
           >
-            Date{hasDateFilter ? " ✕" : ""}
+            Date
+            {hasDateFilter && <X className="h-3.5 w-3.5" />}
           </button>
 
           {/* Distance filter toggle */}
@@ -269,7 +271,7 @@ export default function ActivitiesPage() {
                 setShowDistanceFilter(!showDistanceFilter)
               }
             }}
-            className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+            className={`inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
               hasDistanceFilter
                 ? "border-brand bg-brand/10 text-brand"
                 : showDistanceFilter
@@ -277,7 +279,8 @@ export default function ActivitiesPage() {
                   : "border-gray-300 text-gray-600 hover:border-gray-400"
             }`}
           >
-            Distance{hasDistanceFilter ? " ✕" : ""}
+            Distance
+            {hasDistanceFilter && <X className="h-3.5 w-3.5" />}
           </button>
 
           {/* Date inputs - shown when expanded */}
