@@ -319,6 +319,29 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
         <ActivityNote activityId={id} athleteId={athleteId} note={activity.user_note} />
       )}
 
+      {/* Heart Rate Curve (mean-maximal) */}
+      {activity.hr_curve && activity.hr_curve.length > 1 && (
+        <div className="flex justify-center">
+          <div className="w-full lg:w-1/3">
+            <Card
+              title={
+                <span
+                  className="inline-flex cursor-help items-center gap-1.5"
+                  title={HR_CURVE_HELP}
+                >
+                  Heart Rate Curve
+                  <span className="text-xs font-normal text-gray-400" aria-hidden>
+                    ⓘ
+                  </span>
+                </span>
+              }
+            >
+              <EChart option={hrCurveChart(activity.hr_curve)} height={240} />
+            </Card>
+          </div>
+        </div>
+      )}
+
       {/* Heart Rate + HR Zones row */}
       {hasHr && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -343,22 +366,6 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
             </Card>
           )}
         </div>
-      )}
-
-      {/* Heart Rate Curve (mean-maximal) */}
-      {activity.hr_curve && activity.hr_curve.length > 1 && (
-        <Card
-          title={
-            <span className="inline-flex cursor-help items-center gap-1.5" title={HR_CURVE_HELP}>
-              Heart Rate Curve
-              <span className="text-xs font-normal text-gray-400" aria-hidden>
-                ⓘ
-              </span>
-            </span>
-          }
-        >
-          <EChart option={hrCurveChart(activity.hr_curve)} height={240} />
-        </Card>
       )}
 
       {/* Pace + Pace Zones row */}
