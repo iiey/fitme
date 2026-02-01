@@ -5,19 +5,23 @@ export function InfoTip({
   text,
   width = "w-56",
   position = "above",
+  align = "center",
 }: {
   children?: ReactNode
   text?: string
   width?: string
   position?: "above" | "below"
+  align?: "center" | "left"
 }) {
   const pos = position === "below" ? "top-full mt-2" : "bottom-full mb-2"
+  const hor = align === "left" ? "left-0" : "left-1/2 -translate-x-1/2"
 
   const bubbleClass = [
-    "pointer-events-none absolute left-1/2 z-50",
+    "pointer-events-none absolute z-50",
     pos,
+    hor,
     width,
-    "-translate-x-1/2 normal-case tracking-normal",
+    "normal-case tracking-normal",
     "rounded-lg bg-gray-900 px-3 py-2",
     "text-xs font-normal leading-relaxed text-white",
     "opacity-0 shadow-lg transition-opacity",
