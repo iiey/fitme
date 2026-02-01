@@ -267,7 +267,9 @@ def get_dashboard(
         else []
     )
     all_streams = repository.streams_for_activities(
-        db, activity_ids, stream_types=["heartrate", "time", "watts"]
+        db,
+        activity_ids,
+        stream_types=["heartrate", "time", "watts", "distance", "altitude"],
     )
     gear = repository.list_gear(db, athlete_id)
 
@@ -309,6 +311,7 @@ def get_dashboard(
                 activities,
                 athlete.estimated_max_heart_rate(),
                 athlete.resting_heart_rate,
+                streams=all_streams,
             ): "vo2max_trend",
             pool.submit(
                 _training_load_analysis, activities, athlete, anchor
@@ -345,7 +348,7 @@ def get_dashboard(
         "streaks": {
             "current": current_streak.length if current_streak else 0,
             "longest": longest_streak.length if longest_streak else 0,
-            "current_start": current_streak.start.isoformat() if current_streak else None,
+            "current_start": (current_streak.start.isoformat() if current_streak else None),
         },
         "eddington": results["eddington"],
         "weekday_stats": weekday_stats_raw,

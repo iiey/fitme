@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from statistics import median
 from types import SimpleNamespace
 
 from app.domain.vo2max import (
     estimate_vo2max,
+    grade_adjustment_factor,
     hr_adjusted_vo2max,
+    segment_vo2max_estimates,
     vo2max_trend,
 )
 from app.ingestion.fit import _local_start
@@ -80,6 +83,68 @@ def test_trend_falls_back_to_pace_only_without_hr():
     trend = vo2max_trend(activities, max_hr=None, resting_hr=None)
     assert len(trend) == 1
     assert trend[0]["vo2max"] > 0
+
+
+def _steady_streams(
+    n: int = 360,
+    step_s: int = 5,
+    v_m_s: float = 200 / 60,  # 200 m/min ~ 5:00/km
+    hr: int = 155,
+    grade: float = 0.0,
+) -> dict[str, list]:
+    """Synthetic streams for a constant-pace, constant-HR run on a fixed grade."""
+    distance_m = [i * v_m_s * step_s for i in range(n)]
+    return {
+        "time": [i * step_s for i in range(n)],
+        "distance": distance_m,
+        "heartrate": [hr] * n,
+        "altitude": [grade * d for d in distance_m],
+    }
+
+
+def test_grade_adjustment_factor_directions():
+    assert grade_adjustment_factor(0.0) == 1.0
+    assert grade_adjustment_factor(0.10) > 1.0  # uphill costs more
+    assert grade_adjustment_factor(-0.05) < 1.0  # gentle descent costs less
+    # Clamped beyond +/-30% so steep grades reuse the boundary value.
+    assert grade_adjustment_factor(0.5) == grade_adjustment_factor(0.30)
+
+
+def test_segment_estimates_steady_run_in_expected_band():
+    est = segment_vo2max_estimates(_steady_streams(), max_hr=190, resting_hr=50)
+    assert len(est) >= 5
+    assert all(45 <= e <= 51 for e in est)
+
+
+def test_segment_estimates_grade_adjustment_raises_uphill():
+    flat = median(segment_vo2max_estimates(_steady_streams(grade=0.0), 190, 50))
+    uphill = median(segment_vo2max_estimates(_steady_streams(grade=0.05), 190, 50))
+    # Same pace and HR but climbing -> grade adjustment recovers a higher VO2max.
+    assert uphill > flat + 10
+
+
+def test_segment_estimates_require_hr_config_and_data():
+    assert segment_vo2max_estimates(_steady_streams(), None, None) == []
+    assert segment_vo2max_estimates({"time": [0, 5], "distance": [0, 16]}, 190, 50) == []
+
+
+def test_trend_uses_segment_streams_when_available():
+    base = datetime(2024, 5, 1, 7, 0, 0)
+    activities = [
+        SimpleNamespace(
+            activity_id=f"a{i}",
+            sport_type="Run",
+            distance_m=10_000,
+            moving_time_s=3600,
+            average_heart_rate=155,
+            start_date_time=base + timedelta(weeks=i),
+        )
+        for i in range(4)
+    ]
+    streams = {a.activity_id: _steady_streams() for a in activities}
+    trend = vo2max_trend(activities, max_hr=190, resting_hr=50, streams=streams)
+    assert len(trend) == 4
+    assert all(44 <= p["vo2max"] <= 52 for p in trend)
 
 
 def test_local_start_applies_fit_timezone_offset():
