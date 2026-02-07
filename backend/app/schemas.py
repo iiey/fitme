@@ -20,6 +20,7 @@ class ActivitySummary(BaseModel):
     average_speed_kmh: float | None
     average_pace_s_per_km: float | None
     pace_unit: str
+    is_distance_based: bool
     average_heart_rate: int | None
     max_heart_rate: int | None
     average_power: int | None

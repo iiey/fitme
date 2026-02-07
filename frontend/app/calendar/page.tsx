@@ -13,6 +13,7 @@ import { ErrorState, Spinner } from "@/components/ui/States"
 import { useMeta, useMonth } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { colorForSportType, formatHours, formatNumber } from "@/lib/format"
+import { iconForSportType } from "@/lib/sportIcons"
 import type { CalendarActivity, MonthDay } from "@/lib/types"
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -150,6 +151,7 @@ export default function CalendarPage() {
                   const from = `${year}-${monthStr}-01`
                   const to = `${year}-${monthStr}-${String(data.days_in_month).padStart(2, "0")}`
                   const href = `/activities?sport=${encodeURIComponent(sport.sport_type)}&from=${from}&to=${to}`
+                  const SportIcon = iconForSportType(sport.sport_type)
                   return (
                     <li key={sport.sport_type}>
                       <Link
@@ -158,9 +160,9 @@ export default function CalendarPage() {
                         className="flex items-center justify-between rounded-md py-2 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         <span className="flex items-center gap-2">
-                          <span
-                            className="inline-block h-3 w-3 rounded-full"
-                            style={{ backgroundColor: colorForSportType(sport.sport_type) }}
+                          <SportIcon
+                            className="h-4 w-4 shrink-0"
+                            style={{ color: colorForSportType(sport.sport_type) }}
                           />
                           <span className="font-medium text-brand hover:underline">
                             {sport.label}
@@ -318,14 +320,15 @@ function CalendarGrid({
                   </Link>
                   {dayActs.slice(0, 3).map((act) => {
                     const dist = unitSystem === "imperial" ? act.distance_mi : act.distance_km
+                    const SportIcon = iconForSportType(act.sport_type, act.activity_type)
                     return (
                       <div
                         key={act.activity_id}
                         className="mt-px flex flex-wrap items-center gap-x-1 text-[15px] leading-snug text-gray-600 dark:text-gray-300"
                       >
-                        <span
-                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: colorForSportType(act.sport_type) }}
+                        <SportIcon
+                          className="h-3 w-3 shrink-0"
+                          style={{ color: colorForSportType(act.sport_type) }}
                         />
                         <span className="font-medium">{formatCompactTime(act.moving_time_s)}</span>
                         {dist > 0.1 && (

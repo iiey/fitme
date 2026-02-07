@@ -112,6 +112,8 @@ export interface ActivitySummary {
   average_speed_kmh: number | null
   average_pace_s_per_km: number | null
   pace_unit: string
+  /** Whether distance is a meaningful primary metric (mirrors backend SportType). */
+  is_distance_based: boolean
   average_heart_rate: number | null
   max_heart_rate: number | null
   average_power: number | null

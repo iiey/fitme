@@ -15,6 +15,7 @@ import {
   tsbColor,
 } from "@/components/charts/options"
 import { InfoTip } from "@/components/ui/InfoTip"
+import { hasActivitiesButNoLoad, LoadConfigHint } from "@/components/ui/LoadConfigHint"
 import {
   colorForActivityType,
   formatActivityPace,
@@ -22,6 +23,7 @@ import {
   formatDuration,
   formatNumber,
 } from "@/lib/format"
+import { iconForSportType } from "@/lib/sportIcons"
 import type { TrainingLoadActivity, TrainingLoadAnalysis, TrainingLoadPoint } from "@/lib/types"
 import { useIsDark } from "@/lib/use-is-dark"
 
@@ -83,14 +85,15 @@ function ActivityRow({
   distanceUnit: string
 }) {
   const distance = distanceUnit === "mi" ? activity.distance_mi : activity.distance_km
+  const SportIcon = iconForSportType(activity.sport_type, activity.activity_type)
   return (
     <Link
       href={`/activities/${activity.activity_id}`}
       className="group flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md px-2 py-1.5 hover:bg-surface dark:hover:bg-gray-800"
     >
-      <span
-        className="h-2.5 w-2.5 shrink-0 rounded-full"
-        style={{ background: colorForActivityType(activity.activity_type) }}
+      <SportIcon
+        className="h-4 w-4 shrink-0"
+        style={{ color: colorForActivityType(activity.activity_type) }}
       />
       <span className="font-medium text-brand group-hover:underline">{activity.name}</span>
       <span className="text-xs text-gray-400">{activity.sport_label}</span>
@@ -305,6 +308,7 @@ export function TrainingLoadSection({
 
   return (
     <div className="space-y-4">
+      {hasActivitiesButNoLoad(series) && <LoadConfigHint />}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <MetricCard
           label="CTL (Fitness)"

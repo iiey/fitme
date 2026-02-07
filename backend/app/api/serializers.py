@@ -51,6 +51,7 @@ def serialize_activity_summary(activity: Activity) -> ActivitySummary:
         ),
         average_pace_s_per_km=_pace_seconds_per_km(activity),
         pace_unit=sport.pace_unit.value,
+        is_distance_based=sport.is_distance_based,
         average_heart_rate=activity.average_heart_rate,
         max_heart_rate=activity.max_heart_rate,
         average_power=activity.average_power,
@@ -130,7 +131,9 @@ def serialize_activity_detail(
     pace_zone_bounds: list[float] | None = None,
 ) -> ActivityDetail:
     summary = serialize_activity_summary(activity)
-    streams = _with_grade_adjusted_pace(activity, streams)
+    sport = SportType.from_strava(activity.sport_type)
+    is_run = sport.activity_type is ActivityType.RUN
+    streams = _with_grade_adjusted_pace(streams, is_run=is_run)
     return ActivityDetail(
         **summary.model_dump(),
         description=activity.description,
@@ -158,20 +161,25 @@ def serialize_activity_detail(
             for distance_m, time_s in best_efforts
         ],
         hr_zones=_build_hr_zones(streams, hr_zone_bounds),
-        pace_zones=_build_pace_zones(streams, pace_zone_bounds),
+        # Pace zones derive from the athlete's run threshold pace (Joe Friel's
+        # %-of-FTP model, expressed in s/km), so they are only meaningful for
+        # runs. Other sports measure intensity differently - cycling by speed or
+        # power, swimming in /100m off a separate threshold - so attaching
+        # run-based /km zones to them is misleading. Suppress for non-runs,
+        # mirroring how grade-adjusted pace is gated above.
+        pace_zones=_build_pace_zones(streams, pace_zone_bounds if is_run else None),
         hr_curve=_build_hr_curve(streams),
     )
 
 
-def _with_grade_adjusted_pace(activity: Activity, streams: dict[str, list]) -> dict[str, list]:
+def _with_grade_adjusted_pace(streams: dict[str, list], *, is_run: bool) -> dict[str, list]:
     """Augment running streams with a derived grade-adjusted speed series.
 
     GAP is a running-specific concept (the Minetti slope-cost curve models
     running), so it is only added for runs and only when the velocity, distance
     and altitude needed to compute it are present.
     """
-    sport = SportType.from_strava(activity.sport_type)
-    if sport.activity_type is not ActivityType.RUN:
+    if not is_run:
         return streams
     gap = grade_adjusted_velocity_stream(streams)
     if gap is None:

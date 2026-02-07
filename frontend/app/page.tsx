@@ -17,6 +17,7 @@ import {
 import { ImportDialog } from "@/components/import/ImportDialog"
 import { Card } from "@/components/ui/Card"
 import { DeferredSection } from "@/components/ui/DeferredSection"
+import { hasActivitiesButNoLoad, LoadConfigHint } from "@/components/ui/LoadConfigHint"
 import { StatCard } from "@/components/ui/StatCard"
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
 import { isTransientError, useDashboard, useMeta } from "@/lib/api"
@@ -209,6 +210,11 @@ export default function DashboardPage() {
 
       {/* Activity heatmap calendar */}
       <Card title="Activity intensity">
+        {hasActivitiesButNoLoad(data.activity_calendar) && (
+          <div className="mb-3">
+            <LoadConfigHint />
+          </div>
+        )}
         <ActivityHeatmap points={data.activity_calendar} />
       </Card>
 

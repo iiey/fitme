@@ -58,6 +58,7 @@ export const ActivitySummarySchema = z.object({
   average_speed_kmh: z.number().nullable(),
   average_pace_s_per_km: z.number().nullable(),
   pace_unit: z.string(),
+  is_distance_based: z.boolean(),
   average_heart_rate: z.number().nullable(),
   max_heart_rate: z.number().nullable(),
   average_power: z.number().nullable(),

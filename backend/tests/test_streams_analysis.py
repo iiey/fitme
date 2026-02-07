@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.api.serializers import serialize_activity_detail
+from app.api.serializers import serialize_activity_detail, serialize_activity_summary
 from app.domain.streams_analysis import (
     grade_adjusted_velocity_stream,
     mean_max_hr_curve,
@@ -134,3 +134,46 @@ def test_serialize_detail_omits_gap_stream_for_non_runs():
     detail = serialize_activity_detail(_detail_activity(SportType.RIDE), streams, [])
 
     assert "grade_adjusted_velocity" not in detail.streams
+
+
+# Descending s/km boundaries between the 5 pace zones (run threshold model).
+_PACE_ZONE_BOUNDS = [400.0, 360.0, 340.0, 320.0]
+
+
+def test_serialize_detail_adds_pace_zones_for_runs():
+    streams = _gap_streams([100.0] * 20)
+
+    detail = serialize_activity_detail(
+        _detail_activity(SportType.RUN), streams, [], pace_zone_bounds=_PACE_ZONE_BOUNDS
+    )
+
+    assert detail.pace_zones is not None
+    assert len(detail.pace_zones) == 5
+
+
+def test_serialize_detail_omits_pace_zones_for_non_runs():
+    # Pace zones derive from a run threshold pace, so they must not be attached
+    # to cycling or swimming even when a velocity stream and bounds are present.
+    streams = _gap_streams([100.0] * 20)
+
+    for sport in (SportType.RIDE, SportType.SWIM):
+        detail = serialize_activity_detail(
+            _detail_activity(sport), streams, [], pace_zone_bounds=_PACE_ZONE_BOUNDS
+        )
+
+        assert detail.pace_zones is None, sport
+
+
+def test_summary_is_distance_based_reflects_sport():
+    # Drives the frontend's sport-oriented layout: distance/pace tiles only show
+    # for distance-based sports. Swim is WaterSports but is distance-based.
+    cases = {
+        SportType.RUN: True,
+        SportType.YOGA: False,
+        SportType.SWIM: True,
+        SportType.WEIGHT_TRAINING: False,
+    }
+    for sport, expected in cases.items():
+        summary = serialize_activity_summary(_detail_activity(sport))
+
+        assert summary.is_distance_based is expected, sport
