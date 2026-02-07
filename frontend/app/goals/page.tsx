@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react"
 
 import { Card } from "@/components/ui/Card"
+import { NoteField } from "@/components/ui/NoteField"
 import { ErrorState, Spinner } from "@/components/ui/States"
 import { createGoal, deleteGoal, updateGoal, useGoalsProgress, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
@@ -367,16 +368,10 @@ function EditGoalForm({
             </select>
           </label>
 
-          <label className="block">
+          <div className="block">
             <span className="mb-1 block text-sm font-medium">Note</span>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Optional note"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-            />
-          </label>
+            <NoteField value={note} onChange={setNote} />
+          </div>
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium">Start date</span>
@@ -543,16 +538,10 @@ function NewGoalForm({
             </select>
           </label>
 
-          <label className="block">
+          <div className="block">
             <span className="mb-1 block text-sm font-medium">Note</span>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Optional note"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-            />
-          </label>
+            <NoteField value={note} onChange={setNote} />
+          </div>
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium">Start date</span>
