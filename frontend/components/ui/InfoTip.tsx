@@ -11,10 +11,11 @@ export function InfoTip({
   text?: string
   width?: string
   position?: "above" | "below"
-  align?: "center" | "left"
+  align?: "center" | "left" | "right"
 }) {
   const pos = position === "below" ? "top-full mt-2" : "bottom-full mb-2"
-  const hor = align === "left" ? "left-0" : "left-1/2 -translate-x-1/2"
+  const hor =
+    align === "left" ? "left-0" : align === "right" ? "right-0" : "left-1/2 -translate-x-1/2"
 
   const bubbleClass = [
     "pointer-events-none absolute z-50",

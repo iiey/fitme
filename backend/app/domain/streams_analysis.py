@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.domain.vo2max import grade_adjustment_factor
 from app.enums import StreamType
 
 # Durations (seconds) for the peak-power-output widget.
@@ -194,3 +195,77 @@ def _pace_zone_index(pace_s_km: float, boundaries: list[float]) -> int:
         if pace_s_km > bound:
             return i
     return 4
+
+
+# ── Grade Adjusted Pace (GAP) ──
+# The stream key under which the derived grade-adjusted speed is exposed in the
+# activity-detail streams payload (a flat-equivalent companion to "velocity_smooth").
+GRADE_ADJUSTED_VELOCITY_STREAM = "grade_adjusted_velocity"
+
+# Horizontal distance (metres) over which the local gradient is averaged. A
+# shorter window tracks GPS altitude jitter; ~30 m smooths the noise while still
+# following real undulations.
+GAP_GRADE_WINDOW_M = 30.0
+
+
+def _local_grade(
+    distance_m: list[float | None],
+    altitude_m: list[float | None],
+    i: int,
+    n: int,
+) -> float:
+    """Local gradient (rise / run) around sample ``i`` over ~``GAP_GRADE_WINDOW_M``.
+
+    Returns ``0.0`` (treated as flat) when the surrounding samples lack the
+    distance/altitude needed to form a window.
+    """
+    di = distance_m[i]
+    if di is None:
+        return 0.0
+
+    half = GAP_GRADE_WINDOW_M / 2.0
+    lo = i
+    while lo > 0 and distance_m[lo - 1] is not None and (di - distance_m[lo - 1]) < half:
+        lo -= 1
+    hi = i
+    while hi < n - 1 and distance_m[hi + 1] is not None and (distance_m[hi + 1] - di) < half:
+        hi += 1
+
+    d_lo, d_hi = distance_m[lo], distance_m[hi]
+    a_lo, a_hi = altitude_m[lo], altitude_m[hi]
+    if d_lo is None or d_hi is None or a_lo is None or a_hi is None:
+        return 0.0
+    run = d_hi - d_lo
+    if run <= 0:
+        return 0.0
+    return (a_hi - a_lo) / run
+
+
+def grade_adjusted_velocity_stream(
+    streams: dict[str, list],
+) -> list[float | None] | None:
+    """Per-sample grade-adjusted speed (m/s): the flat-equivalent speed for the
+    same effort.
+
+    For every sample the local gradient is estimated over a short distance
+    window and the raw speed is scaled by the Minetti slope-cost factor: uphill
+    samples speed up (a slow climb equals a faster flat effort) and gentle
+    descents slow down. Returns ``None`` when velocity, distance or altitude is
+    missing (e.g. treadmill runs), so callers can hide the GAP view.
+    """
+    velocity = streams.get(StreamType.VELOCITY.value) or []
+    distance = streams.get(StreamType.DISTANCE.value) or []
+    altitude = streams.get(StreamType.ALTITUDE.value) or []
+    n = len(velocity)
+    if n == 0 or len(distance) < n or len(altitude) < n:
+        return None
+
+    result: list[float | None] = []
+    for i in range(n):
+        v = velocity[i]
+        if v is None or v <= 0:
+            result.append(v)
+            continue
+        grade = _local_grade(distance, altitude, i, n)
+        result.append(round(v * grade_adjustment_factor(grade), 3))
+    return result

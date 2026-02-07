@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from app.domain.best_efforts import DISTANCE_LABELS
 from app.domain.streams_analysis import (
+    GRADE_ADJUSTED_VELOCITY_STREAM,
+    grade_adjusted_velocity_stream,
     mean_max_hr_curve,
     time_in_hr_zones,
     time_in_pace_zones,
 )
 from app.domain.units import m_to_km, m_to_mi, ms_to_kmh
-from app.enums import SportType
+from app.enums import ActivityType, SportType
 from app.models import Activity, Gear
 from app.schemas import (
     ActivityDetail,
@@ -128,6 +130,7 @@ def serialize_activity_detail(
     pace_zone_bounds: list[float] | None = None,
 ) -> ActivityDetail:
     summary = serialize_activity_summary(activity)
+    streams = _with_grade_adjusted_pace(activity, streams)
     return ActivityDetail(
         **summary.model_dump(),
         description=activity.description,
@@ -158,6 +161,22 @@ def serialize_activity_detail(
         pace_zones=_build_pace_zones(streams, pace_zone_bounds),
         hr_curve=_build_hr_curve(streams),
     )
+
+
+def _with_grade_adjusted_pace(activity: Activity, streams: dict[str, list]) -> dict[str, list]:
+    """Augment running streams with a derived grade-adjusted speed series.
+
+    GAP is a running-specific concept (the Minetti slope-cost curve models
+    running), so it is only added for runs and only when the velocity, distance
+    and altitude needed to compute it are present.
+    """
+    sport = SportType.from_strava(activity.sport_type)
+    if sport.activity_type is not ActivityType.RUN:
+        return streams
+    gap = grade_adjusted_velocity_stream(streams)
+    if gap is None:
+        return streams
+    return {**streams, GRADE_ADJUSTED_VELOCITY_STREAM: gap}
 
 
 def serialize_gear(gear: Gear) -> GearItem:

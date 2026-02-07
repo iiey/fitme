@@ -265,6 +265,77 @@ function DetailRow({ label, value }: { label: string; value: string | null | und
   )
 }
 
+/** Pace chart with a Pace ↔ GAP toggle (top-right) for running activities. */
+function PaceChartCard({
+  activity,
+  distanceStream,
+}: {
+  activity: ActivityDetail
+  distanceStream: (number | null)[]
+}) {
+  const rawVelocity = activity.streams.velocity_smooth ?? []
+  const gapVelocity = activity.streams.grade_adjusted_velocity
+  const hasGap = Array.isArray(gapVelocity) && gapVelocity.length > 0
+  const [mode, setMode] = useState<"pace" | "gap">("pace")
+  const showGap = hasGap && mode === "gap"
+  const series = showGap && gapVelocity ? gapVelocity : rawVelocity
+  const color = showGap ? "#7c3aed" : "#2563eb"
+
+  const toggle = hasGap ? (
+    <div className="flex items-center">
+      <div className="flex rounded-md border border-gray-300 text-xs dark:border-gray-600">
+        <button
+          type="button"
+          onClick={() => setMode("pace")}
+          className={`rounded-l-md px-2.5 py-1 ${mode === "pace" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+        >
+          Pace
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("gap")}
+          className={`rounded-r-md px-2.5 py-1 ${mode === "gap" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+        >
+          GAP
+        </button>
+      </div>
+      <InfoTip width="w-72" align="right">
+        <p className="font-semibold">GAP - Grade Adjusted Pace</p>
+        <p className="mt-1">
+          Your actual running pace normalized to what it would be on flat ground - same effort, zero
+          slope.
+        </p>
+        <p className="mt-2">
+          Raw pace is misleading on hills. Running 6:00/km up a 10% grade is a completely different
+          effort than 6:00/km flat. GAP converts that hill pace into its flat equivalent so you can
+          compare efforts consistently across any terrain.
+        </p>
+      </InfoTip>
+    </div>
+  ) : undefined
+
+  return (
+    <Card title="Pace" action={toggle}>
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <StatCard label="Average" value={formatActivityPace(activity)} />
+        <StatCard
+          label="Max Speed"
+          value={activity.max_speed_kmh ? `${formatNumber(activity.max_speed_kmh, 1)} km/h` : "-"}
+        />
+      </div>
+      <EChart
+        option={streamChart(
+          distanceStream,
+          series.map((v) => (v ? v * 3.6 : null)),
+          color,
+          "km/h",
+        )}
+        height={220}
+      />
+    </Card>
+  )
+}
+
 export default function ActivityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { athleteId } = useAthleteContext()
@@ -373,26 +444,7 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
         (activity.pace_zones && activity.pace_zones.length > 0)) && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {activity.streams.velocity_smooth && (
-            <Card title="Pace">
-              <div className="mb-4 grid grid-cols-2 gap-3">
-                <StatCard label="Average" value={formatActivityPace(activity)} />
-                <StatCard
-                  label="Max Speed"
-                  value={
-                    activity.max_speed_kmh ? `${formatNumber(activity.max_speed_kmh, 1)} km/h` : "-"
-                  }
-                />
-              </div>
-              <EChart
-                option={streamChart(
-                  distanceStream,
-                  activity.streams.velocity_smooth.map((v) => (v ? v * 3.6 : null)),
-                  "#2563eb",
-                  "km/h",
-                )}
-                height={220}
-              />
-            </Card>
+            <PaceChartCard activity={activity} distanceStream={distanceStream} />
           )}
           {activity.pace_zones && activity.pace_zones.length > 0 && (
             <Card
