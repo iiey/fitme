@@ -508,7 +508,8 @@ export function trainingLoadDetailChart(
     },
     axisPointer: { link: [{ xAxisIndex: [0, 1] }] },
     dataZoom: [
-      { type: "inside", xAxisIndex: [0, 1] },
+      // Require Ctrl for wheel-zoom so a plain wheel scrolls the page vertically.
+      { type: "inside", xAxisIndex: [0, 1], zoomOnMouseWheel: "ctrl", moveOnMouseWheel: false },
       {
         type: "slider",
         xAxisIndex: [0, 1],
