@@ -18,6 +18,13 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     if settings.auto_create_tables:
         init_db()
+    if settings.startup_sync_enabled:
+        # Kick off the once-per-day Intervals.icu sync. Imported lazily (like the
+        # routers below) to keep the module import graph shallow. A no-op when
+        # sync is unconfigured/disabled or already ran today.
+        from app.api.sync import maybe_start_daily_sync
+
+        maybe_start_daily_sync()
     yield
 
 

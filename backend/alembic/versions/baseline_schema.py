@@ -2,12 +2,11 @@
 
 Revision ID: baseline
 Revises:
-Create Date: 2026-06-22 18:32:21.569361
 
-The single, consolidated schema for FitMe. Earlier incremental migrations
-were squashed into this one baseline, so a fresh database is created in a single
-step. ``alembic upgrade head`` builds the full schema; the app also creates any
-missing tables via ``create_all`` on startup (``auto_create_tables``).
+The single, consolidated schema for FitMe. Earlier incremental migrations were
+squashed into this one baseline, so a fresh database is created in a single step.
+``alembic upgrade head`` builds the full schema; the app also creates any missing
+tables via ``create_all`` on startup (``auto_create_tables``).
 """
 
 from collections.abc import Sequence
@@ -39,6 +38,7 @@ def upgrade() -> None:
         sa.Column("activity_type", sa.String(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("description", sa.String(), nullable=True),
+        sa.Column("user_note", sa.String(), nullable=True),
         sa.Column("distance_m", sa.Float(), nullable=False),
         sa.Column("elevation_m", sa.Float(), nullable=False),
         sa.Column("moving_time_s", sa.Integer(), nullable=False),
@@ -124,6 +124,16 @@ def upgrade() -> None:
         sa.Column("state", sa.String(), nullable=True),
         sa.Column("country", sa.String(), nullable=True),
         sa.Column("sex", sa.String(), nullable=True),
+        sa.Column("birthday", sa.Date(), nullable=True),
+        sa.Column("weight_kg", sa.Float(), nullable=True),
+        sa.Column("ftp", sa.Integer(), nullable=True),
+        sa.Column("max_heart_rate", sa.Integer(), nullable=True),
+        sa.Column("resting_heart_rate", sa.Integer(), nullable=True),
+        sa.Column("unit_system", sa.String(), nullable=True),
+        sa.Column("threshold_pace", sa.Integer(), nullable=True),
+        sa.Column("heart_rate_zones", sa.JSON(), nullable=True),
+        sa.Column("power_zones", sa.JSON(), nullable=True),
+        sa.Column("pace_zones", sa.JSON(), nullable=True),
         sa.Column("updated_on", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("athlete_id"),
     )
@@ -171,6 +181,28 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f("ix_gear_athlete_id"), ["athlete_id"], unique=False)
 
     op.create_table(
+        "goal",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("athlete_id", sa.String(), nullable=False),
+        sa.Column("start_date", sa.Date(), nullable=False),
+        sa.Column("end_date", sa.Date(), nullable=False),
+        sa.Column("sport_type", sa.String(), nullable=True),
+        sa.Column("metric", sa.String(), nullable=False),
+        sa.Column("target_value", sa.Float(), nullable=False),
+        sa.Column("note", sa.String(), nullable=True),
+        sa.Column("created_on", sa.DateTime(), nullable=False),
+        sa.Column("updated_on", sa.DateTime(), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    with op.batch_alter_table("goal", schema=None) as batch_op:
+        batch_op.create_index(
+            "ix_goal_athlete_dates",
+            ["athlete_id", "start_date", "end_date"],
+            unique=False,
+        )
+        batch_op.create_index(batch_op.f("ix_goal_athlete_id"), ["athlete_id"], unique=False)
+
+    op.create_table(
         "import_run",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("athlete_id", sa.String(), nullable=True),
@@ -199,14 +231,42 @@ def upgrade() -> None:
             batch_op.f("ix_source_identity_athlete_id"), ["athlete_id"], unique=False
         )
 
+    op.create_table(
+        "sync_config",
+        sa.Column("provider", sa.String(), nullable=False),
+        sa.Column("athlete_id", sa.String(), nullable=False),
+        sa.Column("icu_athlete_id", sa.String(), nullable=False),
+        sa.Column("api_key", sa.String(), nullable=False),
+        sa.Column("enabled", sa.Boolean(), nullable=False),
+        sa.Column("synced_through", sa.DateTime(), nullable=True),
+        sa.Column("last_run_at", sa.DateTime(), nullable=True),
+        sa.Column("last_status", sa.String(), nullable=True),
+        sa.Column("last_message", sa.String(), nullable=True),
+        sa.Column("last_auto_sync_on", sa.Date(), nullable=True),
+        sa.Column("created_on", sa.DateTime(), nullable=False),
+        sa.Column("updated_on", sa.DateTime(), nullable=False),
+        sa.PrimaryKeyConstraint("provider"),
+    )
+    with op.batch_alter_table("sync_config", schema=None) as batch_op:
+        batch_op.create_index(batch_op.f("ix_sync_config_athlete_id"), ["athlete_id"], unique=False)
+
 
 def downgrade() -> None:
     """Drop all tables and indexes."""
+    with op.batch_alter_table("sync_config", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_sync_config_athlete_id"))
+
+    op.drop_table("sync_config")
     with op.batch_alter_table("source_identity", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_source_identity_athlete_id"))
 
     op.drop_table("source_identity")
     op.drop_table("import_run")
+    with op.batch_alter_table("goal", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_goal_athlete_id"))
+        batch_op.drop_index("ix_goal_athlete_dates")
+
+    op.drop_table("goal")
     with op.batch_alter_table("gear", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_gear_athlete_id"))
 

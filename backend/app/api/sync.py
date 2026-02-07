@@ -146,6 +146,68 @@ def _run_sync_job(provider: str, full_resync: bool) -> None:
         import_lock.release()
 
 
+def maybe_start_daily_sync() -> None:
+    """Start one Intervals.icu sync on the first app start of the day.
+
+    Called from the app lifespan. It is a deliberate no-op when:
+
+    * sync is not configured, is disabled, or has no stored API key;
+    * an automatic sync already ran today, so repeated restarts on the same day
+      do not re-trigger it;
+    * an import or another sync is already holding the ingestion lock.
+
+    On a go, it runs in a background thread under the shared ingestion lock,
+    exactly like the manual trigger, and progress is observable via
+    ``GET /api/sync/status``. A startup convenience must never stop the app from
+    coming up, so any failure here is logged and swallowed rather than raised.
+    """
+    try:
+        _start_daily_sync()
+    except Exception:
+        logger.exception("Startup sync could not be started")
+
+
+def _start_daily_sync() -> None:
+    db = SessionLocal()
+    try:
+        config = db.get(SyncConfig, PROVIDER)
+        if config is None or not config.enabled or not config.api_key:
+            logger.info("Startup sync skipped: Intervals.icu sync is not configured.")
+            return
+
+        today = datetime.utcnow().date()
+        if config.last_auto_sync_on == today:
+            logger.info("Startup sync skipped: already synced today.")
+            return
+
+        if not import_lock.acquire(blocking=False):
+            logger.info("Startup sync skipped: an import or sync is already running.")
+            return
+
+        # The lock is now ours; hand it to the worker thread, or release it if we
+        # fail to do so. The worker (_run_sync_job) releases it when it finishes.
+        try:
+            # Stamp the date and mark running before spawning the worker, so
+            # repeated restarts on the same day do not start a second run even if
+            # this one fails. Committed from this session before the worker
+            # writes, so the two never collide on SQLite's single writer.
+            config.last_auto_sync_on = today
+            config.last_status = "running"
+            config.last_run_at = datetime.utcnow()
+            db.add(config)
+            db.commit()
+            threading.Thread(
+                target=_run_sync_job,
+                args=(config.provider, False),
+                daemon=True,
+            ).start()
+        except Exception:
+            import_lock.release()
+            raise
+    finally:
+        db.close()
+
+
 @router.post("/trigger", response_model=SyncRunResult)
 def trigger_sync(
     payload: SyncTriggerRequest | None = None, db: Session = Depends(get_db)

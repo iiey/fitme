@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.api.sync import maybe_start_daily_sync
 from app.db import Base, get_db
 from app.ingestion.intervals import IntervalsAthlete, IntervalsAuthError
 from app.main import app
@@ -70,6 +72,58 @@ class _AuthFailClient(_OkClient):
 
 def _patch_client(monkeypatch, cls) -> None:
     monkeypatch.setattr("app.api.sync.IntervalsClient", cls)
+
+
+class _InlineThread:
+    """Runs the worker synchronously so the background sync is observable here."""
+
+    def __init__(self, target, args=(), daemon=False):
+        self._target = target
+        self._args = args
+
+    def start(self):
+        self._target(*self._args)
+
+
+def _configure_sync(
+    session_factory, *, enabled=True, api_key="secret", last_auto_sync_on=None
+) -> None:
+    session = session_factory()
+    try:
+        session.add(
+            SyncConfig(
+                provider="intervals",
+                athlete_id=ATHLETE_ID,
+                icu_athlete_id="0",
+                api_key=api_key,
+                enabled=enabled,
+                last_auto_sync_on=last_auto_sync_on,
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+
+def _patch_background(monkeypatch, session_factory, calls: list) -> None:
+    """Make the background sync run inline against the test DB and record runs."""
+
+    def fake_sync(db, config, *, full_resync=False):
+        calls.append(full_resync)
+        config.last_status = "ok"
+        db.add(config)
+        db.commit()
+
+    monkeypatch.setattr("app.api.sync.sync", fake_sync)
+    monkeypatch.setattr("app.api.sync.SessionLocal", session_factory)
+    monkeypatch.setattr("app.api.sync.threading.Thread", _InlineThread)
+
+
+def _assert_lock_free() -> None:
+    from app.concurrency import import_lock
+
+    assert import_lock.acquire(blocking=False)
+    import_lock.release()
 
 
 def test_get_config_is_null_when_unconfigured(client: TestClient):
@@ -200,17 +254,9 @@ def test_trigger_runs_sync_in_background(client: TestClient, session_factory, mo
         db.commit()
 
     # Run the "background" job inline and against the test database.
-    class InlineThread:
-        def __init__(self, target, args=(), daemon=False):
-            self._target = target
-            self._args = args
-
-        def start(self):
-            self._target(*self._args)
-
     monkeypatch.setattr("app.api.sync.sync", fake_sync)
     monkeypatch.setattr("app.api.sync.SessionLocal", session_factory)
-    monkeypatch.setattr("app.api.sync.threading.Thread", InlineThread)
+    monkeypatch.setattr("app.api.sync.threading.Thread", _InlineThread)
 
     response = client.post("/api/sync/trigger", json={"full_resync": True})
     assert response.status_code == 200, response.text
@@ -218,7 +264,96 @@ def test_trigger_runs_sync_in_background(client: TestClient, session_factory, mo
     assert calls == {"full_resync": True}
 
     # The lock must have been released by the job.
+    _assert_lock_free()
+
+
+# -- Daily startup sync -----------------------------------------------------
+
+
+def test_startup_sync_skipped_when_unconfigured(session_factory, monkeypatch):
+    calls: list = []
+    _patch_background(monkeypatch, session_factory, calls)
+
+    maybe_start_daily_sync()
+
+    assert calls == []  # nothing configured -> nothing ran
+    _assert_lock_free()
+
+
+def test_startup_sync_skipped_when_disabled(session_factory, monkeypatch):
+    _configure_sync(session_factory, enabled=False)
+    calls: list = []
+    _patch_background(monkeypatch, session_factory, calls)
+
+    maybe_start_daily_sync()
+
+    assert calls == []
+    _assert_lock_free()
+
+
+def test_startup_sync_runs_once_then_skips_same_day(session_factory, monkeypatch):
+    _configure_sync(session_factory)
+    calls: list = []
+    _patch_background(monkeypatch, session_factory, calls)
+
+    maybe_start_daily_sync()
+    assert calls == [False]  # a normal (not full) sync ran
+
+    # The day's run is recorded, so a restart the same day does not re-run it.
+    session = session_factory()
+    try:
+        config = session.get(SyncConfig, "intervals")
+        assert config.last_auto_sync_on == datetime.utcnow().date()
+    finally:
+        session.close()
+
+    maybe_start_daily_sync()
+    assert calls == [False]  # unchanged: skipped
+    _assert_lock_free()
+
+
+def test_startup_sync_runs_again_on_a_new_day(session_factory, monkeypatch):
+    yesterday = datetime.utcnow().date() - timedelta(days=1)
+    _configure_sync(session_factory, last_auto_sync_on=yesterday)
+    calls: list = []
+    _patch_background(monkeypatch, session_factory, calls)
+
+    maybe_start_daily_sync()
+
+    assert calls == [False]
+    _assert_lock_free()
+
+
+def test_startup_sync_skipped_when_lock_is_held(session_factory, monkeypatch):
+    _configure_sync(session_factory)
+    calls: list = []
+    _patch_background(monkeypatch, session_factory, calls)
+
     from app.concurrency import import_lock
 
     assert import_lock.acquire(blocking=False)
-    import_lock.release()
+    try:
+        maybe_start_daily_sync()
+        assert calls == []  # an import/sync already running -> skipped
+    finally:
+        import_lock.release()
+
+
+def test_startup_sync_never_raises_and_frees_lock_on_failure(session_factory, monkeypatch):
+    _configure_sync(session_factory)
+    monkeypatch.setattr("app.api.sync.SessionLocal", session_factory)
+
+    class _BoomThread:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def start(self):
+            raise RuntimeError("cannot start worker thread")
+
+    monkeypatch.setattr("app.api.sync.threading.Thread", _BoomThread)
+
+    # Must not propagate: a startup convenience never blocks app start-up.
+    maybe_start_daily_sync()
+
+    # And the ingestion lock must not be leaked when the worker fails to start.
+    _assert_lock_free()

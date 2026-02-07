@@ -261,6 +261,10 @@ class SyncConfig(Base):
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_status: Mapped[str | None] = mapped_column(String, nullable=True)
     last_message: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Calendar date (UTC) of the most recent sync started automatically on app
+    # startup. Gates the once-per-day startup sync so repeated restarts on the
+    # same day do not start it again. Independent of manual triggers.
+    last_auto_sync_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_on: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

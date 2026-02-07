@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     # source of truth for production schema management).
     auto_create_tables: bool = True
 
+    # Run a single Intervals.icu sync automatically on the first app start of
+    # each day. A no-op when sync is unconfigured/disabled or already ran today.
+    startup_sync_enabled: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -254,6 +254,16 @@ Commit + update SyncConfig.synced_through
 - **Non-blocking** - runs in a daemon thread under a shared lock with bulk imports (never concurrent writes). UI polls `GET /api/sync/status` for progress.
 - **Configurable** - credentials and sync toggle managed via Settings page; stored in the `sync_config` table per athlete.
 
+### 5.4 Auto Sync
+
+Beyond the manual "Sync now" button and external cron, the backend runs one sync automatically on the **first app start of each day**, a hands-off daily refresh for the self-hosted single-process deployment.
+
+- **Once per day** - the run date is persisted in `sync_config.last_auto_sync_on` (UTC); repeated restarts or `uvicorn --reload` on the same day are skipped, so it never re-syncs on every boot.
+- **Only when configured** - fires only if a `SyncConfig` exists with a stored API key and `enabled=true`; otherwise it is a silent no-op.
+- **Same engine** - reuses the manual trigger's path: a daemon thread under the shared ingestion lock, observable via `GET /api/sync/status`.
+- **Never fatal** - any startup failure is logged and swallowed so it cannot block app start-up; the day's slot is still consumed, so a transient failure waits for the next day or a manual trigger.
+- **Toggle** - controlled by `FITME_STARTUP_SYNC_ENABLED` (default on), and independent of the manual/cron triggers, which keep their own run-state.
+
 ---
 
 ## 6. API Layer
