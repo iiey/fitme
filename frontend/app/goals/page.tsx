@@ -1,14 +1,22 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useState } from "react"
 
 import { Card } from "@/components/ui/Card"
 import { NoteField } from "@/components/ui/NoteField"
-import { ErrorState, Spinner } from "@/components/ui/States"
-import { createGoal, deleteGoal, updateGoal, useGoalsProgress, useMeta } from "@/lib/api"
+import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
+import {
+  createGoal,
+  deleteGoal,
+  updateGoal,
+  useActivities,
+  useGoalsProgress,
+  useMeta,
+} from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDate, formatDuration, formatNumber } from "@/lib/format"
-import type { GoalCreate, GoalProgressResponse } from "@/lib/types"
+import type { ActivitySummary, GoalCreate, GoalProgressResponse } from "@/lib/types"
 
 const METRIC_OPTIONS: { value: string; label: string; unit: string }[] = [
   { value: "count", label: "Activities", unit: "" },
@@ -44,15 +52,18 @@ export default function GoalsPage() {
   const { data: goals, error, isLoading, mutate: mutateGoals } = useGoalsProgress(athleteId)
 
   const [showForm, setShowForm] = useState(false)
+  const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null)
 
   if (isLoading) return <Spinner label="Loading goals…" />
   if (error) return <ErrorState message="Could not load goals." />
 
-  const activeGoals = (goals ?? []).filter((g) => g.end_date >= todayISO())
-  const pastGoals = (goals ?? []).filter((g) => g.end_date < todayISO())
+  const allGoals = goals ?? []
+  const activeGoals = allGoals.filter((g) => g.end_date >= todayISO())
+  const pastGoals = allGoals.filter((g) => g.end_date < todayISO())
+  const selectedGoal = allGoals.find((g) => g.id === selectedGoalId) ?? null
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Goals</h1>
@@ -66,58 +77,160 @@ export default function GoalsPage() {
         </button>
       </header>
 
-      {showForm && athleteId && (
-        <NewGoalForm
-          athleteId={athleteId}
-          sportTypes={meta?.sport_types ?? []}
-          onCreated={() => {
-            setShowForm(false)
-            void mutateGoals()
-          }}
-        />
-      )}
-
-      {activeGoals.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Active</h2>
-          {activeGoals.map((goal) => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
+        {/* Left: goals list (5/7) */}
+        <div className="space-y-6 lg:col-span-5">
+          {showForm && athleteId && (
+            <NewGoalForm
               athleteId={athleteId}
               sportTypes={meta?.sport_types ?? []}
-              onMutate={() => void mutateGoals()}
+              onCreated={() => {
+                setShowForm(false)
+                void mutateGoals()
+              }}
             />
-          ))}
-        </section>
-      )}
+          )}
 
-      {pastGoals.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            Completed / Past
-          </h2>
-          {pastGoals.map((goal) => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              athleteId={athleteId}
-              sportTypes={meta?.sport_types ?? []}
-              onMutate={() => void mutateGoals()}
-            />
-          ))}
-        </section>
-      )}
+          {activeGoals.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Active
+              </h2>
+              {activeGoals.map((goal) => (
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  athleteId={athleteId}
+                  sportTypes={meta?.sport_types ?? []}
+                  selected={goal.id === selectedGoalId}
+                  onSelect={() => setSelectedGoalId(goal.id)}
+                  onMutate={() => void mutateGoals()}
+                />
+              ))}
+            </section>
+          )}
 
-      {(goals ?? []).length === 0 && !showForm && (
-        <Card>
-          <div className="py-8 text-center text-gray-400">
-            <p className="text-lg">No goals yet</p>
-            <p className="mt-1 text-sm">Create your first goal to start tracking progress.</p>
+          {pastGoals.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Completed / Past
+              </h2>
+              {pastGoals.map((goal) => (
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  athleteId={athleteId}
+                  sportTypes={meta?.sport_types ?? []}
+                  selected={goal.id === selectedGoalId}
+                  onSelect={() => setSelectedGoalId(goal.id)}
+                  onMutate={() => void mutateGoals()}
+                />
+              ))}
+            </section>
+          )}
+
+          {allGoals.length === 0 && !showForm && (
+            <Card>
+              <div className="py-8 text-center text-gray-400">
+                <p className="text-lg">No goals yet</p>
+                <p className="mt-1 text-sm">Create your first goal to start tracking progress.</p>
+              </div>
+            </Card>
+          )}
+        </div>
+
+        {/* Right: contributing activities (2/7) */}
+        <div className="lg:col-span-2">
+          <div className="lg:sticky lg:top-6">
+            {selectedGoal ? (
+              <GoalActivitiesPanel goal={selectedGoal} athleteId={athleteId} />
+            ) : (
+              <Card title="Contributing activities">
+                <EmptyState message="Select a goal to see the activities that count toward it." />
+              </Card>
+            )}
           </div>
-        </Card>
-      )}
+        </div>
+      </div>
     </div>
+  )
+}
+
+/** Per-activity contribution to a goal's metric, in the metric's base unit. */
+function activityContribution(metric: string, a: ActivitySummary): number {
+  switch (metric) {
+    case "count":
+      return 1
+    case "distance_m":
+      return a.distance_km * 1000
+    case "elevation_m":
+      return a.elevation_m
+    case "moving_time_s":
+      return a.moving_time_s
+    case "calories":
+      return a.calories ?? 0
+    default:
+      return 0
+  }
+}
+
+function GoalActivitiesPanel({
+  goal,
+  athleteId,
+}: {
+  goal: GoalProgressResponse
+  athleteId: string | null
+}) {
+  const { data, error, isLoading } = useActivities(athleteId, {
+    start: goal.start_date,
+    end: `${goal.end_date}T23:59:59`,
+    sport_type: goal.sport_type ? [goal.sport_type] : undefined,
+    sort: "start_date_time",
+    order: "desc",
+    limit: 1000,
+  })
+
+  const activities = data?.items ?? []
+
+  return (
+    <Card
+      title={`Contributing activities (${activities.length})`}
+      action={
+        <span className="text-sm text-gray-400">
+          {metricLabel(goal.metric)}
+          {goal.sport_type ? ` · ${goal.sport_type}` : ""}
+        </span>
+      }
+    >
+      {isLoading ? (
+        <Spinner label="Loading activities…" />
+      ) : error ? (
+        <ErrorState message="Could not load activities." />
+      ) : activities.length === 0 ? (
+        <EmptyState message="No activities contribute to this goal yet." />
+      ) : (
+        <ul className="-mx-1 max-h-[70vh] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
+          {activities.map((a) => (
+            <li key={a.activity_id}>
+              <Link
+                href={`/activities/${a.activity_id}`}
+                className="flex items-center justify-between gap-3 rounded-lg px-1 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{a.name}</p>
+                  <p className="text-xs text-gray-400">
+                    {formatDate(a.start_date_time, "MMM d, yyyy")} · {a.sport_label}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-medium tabular-nums text-gray-600 dark:text-gray-300">
+                  {formatMetricValue(goal.metric, activityContribution(goal.metric, a))}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   )
 }
 
@@ -125,11 +238,15 @@ function GoalCard({
   goal,
   athleteId,
   sportTypes,
+  selected,
+  onSelect,
   onMutate,
 }: {
   goal: GoalProgressResponse
   athleteId: string | null
   sportTypes: { value: string; label: string }[]
+  selected: boolean
+  onSelect: () => void
   onMutate: () => void
 }) {
   const [busy, setBusy] = useState(false)
@@ -168,8 +285,23 @@ function GoalCard({
   }
 
   return (
-    <Card>
-      <div className="space-y-3">
+    <Card
+      className={`cursor-pointer transition-colors ${
+        selected ? "ring-2 ring-brand" : "hover:border-gray-300 dark:hover:border-gray-600"
+      }`}
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            onSelect()
+          }
+        }}
+        className="space-y-3 outline-none"
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
