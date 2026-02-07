@@ -31,7 +31,7 @@ export function DataTable<T>({
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
+          <tr className="border-b border-gray-300 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700">
             {columns.map((column) => (
               <th
                 key={column.key}
@@ -56,7 +56,7 @@ export function DataTable<T>({
             <tr
               key={getRowKey(row)}
               className={clsx(
-                "border-b border-gray-100 transition-colors",
+                "border-b border-gray-300 transition-colors dark:border-gray-700",
                 onRowClick && "cursor-pointer hover:bg-surface-muted",
               )}
               onClick={() => onRowClick?.(row)}

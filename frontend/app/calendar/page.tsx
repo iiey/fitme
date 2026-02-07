@@ -134,7 +134,7 @@ export default function CalendarPage() {
 
           {data.per_sport.length > 0 && (
             <Card title="By sport type">
-              <div className="mb-1 flex items-center justify-between border-b border-gray-100 pb-1 text-[11px] font-medium uppercase tracking-wider text-gray-400 dark:border-gray-700">
+              <div className="mb-1 flex items-center justify-between border-b border-gray-300 pb-1 text-[11px] font-medium uppercase tracking-wider text-gray-400 dark:border-gray-700">
                 <span className="pl-5">Sport</span>
                 <span className="flex">
                   <span className="w-12 text-right">Count</span>
@@ -144,7 +144,7 @@ export default function CalendarPage() {
                   <span className="w-16 text-right">Time</span>
                 </span>
               </div>
-              <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+              <ul className="divide-y divide-gray-300 dark:divide-gray-700">
                 {data.per_sport.map((sport) => {
                   const monthStr = String(month).padStart(2, "0")
                   const from = `${year}-${monthStr}-01`
