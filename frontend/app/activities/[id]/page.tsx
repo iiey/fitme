@@ -3,7 +3,7 @@
 import type { EChartsOption } from "echarts"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { use, useCallback, useState } from "react"
+import { use, useCallback, useMemo, useState } from "react"
 import { mutate } from "swr"
 
 import { EChart } from "@/components/charts/EChart"
@@ -19,6 +19,7 @@ import {
   formatDate,
   formatDuration,
   formatNumber,
+  formatPace,
 } from "@/lib/format"
 import type { ActivityDetail, HrCurvePoint, HrZoneItem, PaceZoneItem } from "@/lib/types"
 
@@ -281,6 +282,22 @@ function PaceChartCard({
   const series = showGap && gapVelocity ? gapVelocity : rawVelocity
   const color = showGap ? "#7c3aed" : "#2563eb"
 
+  // Average pace and max speed derived from the GAP series for GAP mode; pace
+  // mode keeps the activity's canonical (raw) stats.
+  const gapStats = useMemo(() => {
+    const vals = (gapVelocity ?? []).filter((v): v is number => v != null && v > 0)
+    if (vals.length === 0) return { avgPaceSPerKm: null, maxSpeedKmh: null }
+    const avgV = vals.reduce((sum, v) => sum + v, 0) / vals.length
+    const maxV = Math.max(...vals)
+    return { avgPaceSPerKm: 1000 / avgV, maxSpeedKmh: maxV * 3.6 }
+  }, [gapVelocity])
+
+  const averageValue = showGap
+    ? formatPace(gapStats.avgPaceSPerKm, "/km")
+    : formatActivityPace(activity)
+  const maxSpeedKmh = showGap ? gapStats.maxSpeedKmh : activity.max_speed_kmh
+  const maxSpeedValue = maxSpeedKmh ? `${formatNumber(maxSpeedKmh, 1)} km/h` : "-"
+
   const toggle = hasGap ? (
     <div className="flex items-center">
       <div className="flex rounded-md border border-gray-300 text-xs dark:border-gray-600">
@@ -315,13 +332,10 @@ function PaceChartCard({
   ) : undefined
 
   return (
-    <Card title="Pace" action={toggle}>
+    <Card title="Speed" action={toggle}>
       <div className="mb-4 grid grid-cols-2 gap-3">
-        <StatCard label="Average" value={formatActivityPace(activity)} />
-        <StatCard
-          label="Max Speed"
-          value={activity.max_speed_kmh ? `${formatNumber(activity.max_speed_kmh, 1)} km/h` : "-"}
-        />
+        <StatCard label="Average" value={averageValue} />
+        <StatCard label="Max Speed" value={maxSpeedValue} />
       </div>
       <EChart
         option={streamChart(
