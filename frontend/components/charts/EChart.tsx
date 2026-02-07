@@ -1,6 +1,6 @@
 "use client"
 
-import type { EChartsOption } from "echarts"
+import type { EChartsOption, EChartsType } from "echarts"
 import dynamic from "next/dynamic"
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary"
 import echarts from "@/lib/echarts"
@@ -13,10 +13,12 @@ export function EChart({
   option,
   height = 300,
   onEvents,
+  onChartReady,
 }: {
   option: EChartsOption
   height?: number
   onEvents?: Record<string, (params: unknown) => void>
+  onChartReady?: (instance: EChartsType) => void
 }) {
   return (
     <ErrorBoundary>
@@ -27,6 +29,7 @@ export function EChart({
         notMerge
         lazyUpdate
         onEvents={onEvents}
+        onChartReady={onChartReady}
         opts={{ renderer: "canvas" }}
       />
     </ErrorBoundary>

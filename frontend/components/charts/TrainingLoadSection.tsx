@@ -1,7 +1,9 @@
 "use client"
 
+import type { EChartsType } from "echarts"
+import { Pin, PinOff } from "lucide-react"
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { EChart } from "@/components/charts/EChart"
 import {
@@ -108,7 +110,17 @@ function ActivityRow({
   )
 }
 
-function DayPanel({ point, distanceUnit }: { point: TrainingLoadPoint; distanceUnit: string }) {
+function DayPanel({
+  point,
+  distanceUnit,
+  pinned,
+  onUnpin,
+}: {
+  point: TrainingLoadPoint
+  distanceUnit: string
+  pinned: boolean
+  onUnpin: () => void
+}) {
   const zone = formZoneFor(Math.round(point.tsb))
   const activities = point.activities ?? []
 
@@ -123,14 +135,34 @@ function DayPanel({ point, distanceUnit }: { point: TrainingLoadPoint; distanceU
           <MiniStat color={FATIGUE_COLOR} label="Fatigue" value={Math.round(point.atl)} />
           <MiniStat color={zone.color} label="Form" value={Math.round(point.tsb)} />
         </div>
-        <span
-          className="rounded-full px-2 py-0.5 text-xs font-medium"
-          style={{ background: `${zone.color}22`, color: zone.color }}
-        >
-          {zone.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {pinned ? (
+            <button
+              type="button"
+              onClick={onUnpin}
+              className="flex items-center gap-1 rounded-full border border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-600 hover:border-brand hover:text-brand dark:border-gray-600 dark:text-gray-300"
+              title="Unpin - follow the cursor again"
+            >
+              <PinOff className="h-3 w-3" />
+              Unpin
+            </button>
+          ) : (
+            <span className="hidden items-center gap-1 text-xs text-gray-400 sm:flex">
+              <Pin className="h-3 w-3" />
+              Click a day to pin
+            </span>
+          )}
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-medium"
+            style={{ background: `${zone.color}22`, color: zone.color }}
+          >
+            {zone.label}
+          </span>
+        </div>
       </div>
-      <div className="mt-1">
+      {/* Fixed height keeps the layout stable while scrubbing across days so the
+          page doesn't grow/shrink and toggle the browser scrollbar. */}
+      <div className="mt-1 h-52 overflow-y-auto">
         {activities.length === 0 ? (
           <p className="px-2 py-2 text-sm text-gray-400">Rest day - no activities logged.</p>
         ) : (
@@ -200,14 +232,29 @@ export function TrainingLoadSection({
   const series = analysis.series
   const lastIndex = Math.max(0, series.length - 1)
   const [activeIndex, setActiveIndex] = useState(lastIndex)
+  // The pinned day (or null). When set, the chart keeps a vertical marker there
+  // and the panel snaps back to it once the cursor leaves the chart.
+  const [pinnedIndex, setPinnedIndex] = useState<number | null>(null)
 
-  // Reset the hovered day when the underlying window changes (filters/athlete).
+  // Refs let the chart's zrender / global-out handlers read fresh values without
+  // being re-registered on every render.
+  const seriesLenRef = useRef(series.length)
+  seriesLenRef.current = series.length
+  const pinnedIndexRef = useRef<number | null>(null)
+  pinnedIndexRef.current = pinnedIndex
+
+  // Reset the hovered and pinned day when the underlying window changes
+  // (filters / athlete), since the old indices no longer map to the same days.
   useEffect(() => {
     setActiveIndex(Math.max(0, series.length - 1))
+    setPinnedIndex(null)
   }, [series.length])
 
   const labels = useMemo(() => series.map((s) => s.date.slice(5)), [series])
-  const option = useMemo(() => trainingLoadDetailChart(analysis, isDark), [analysis, isDark])
+  const option = useMemo(
+    () => trainingLoadDetailChart(analysis, isDark, pinnedIndex),
+    [analysis, isDark, pinnedIndex],
+  )
 
   const handleAxisPointer = useCallback(
     (params: unknown) => {
@@ -227,10 +274,30 @@ export function TrainingLoadSection({
   const onEvents = useMemo(
     () => ({
       updateAxisPointer: handleAxisPointer,
-      globalout: () => setActiveIndex(Math.max(0, series.length - 1)),
+      // Leaving the chart returns to the pinned day if there is one, otherwise
+      // the most recent day.
+      globalout: () =>
+        setActiveIndex(pinnedIndexRef.current ?? Math.max(0, seriesLenRef.current - 1)),
     }),
-    [handleAxisPointer, series.length],
+    [handleAxisPointer],
   )
+
+  // Clicking anywhere over the plot pins that day (or unpins it if already
+  // pinned) so its vertical marker and activity list stay put.
+  const handleChartReady = useCallback((chart: EChartsType) => {
+    chart.getZr().on("click", (event) => {
+      const point: [number, number] = [event.offsetX, event.offsetY]
+      const inGrid =
+        chart.containPixel({ gridIndex: 0 }, point) || chart.containPixel({ gridIndex: 1 }, point)
+      if (!inGrid) return
+      const converted = chart.convertFromPixel({ gridIndex: 0 }, point)
+      const xValue = Array.isArray(converted) ? converted[0] : converted
+      const index = Math.round(Number(xValue))
+      if (Number.isNaN(index) || index < 0 || index >= seriesLenRef.current) return
+      setPinnedIndex((prev) => (prev === index ? null : index))
+      setActiveIndex(index)
+    })
+  }, [])
 
   if (series.length === 0) return null
 
@@ -306,7 +373,7 @@ export function TrainingLoadSection({
       </div>
 
       <div className="card space-y-4 p-4">
-        <EChart option={option} height={460} onEvents={onEvents} />
+        <EChart option={option} height={460} onEvents={onEvents} onChartReady={handleChartReady} />
 
         {/* Form zone legend (matches the coloured bands on the lower chart) */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -324,8 +391,13 @@ export function TrainingLoadSection({
 
         <HowToRead />
 
-        {/* Activities for the hovered day - placed last so height changes don't shift the chart */}
-        <DayPanel point={activePoint} distanceUnit={distanceUnit} />
+        {/* Activities for the hovered/pinned day - placed last so height changes don't shift the chart */}
+        <DayPanel
+          point={activePoint}
+          distanceUnit={distanceUnit}
+          pinned={pinnedIndex != null}
+          onUnpin={() => setPinnedIndex(null)}
+        />
       </div>
     </div>
   )

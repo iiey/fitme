@@ -429,6 +429,7 @@ export function tsbColor(tsb: number, dark = false): string {
 export function trainingLoadDetailChart(
   analysis: TrainingLoadAnalysis,
   dark = false,
+  pinnedIndex: number | null = null,
 ): EChartsOption {
   const t = themeColors(dark)
   const labels = analysis.series.map((s) => s.date.slice(5))
@@ -454,6 +455,20 @@ export function trainingLoadDetailChart(
     },
     { yAxis: zone.from === -Infinity ? formMin : Math.max(zone.from, formMin) },
   ])
+
+  // Persistent vertical marker drawn at the pinned day so it stays put when the
+  // mouse leaves the chart (the dashed axisPointer only shows on hover).
+  const pinColor = dark ? "#e5e7eb" : "#334155"
+  const pinMarkLine =
+    pinnedIndex == null
+      ? undefined
+      : {
+          silent: true,
+          symbol: ["none", "none"] as [string, string],
+          label: { show: false },
+          lineStyle: { color: pinColor, width: 1.5, type: "solid" as const, opacity: 0.9 },
+          data: [{ xAxis: pinnedIndex }],
+        }
 
   const dot = (color: string) =>
     `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${color};margin-right:6px"></span>`
@@ -589,6 +604,7 @@ export function trainingLoadDetailChart(
         areaStyle: {
           color: verticalGradient(hexA(FITNESS_COLOR, 0.28), hexA(FITNESS_COLOR, 0.01)),
         },
+        markLine: pinMarkLine,
       },
       {
         name: "Fatigue",
@@ -632,6 +648,7 @@ export function trainingLoadDetailChart(
           silent: true,
           data: formBands as MarkAreaComponentOption["data"],
         },
+        markLine: pinMarkLine,
       },
     ],
   }
