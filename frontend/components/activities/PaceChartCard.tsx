@@ -27,6 +27,16 @@ export function PaceChartCard({
   const series = showGap && gapVelocity ? gapVelocity : rawVelocity
   const color = showGap ? "#7c3aed" : "#2563eb"
 
+  // Plot speed over distance for GPS sports, else over elapsed time (treadmill /
+  // indoor), so a missing distance stream doesn't collapse the line onto x=0.
+  const hasDistance = activity.is_distance_based && distanceStream.some((d) => d != null && d > 0)
+  const timeStream = activity.streams.time
+  const { axisStream, axis } = hasDistance
+    ? { axisStream: distanceStream, axis: "distance" as const }
+    : timeStream && timeStream.some((t) => t != null)
+      ? { axisStream: timeStream, axis: "time" as const }
+      : { axisStream: series.map((_, i) => i), axis: "time" as const }
+
   // Average pace and max speed derived from the GAP series for GAP mode; pace
   // mode keeps the activity's canonical (raw) stats.
   const gapStats = useMemo(() => {
@@ -84,10 +94,11 @@ export function PaceChartCard({
       </div>
       <EChart
         option={streamChart(
-          distanceStream,
+          axisStream,
           series.map((v) => (v ? v * 3.6 : null)),
           color,
           "km/h",
+          axis,
         )}
         height={220}
       />

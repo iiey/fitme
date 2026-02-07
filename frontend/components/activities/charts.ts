@@ -6,14 +6,31 @@ import type { HrCurvePoint } from "@/lib/types"
 /** Zone fill colours, indexed by zone number - 1 (5 zones). Shared by HR/pace zones. */
 export const ZONE_COLORS = ["#9ca3af", "#3b82f6", "#22c55e", "#f97316", "#ef4444"]
 
-/** A simple line-over-distance chart (distance in km on x, `values` on y). */
+/** X-axis a stream chart can be plotted against. */
+export type StreamAxis = "distance" | "time"
+
+/**
+ * A simple line chart of `values` over either distance (km) or elapsed time.
+ *
+ * Distance is only meaningful for sports that record GPS distance; indoor /
+ * cardio sessions have no distance (or an all-zero stream) and would collapse
+ * every sample onto x=0, so callers plot those over the `time` axis instead.
+ * `axisStream` carries the matching raw values: metres for "distance", seconds
+ * for "time".
+ */
 export function streamChart(
-  distance: (number | null)[],
+  axisStream: (number | null)[],
   values: (number | null)[],
   color: string,
   unit: string,
+  axis: StreamAxis = "distance",
 ): EChartsOption {
-  const data = distance.map((d, index) => [d ? d / 1000 : 0, values[index]])
+  const data =
+    axis === "distance"
+      ? axisStream.map((d, index) => [d ? d / 1000 : 0, values[index]])
+      : axisStream.map((t, index) => [t ?? 0, values[index]])
+  const formatX = (x: number) =>
+    axis === "distance" ? `${formatNumber(x, 2)} km` : formatWindowLabel(x)
   return {
     grid: { left: 50, right: 20, top: 12, bottom: 36 },
     tooltip: {
@@ -24,16 +41,20 @@ export function streamChart(
       formatter: (params: unknown) => {
         const p = Array.isArray(params) ? params[0] : params
         const val = (p as { value: [number, number] }).value
-        return `<strong>${formatNumber(val[1], 1)} ${unit}</strong><br/><span style="color:#9ca3af">${formatNumber(val[0], 2)} km</span>`
+        return `<strong>${formatNumber(val[1], 1)} ${unit}</strong><br/><span style="color:#9ca3af">${formatX(val[0])}</span>`
       },
     },
     xAxis: {
       type: "value",
-      name: "km",
+      name: axis === "distance" ? "km" : "time",
       nameLocation: "middle",
       nameGap: 22,
       nameTextStyle: { color: "#9ca3af", fontSize: 11 },
-      axisLabel: { fontSize: 10, color: "#9ca3af" },
+      axisLabel: {
+        fontSize: 10,
+        color: "#9ca3af",
+        ...(axis === "time" ? { formatter: (v: number) => formatWindowLabel(v) } : {}),
+      },
       axisLine: { lineStyle: { color: "#e5e7eb" } },
       splitLine: { show: false },
     },

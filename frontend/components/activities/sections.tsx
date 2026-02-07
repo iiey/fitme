@@ -13,7 +13,7 @@ import type { ActivityDetail } from "@/lib/types"
 
 import { ActivityNote } from "./ActivityNote"
 import { BestEfforts } from "./BestEfforts"
-import { HR_CURVE_HELP, hrCurveChart, streamChart } from "./charts"
+import { HR_CURVE_HELP, hrCurveChart, type StreamAxis, streamChart } from "./charts"
 import { DetailRow } from "./DetailRow"
 import { HrZones } from "./HrZones"
 import { PaceChartCard } from "./PaceChartCard"
@@ -26,6 +26,24 @@ export interface SectionProps {
   distanceStream: (number | null)[]
   athleteId: string | null
   activityId: string
+}
+
+/**
+ * Choose the x-axis for a stream chart. GPS distance is only meaningful for
+ * distance-based sports that actually recorded a non-zero distance; indoor /
+ * cardio sessions fall back to the elapsed-time stream so samples don't collapse
+ * onto x=0. With neither available, the sample index stands in for elapsed time.
+ */
+function streamAxis(
+  activity: ActivityDetail,
+  distanceStream: (number | null)[],
+  valueStream: (number | null)[],
+): { stream: (number | null)[]; axis: StreamAxis } {
+  const hasDistance = activity.is_distance_based && distanceStream.some((d) => d != null && d > 0)
+  if (hasDistance) return { stream: distanceStream, axis: "distance" }
+  const time = activity.streams.time
+  if (time && time.some((t) => t != null)) return { stream: time, axis: "time" }
+  return { stream: valueStream.map((_, i) => i), axis: "time" }
 }
 
 // Whether a section has the data to render for this activity. Single source of
@@ -91,12 +109,16 @@ function HeartRateSection({ activity, distanceStream }: SectionProps) {
           value={activity.max_heart_rate ? `${activity.max_heart_rate} bpm` : "-"}
         />
       </div>
-      {activity.streams.heartrate && (
-        <EChart
-          option={streamChart(distanceStream, activity.streams.heartrate, "#dc2626", "bpm")}
-          height={220}
-        />
-      )}
+      {activity.streams.heartrate &&
+        (() => {
+          const { stream, axis } = streamAxis(activity, distanceStream, activity.streams.heartrate)
+          return (
+            <EChart
+              option={streamChart(stream, activity.streams.heartrate, "#dc2626", "bpm", axis)}
+              height={220}
+            />
+          )
+        })()}
     </Card>
   )
 }
@@ -149,6 +171,7 @@ function ElevationSection({ activity, distanceStream }: SectionProps) {
   const altitude = activity.streams.altitude
   if (!altitude) return null
   const present = altitude.filter((v): v is number => v != null)
+  const { stream, axis } = streamAxis(activity, distanceStream, altitude)
   return (
     <Card title="Elevation">
       <div className="mb-4 grid grid-cols-2 gap-3">
@@ -158,7 +181,7 @@ function ElevationSection({ activity, distanceStream }: SectionProps) {
           value={`${formatNumber(Math.min(...present), 0)} – ${formatNumber(Math.max(...present), 0)} m`}
         />
       </div>
-      <EChart option={streamChart(distanceStream, altitude, "#16a34a", "m")} height={220} />
+      <EChart option={streamChart(stream, altitude, "#16a34a", "m", axis)} height={220} />
     </Card>
   )
 }
@@ -171,12 +194,16 @@ function PowerSection({ activity, distanceStream }: SectionProps) {
         <StatCard label="Average" value={`${activity.average_power} W`} />
         <StatCard label="Max" value={activity.max_power ? `${activity.max_power} W` : "-"} />
       </div>
-      {activity.streams.watts && (
-        <EChart
-          option={streamChart(distanceStream, activity.streams.watts, "#ca8a04", "W")}
-          height={220}
-        />
-      )}
+      {activity.streams.watts &&
+        (() => {
+          const { stream, axis } = streamAxis(activity, distanceStream, activity.streams.watts)
+          return (
+            <EChart
+              option={streamChart(stream, activity.streams.watts, "#ca8a04", "W", axis)}
+              height={220}
+            />
+          )
+        })()}
     </Card>
   )
 }
