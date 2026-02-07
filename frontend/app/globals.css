@@ -44,14 +44,14 @@ html.dark {
    roads, water and parks (green) and city blocks (yellow) stay distinct against
    the white card. */
 .heatmap-tiles-light {
-  filter: brightness(0.9) contrast(1.2) saturate(1.45);
+  filter: brightness(0.82) contrast(1.25) saturate(1.5);
 }
 
 /* Dark-mode basemap: we use the colourful "voyager" tiles and invert their
    lightness (invert + hue-rotate keeps hues correct: green stays green, water
    stays blue) so land turns dark while parks/city/roads remain recognizable. */
 .heatmap-tiles-dark {
-  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(1.3);
+  filter: invert(1) hue-rotate(180deg) brightness(1.12) contrast(0.85) saturate(1.3);
 }
 
 @layer components {
