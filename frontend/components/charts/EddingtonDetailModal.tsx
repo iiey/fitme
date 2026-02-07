@@ -150,6 +150,7 @@ function eddingtonChartOption(result: EddingtonResult, unit: string, dark: boole
       name: "Days",
       nameTextStyle: { color: t.axis },
       axisLabel: { fontSize: 10, color: t.axis },
+      splitLine: { lineStyle: { color: t.splitLine } },
     },
     dataZoom: [{ type: "slider", start: 0, end: Math.min(100, (60 / distances.length) * 100) }],
     series: [
@@ -197,6 +198,7 @@ function historyChartOption(result: EddingtonResult, dark: boolean): EChartsOpti
       name: "E",
       nameTextStyle: { color: t.axis },
       axisLabel: { fontSize: 10, color: t.axis },
+      splitLine: { lineStyle: { color: t.splitLine } },
     },
     series: [
       {

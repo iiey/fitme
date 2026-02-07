@@ -12,6 +12,10 @@ const LIGHT_TOOLTIP_BORDER = "#e5e7eb"
 const DARK_TOOLTIP_BORDER = "#374151"
 const LIGHT_SURFACE = "#ffffff"
 const DARK_SURFACE = "#1c1e24"
+// Grid (split) lines: visible enough to read values off in light mode, but a
+// step lighter than the gray-300 card border so the card edge stays dominant.
+const LIGHT_SPLIT = "#dadce0"
+const DARK_SPLIT = "#2d333b"
 
 export function themeColors(dark: boolean) {
   return {
@@ -21,6 +25,7 @@ export function themeColors(dark: boolean) {
     tooltipBorder: dark ? DARK_TOOLTIP_BORDER : LIGHT_TOOLTIP_BORDER,
     tooltipText: dark ? DARK_TEXT : LIGHT_TEXT,
     surface: dark ? DARK_SURFACE : LIGHT_SURFACE,
+    splitLine: dark ? DARK_SPLIT : LIGHT_SPLIT,
   }
 }
 
@@ -47,7 +52,11 @@ export function barChart(
       data: categories,
       axisLabel: { fontSize: 10, rotate: categories.length > 12 ? 45 : 0, color: t.axis },
     },
-    yAxis: { type: "value", axisLabel: { fontSize: 10, color: t.axis } },
+    yAxis: {
+      type: "value",
+      axisLabel: { fontSize: 10, color: t.axis },
+      splitLine: { lineStyle: { color: t.splitLine } },
+    },
     series: [
       {
         type: "bar",
@@ -89,6 +98,7 @@ export function lineChart(
       min: yRange?.min,
       max: yRange?.max,
       axisLabel: { fontSize: 10, color: t.axis },
+      splitLine: { lineStyle: { color: t.splitLine } },
     },
     series: [
       {
@@ -296,7 +306,7 @@ export function weekdayAverageChart(
     yAxis: {
       type: "value",
       axisLabel: { fontSize: 10, color: t.axis },
-      splitLine: { lineStyle: { color: dark ? "#2d333b" : "#f0f0f0" } },
+      splitLine: { lineStyle: { color: t.splitLine } },
     },
     series: [
       {
@@ -390,7 +400,7 @@ export function trainingLoadDetailChart(
   const formMin = Math.floor(tsbMin - 5)
   const formMax = Math.ceil(tsbMax + 5)
 
-  const splitLineColor = dark ? "#2a2f37" : "#eef0f3"
+  const splitLineColor = t.splitLine
   const bandAlpha = dark ? 0.18 : 0.13
 
   // Horizontal coloured bands behind the Form line, clamped to the visible range.
@@ -603,7 +613,11 @@ export function hrZoneBarChart(zones: number[], unit = "h", dark = false): EChar
       data: labels,
       axisLabel: { fontSize: 10, color: t.axis },
     },
-    yAxis: { type: "value", axisLabel: { fontSize: 10, color: t.axis } },
+    yAxis: {
+      type: "value",
+      axisLabel: { fontSize: 10, color: t.axis },
+      splitLine: { lineStyle: { color: t.splitLine } },
+    },
     series: [
       {
         type: "bar",
@@ -748,7 +762,7 @@ export function yearlyStatsChart(
         color: t.axis,
         formatter: (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k${unit}` : `${v}${unit}`),
       },
-      splitLine: { lineStyle: { color: dark ? "#2d333b" : "#f0f0f0" } },
+      splitLine: { lineStyle: { color: t.splitLine } },
     },
     dataZoom: [
       {

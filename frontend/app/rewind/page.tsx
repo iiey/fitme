@@ -182,7 +182,11 @@ function distancePerMonthChart(rewind: Rewind, unit: string, dark: boolean) {
       data: months,
       axisLabel: { fontSize: 10, rotate: 0, color: t.axis },
     },
-    yAxis: { type: "value" as const, axisLabel: { fontSize: 10, color: t.axis } },
+    yAxis: {
+      type: "value" as const,
+      axisLabel: { fontSize: 10, color: t.axis },
+      splitLine: { lineStyle: { color: t.splitLine } },
+    },
     series: [
       {
         type: "bar" as const,

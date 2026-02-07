@@ -61,7 +61,7 @@ function streamChart(
       nameTextStyle: { color: "#9ca3af", fontSize: 11 },
       axisLabel: { fontSize: 10, color: "#9ca3af" },
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" } },
+      splitLine: { lineStyle: { color: "#dadce0", type: "dashed" } },
     },
     series: [
       {
@@ -153,7 +153,7 @@ function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
       nameTextStyle: { color: "#9ca3af", fontSize: 11 },
       axisLabel: { fontSize: 10, color: "#9ca3af" },
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: "#f3f4f6", type: "dashed" } },
+      splitLine: { lineStyle: { color: "#dadce0", type: "dashed" } },
     },
     series: [
       {
