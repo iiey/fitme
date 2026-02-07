@@ -58,7 +58,7 @@ export default function HeatmapPage() {
         </div>
       </header>
 
-      <div className="card relative flex-1 overflow-hidden p-0">
+      <div className="card relative flex-1 overflow-hidden border-gray-400 p-0 shadow-md dark:border-gray-700">
         {isLoading && !data ? (
           <Spinner label="Loading routes…" />
         ) : error ? (

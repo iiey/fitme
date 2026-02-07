@@ -7,6 +7,7 @@ import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet"
 import { colorForActivityType } from "@/lib/format"
 import { decodePolyline } from "@/lib/polyline"
 import type { HeatmapRoute } from "@/lib/types"
+import { useIsDark } from "@/lib/use-is-dark"
 
 interface DecodedRoute {
   activityId: string
@@ -27,6 +28,7 @@ function FitAllBounds({ routes }: { routes: DecodedRoute[] }) {
 }
 
 export default function HeatmapView({ routes }: { routes: HeatmapRoute[] }) {
+  const isDark = useIsDark()
   const decoded = useMemo<DecodedRoute[]>(
     () =>
       routes
@@ -45,8 +47,10 @@ export default function HeatmapView({ routes }: { routes: HeatmapRoute[] }) {
   return (
     <MapContainer center={center} zoom={11} style={{ height: "100%", width: "100%" }} preferCanvas>
       <TileLayer
+        key={isDark ? "dark" : "light"}
+        className={isDark ? "heatmap-tiles-dark" : "heatmap-tiles-light"}
         attribution="&copy; OpenStreetMap contributors &copy; CARTO"
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
       {decoded.map((route) => (
         <Polyline
@@ -55,7 +59,7 @@ export default function HeatmapView({ routes }: { routes: HeatmapRoute[] }) {
           pathOptions={{
             color: colorForActivityType(route.activityType),
             weight: 2,
-            opacity: 0.5,
+            opacity: isDark ? 0.5 : 0.7,
           }}
         />
       ))}

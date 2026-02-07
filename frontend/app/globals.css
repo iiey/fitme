@@ -30,6 +30,28 @@ html.dark {
   height: 100%;
   width: 100%;
   background: #aad3df;
+  /* Contain Leaflet's high internal z-indexes (panes/controls) so they can't
+     paint over app UI like the sidebar's Appearance submenu. */
+  isolation: isolate;
+}
+
+/* Dark background while tiles load / at map edges, matching the inverted water. */
+.dark .leaflet-container {
+  background: #18222c;
+}
+
+/* Light-mode basemap: dim the near-white land and lift contrast/saturation so
+   roads, water and parks (green) and city blocks (yellow) stay distinct against
+   the white card. */
+.heatmap-tiles-light {
+  filter: brightness(0.9) contrast(1.2) saturate(1.45);
+}
+
+/* Dark-mode basemap: we use the colourful "voyager" tiles and invert their
+   lightness (invert + hue-rotate keeps hues correct: green stays green, water
+   stays blue) so land turns dark while parks/city/roads remain recognizable. */
+.heatmap-tiles-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(1.3);
 }
 
 @layer components {
