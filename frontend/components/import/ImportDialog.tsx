@@ -213,6 +213,16 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                 />
               </div>
             )}
+
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              <strong className="font-medium text-gray-700 dark:text-gray-300">Tip:</strong> Garmin
+              and Coros devices record activities using the FIT protocol&rsquo;s{" "}
+              <code className="font-mono text-[11px]">sport + sub_sport</code> fields, giving
+              fine-grained classification (e.g. &ldquo;Trail Run&rdquo; vs &ldquo;Run&rdquo;).
+              Strava flattens those into a single type string, so activities synced
+              Garmin&nbsp;&rarr;&nbsp;Strava lose that detail before export. Import directly from a
+              Garmin or Coros bulk export whenever possible.
+            </p>
           </>
         )}
 
@@ -229,6 +239,16 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               ) : null}{" "}
               with <strong>{preview.activity_count}</strong> activities.
             </div>
+
+            {preview.provider === "strava" && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                <strong className="font-medium text-gray-700 dark:text-gray-300">Note:</strong>{" "}
+                Activities synced Garmin&nbsp;&rarr;&nbsp;Strava lose the FIT{" "}
+                <code className="font-mono text-[11px]">sport + sub_sport</code> detail before this
+                export. For the most accurate sport classification, import directly from a Garmin or
+                Coros export.
+              </p>
+            )}
 
             <fieldset className="space-y-2">
               <legend className="mb-1 text-sm font-medium">Import these activities as</legend>
