@@ -107,7 +107,7 @@ function DayPanel({ point, distanceUnit }: { point: TrainingLoadPoint; distanceU
   const activities = point.activities ?? []
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-surface-muted p-3 dark:border-gray-700">
+    <div className="rounded-lg border border-gray-300 bg-surface-muted p-3 dark:border-gray-700">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2 dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -143,7 +143,7 @@ function DayPanel({ point, distanceUnit }: { point: TrainingLoadPoint; distanceU
 
 function HowToRead() {
   return (
-    <details className="rounded-lg border border-gray-200 dark:border-gray-700">
+    <details className="rounded-lg border border-gray-300 dark:border-gray-700">
       <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-gray-700 hover:text-brand dark:text-gray-200">
         How to read this chart
       </summary>

@@ -34,7 +34,7 @@ html.dark {
 
 @layer components {
   .card {
-    @apply rounded-xl border border-gray-200 bg-surface shadow-sm dark:border-gray-700;
+    @apply rounded-xl border border-gray-300 bg-surface shadow-sm dark:border-gray-700;
   }
   .card-title {
     @apply text-sm font-semibold text-gray-500 uppercase tracking-wide dark:text-gray-400;
