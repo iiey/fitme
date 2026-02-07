@@ -113,8 +113,13 @@ const HR_CURVE_TICKS = [1, 5, 15, 60, 120, 300, 600, 1200, 1800, 3600, 7200, 108
 /** Mean-maximal HR curve: best sustained average HR vs window duration (log x). */
 export function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
   const color = "#dc2626"
-  const maxDuration = Math.max(...curve.map((p) => p.duration_s))
-  const ticks = HR_CURVE_TICKS.filter((t) => t <= maxDuration * 1.1)
+  // Start the axis at the first window the curve actually has data for. Streams
+  // are downsampled, so the backend drops sub-resolution windows (often the 1-2s
+  // points); anchoring at a fixed 1s would render a flat, data-less lead-in.
+  const durations = curve.map((p) => p.duration_s)
+  const minDuration = durations.length ? Math.min(...durations) : HR_CURVE_TICKS[0]
+  const maxDuration = Math.max(...durations)
+  const ticks = HR_CURVE_TICKS.filter((t) => t >= minDuration && t <= maxDuration * 1.1)
   const toLog = (v: number) => Math.log10(v)
   const data = curve.map((p) => [toLog(p.duration_s), p.bpm])
   return {
@@ -137,8 +142,8 @@ export function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
       nameLocation: "middle",
       nameGap: 22,
       nameTextStyle: { color: "#9ca3af", fontSize: 11 },
-      min: toLog(ticks[0]),
-      max: toLog(ticks[ticks.length - 1]),
+      min: toLog(minDuration),
+      max: toLog(ticks[ticks.length - 1] ?? maxDuration),
       axisLabel: {
         fontSize: 10,
         color: "#9ca3af",
