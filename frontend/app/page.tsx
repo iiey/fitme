@@ -272,6 +272,7 @@ export default function DashboardPage() {
                   distanceUnit,
                   isDark,
                   true,
+                  true,
                 )
                 const counts = monthly.map((m) => m.count)
                 opt.tooltip = {

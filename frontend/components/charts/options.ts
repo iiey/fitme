@@ -36,8 +36,26 @@ export function barChart(
   unit = "",
   dark = false,
   showLabels = false,
+  intensityGradient = false,
 ): EChartsOption {
   const t = themeColors(dark)
+  const max = Math.max(0, ...values)
+  // With intensityGradient on, each bar is coloured by its height: short bars
+  // get a light, washed-out shade and tall bars a deep, saturated one, plus a
+  // subtle vertical gradient so the columns read as more vivid and eye-catching.
+  const seriesData = intensityGradient
+    ? values.map((v) => {
+        const ratio = max > 0 ? v / max : 0
+        const base = sampleRamp([lighten(color, 0.5), color, darken(color, 0.35)], ratio)
+        return {
+          value: v,
+          itemStyle: {
+            color: verticalGradient(lighten(base, 0.25), base),
+            borderRadius: [3, 3, 0, 0],
+          },
+        }
+      })
+    : values
   return {
     grid: { left: 50, right: 15, top: showLabels ? 28 : 15, bottom: 50 },
     tooltip: {
@@ -60,8 +78,8 @@ export function barChart(
     series: [
       {
         type: "bar",
-        data: values,
-        itemStyle: { color, borderRadius: [3, 3, 0, 0] },
+        data: seriesData,
+        itemStyle: intensityGradient ? undefined : { color, borderRadius: [3, 3, 0, 0] },
         label: showLabels
           ? {
               show: true,
@@ -176,6 +194,12 @@ function sampleRamp(ramp: string[], ratio: number): string {
 function lighten(hex: string, amount: number): string {
   const [r, g, b] = hexToRgb(hex)
   return rgbToHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount)
+}
+
+// Mix a colour toward black by `amount` (0 = unchanged, 1 = black).
+function darken(hex: string, amount: number): string {
+  const [r, g, b] = hexToRgb(hex)
+  return rgbToHex(r * (1 - amount), g * (1 - amount), b * (1 - amount))
 }
 
 // Build an rgba() string from a hex colour and an alpha in [0, 1].
