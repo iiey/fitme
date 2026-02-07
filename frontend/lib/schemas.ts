@@ -300,7 +300,7 @@ export const GoalResponseSchema = z.object({
   athlete_id: z.string(),
   start_date: z.string(),
   end_date: z.string(),
-  sport_type: z.string().nullable(),
+  sport_types: z.array(z.string()),
   metric: z.string(),
   target_value: z.number(),
   note: z.string().nullable(),

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app import repository
 from app.api.athletes import get_required_athlete_id as get_athlete_id
 from app.db import get_db
-from app.models import Goal
+from app.models import Goal, GoalSport
 from app.schemas import (
     GoalCreate,
     GoalProgressResponse,
@@ -21,13 +21,19 @@ router = APIRouter(prefix="/api/goals", tags=["goals"])
 _VALID_METRICS = {"distance_m", "count", "elevation_m", "moving_time_s", "calories"}
 
 
+def _sport_links(sport_types: list[str]) -> list[GoalSport]:
+    """Build deduplicated join rows for a goal's sports, ignoring blanks."""
+    unique = {s for s in sport_types if s}
+    return [GoalSport(sport_type=s) for s in sorted(unique)]
+
+
 def _goal_response(goal: Goal) -> GoalResponse:
     return GoalResponse(
         id=goal.id,
         athlete_id=goal.athlete_id,
         start_date=goal.start_date,
         end_date=goal.end_date,
-        sport_type=goal.sport_type,
+        sport_types=goal.sport_types,
         metric=goal.metric,
         target_value=goal.target_value,
         note=goal.note,
@@ -85,10 +91,10 @@ def create_goal(
         athlete_id=athlete_id,
         start_date=body.start_date,
         end_date=body.end_date,
-        sport_type=body.sport_type,
         metric=body.metric,
         target_value=body.target_value,
         note=body.note,
+        sports=_sport_links(body.sport_types),
     )
     goal = repository.create_goal(db, goal)
     return _goal_response(goal)
@@ -108,10 +114,14 @@ def update_goal(
         raise HTTPException(
             400, f"Invalid metric. Must be one of: {', '.join(sorted(_VALID_METRICS))}"
         )
-    for field in ("start_date", "end_date", "sport_type", "metric", "target_value", "note"):
+    for field in ("start_date", "end_date", "metric", "target_value", "note"):
         value = getattr(body, field, None)
         if value is not None:
             setattr(goal, field, value)
+    # ``sport_types`` is replace-on-present: ``None`` keeps the existing sports,
+    # while any provided list (empty included) becomes the new set.
+    if body.sport_types is not None:
+        goal.sports = _sport_links(body.sport_types)
     if goal.end_date < goal.start_date:
         raise HTTPException(400, "end_date must be >= start_date")
     goal = repository.update_goal(db, goal)

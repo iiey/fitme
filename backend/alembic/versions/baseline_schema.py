@@ -186,7 +186,6 @@ def upgrade() -> None:
         sa.Column("athlete_id", sa.String(), nullable=False),
         sa.Column("start_date", sa.Date(), nullable=False),
         sa.Column("end_date", sa.Date(), nullable=False),
-        sa.Column("sport_type", sa.String(), nullable=True),
         sa.Column("metric", sa.String(), nullable=False),
         sa.Column("target_value", sa.Float(), nullable=False),
         sa.Column("note", sa.String(), nullable=True),
@@ -201,6 +200,15 @@ def upgrade() -> None:
             unique=False,
         )
         batch_op.create_index(batch_op.f("ix_goal_athlete_id"), ["athlete_id"], unique=False)
+
+    # Sports a goal counts toward (empty set means "all sports").
+    op.create_table(
+        "goal_sport",
+        sa.Column("goal_id", sa.Integer(), nullable=False),
+        sa.Column("sport_type", sa.String(), nullable=False),
+        sa.ForeignKeyConstraint(["goal_id"], ["goal.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("goal_id", "sport_type"),
+    )
 
     op.create_table(
         "import_run",
@@ -262,6 +270,7 @@ def downgrade() -> None:
 
     op.drop_table("source_identity")
     op.drop_table("import_run")
+    op.drop_table("goal_sport")
     with op.batch_alter_table("goal", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_goal_athlete_id"))
         batch_op.drop_index("ix_goal_athlete_dates")

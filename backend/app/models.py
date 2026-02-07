@@ -2,8 +2,18 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, Float, Index, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
 from app.types import CompressedJSON
@@ -222,7 +232,6 @@ class Goal(Base):
     athlete_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
-    sport_type: Mapped[str | None] = mapped_column(String, nullable=True)
     metric: Mapped[str] = mapped_column(String, nullable=False)
     target_value: Mapped[float] = mapped_column(Float, nullable=False)
     note: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -231,7 +240,40 @@ class Goal(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
+    # Sports this goal counts toward. An empty collection means "all sports".
+    # Loaded eagerly so ``sport_types`` is always available without an extra
+    # round-trip when serializing a goal.
+    sports: Mapped[list[GoalSport]] = relationship(
+        back_populates="goal",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
     __table_args__ = (Index("ix_goal_athlete_dates", "athlete_id", "start_date", "end_date"),)
+
+    @property
+    def sport_types(self) -> list[str]:
+        """The goal's sports as a sorted list of sport-type strings."""
+        return sorted(link.sport_type for link in self.sports)
+
+
+class GoalSport(Base):
+    """A sport a goal counts toward (join row between ``goal`` and a sport type).
+
+    Modeling sports as their own rows (rather than a single column) lets one
+    goal target several sports at once, e.g. "Workout + Weight Training".
+    """
+
+    __tablename__ = "goal_sport"
+
+    goal_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("goal.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    sport_type: Mapped[str] = mapped_column(String, primary_key=True)
+
+    goal: Mapped[Goal] = relationship(back_populates="sports")
 
 
 class SyncConfig(Base):

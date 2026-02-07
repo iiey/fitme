@@ -414,7 +414,8 @@ export interface GoalResponse {
   athlete_id: string
   start_date: string
   end_date: string
-  sport_type: string | null
+  /** Sports the goal counts toward; an empty array means "all sports". */
+  sport_types: string[]
   metric: string
   target_value: number
   note: string | null
@@ -430,7 +431,8 @@ export interface GoalProgressResponse extends GoalResponse {
 export interface GoalCreate {
   start_date: string
   end_date: string
-  sport_type?: string | null
+  /** Sports the goal counts toward; an empty array means "all sports". */
+  sport_types: string[]
   metric: string
   target_value: number
   note?: string | null

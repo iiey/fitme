@@ -38,6 +38,11 @@ function formatMetricValue(metric: string, value: number): string {
   return formatNumber(value, 0)
 }
 
+/** Human-readable, comma-separated labels for a goal's selected sports. */
+function sportSummary(values: string[], options: { value: string; label: string }[]): string {
+  return values.map((v) => options.find((o) => o.value === v)?.label ?? v).join(", ")
+}
+
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
@@ -184,7 +189,7 @@ function GoalActivitiesPanel({
   const { data, error, isLoading } = useActivities(athleteId, {
     start: goal.start_date,
     end: `${goal.end_date}T23:59:59`,
-    sport_type: goal.sport_type ? [goal.sport_type] : undefined,
+    sport_type: goal.sport_types.length > 0 ? goal.sport_types : undefined,
     sort: "start_date_time",
     order: "desc",
     limit: 1000,
@@ -198,7 +203,7 @@ function GoalActivitiesPanel({
       action={
         <span className="text-sm text-gray-400">
           {metricLabel(goal.metric)}
-          {goal.sport_type ? ` · ${goal.sport_type}` : ""}
+          {goal.sport_types.length > 0 ? ` · ${goal.sport_types.join(", ")}` : ""}
         </span>
       }
     >
@@ -307,9 +312,9 @@ function GoalCard({
             <div className="flex items-center gap-2">
               <span className="font-semibold">
                 {metricLabel(goal.metric)}
-                {goal.sport_type && (
+                {goal.sport_types.length > 0 && (
                   <span className="ml-1.5 text-sm font-normal text-gray-400">
-                    ({goal.sport_type})
+                    ({sportSummary(goal.sport_types, sportTypes)})
                   </span>
                 )}
               </span>
@@ -389,6 +394,44 @@ function GoalCard({
   )
 }
 
+/** Checkbox group for picking zero or more sports; empty means "all sports". */
+function SportMultiSelect({
+  options,
+  selected,
+  onChange,
+}: {
+  options: { value: string; label: string }[]
+  selected: string[]
+  onChange: (next: string[]) => void
+}) {
+  function toggle(value: string) {
+    onChange(selected.includes(value) ? selected.filter((s) => s !== value) : [...selected, value])
+  }
+
+  if (options.length === 0) {
+    return <p className="text-sm text-gray-400">No sports available yet.</p>
+  }
+
+  return (
+    <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-gray-300 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
+      {options.map((s) => (
+        <label
+          key={s.value}
+          className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          <input
+            type="checkbox"
+            checked={selected.includes(s.value)}
+            onChange={() => toggle(s.value)}
+            className="rounded border-gray-300 text-brand focus:ring-brand"
+          />
+          {s.label}
+        </label>
+      ))}
+    </div>
+  )
+}
+
 function EditGoalForm({
   goal,
   athleteId,
@@ -406,7 +449,7 @@ function EditGoalForm({
 
   const [metric, setMetric] = useState(goal.metric)
   const [targetValue, setTargetValue] = useState(String(displayTarget))
-  const [sportType, setSportType] = useState(goal.sport_type ?? "")
+  const [selectedSports, setSelectedSports] = useState<string[]>(goal.sport_types)
   const [startDate, setStartDate] = useState(goal.start_date)
   const [endDate, setEndDate] = useState(goal.end_date)
   const [note, setNote] = useState(goal.note ?? "")
@@ -435,7 +478,7 @@ function EditGoalForm({
       await updateGoal(athleteId, goal.id, {
         start_date: startDate,
         end_date: endDate,
-        sport_type: sportType || null,
+        sport_types: selectedSports,
         metric,
         target_value: apiTarget,
         note: note.trim() || null,
@@ -482,23 +525,17 @@ function EditGoalForm({
             />
           </label>
 
-          <label className="block">
+          <div className="block">
             <span className="mb-1 block text-sm font-medium">
-              Sport <span className="font-normal text-gray-400">(optional)</span>
+              Sports{" "}
+              <span className="font-normal text-gray-400">(optional, empty = all sports)</span>
             </span>
-            <select
-              value={sportType}
-              onChange={(e) => setSportType(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-            >
-              <option value="">All sports</option>
-              {sportTypes.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <SportMultiSelect
+              options={sportTypes}
+              selected={selectedSports}
+              onChange={setSelectedSports}
+            />
+          </div>
 
           <div className="block">
             <span className="mb-1 block text-sm font-medium">Note</span>
@@ -563,7 +600,7 @@ function NewGoalForm({
 }) {
   const [metric, setMetric] = useState("distance_m")
   const [targetValue, setTargetValue] = useState("")
-  const [sportType, setSportType] = useState("")
+  const [selectedSports, setSelectedSports] = useState<string[]>([])
   const [startDate, setStartDate] = useState(todayISO)
   const [endDate, setEndDate] = useState(endOfYearISO)
   const [note, setNote] = useState("")
@@ -597,7 +634,7 @@ function NewGoalForm({
       const goal: GoalCreate = {
         start_date: startDate,
         end_date: endDate,
-        sport_type: sportType || null,
+        sport_types: selectedSports,
         metric,
         target_value: apiTarget,
         note: note.trim() || null,
@@ -652,23 +689,17 @@ function NewGoalForm({
             />
           </label>
 
-          <label className="block">
+          <div className="block">
             <span className="mb-1 block text-sm font-medium">
-              Sport <span className="font-normal text-gray-400">(optional)</span>
+              Sports{" "}
+              <span className="font-normal text-gray-400">(optional, empty = all sports)</span>
             </span>
-            <select
-              value={sportType}
-              onChange={(e) => setSportType(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-            >
-              <option value="">All sports</option>
-              {sportTypes.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
+            <SportMultiSelect
+              options={sportTypes}
+              selected={selectedSports}
+              onChange={setSelectedSports}
+            />
+          </div>
 
           <div className="block">
             <span className="mb-1 block text-sm font-medium">Note</span>

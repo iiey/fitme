@@ -255,7 +255,8 @@ class ActivityNoteUpdate(BaseModel):
 class GoalCreate(BaseModel):
     start_date: date
     end_date: date
-    sport_type: str | None = None
+    # Sports the goal counts toward; an empty list means "all sports".
+    sport_types: list[str] = []
     metric: str
     target_value: float
     note: str | None = None
@@ -264,7 +265,9 @@ class GoalCreate(BaseModel):
 class GoalUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
-    sport_type: str | None = None
+    # ``None`` leaves the sports unchanged; a list (including an empty one,
+    # meaning "all sports") replaces them.
+    sport_types: list[str] | None = None
     metric: str | None = None
     target_value: float | None = None
     note: str | None = None
@@ -275,7 +278,7 @@ class GoalResponse(BaseModel):
     athlete_id: str
     start_date: date
     end_date: date
-    sport_type: str | None
+    sport_types: list[str]
     metric: str
     target_value: float
     note: str | None

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -255,9 +254,15 @@ def update_goal(db: Session, goal: Goal) -> Goal:
 
 
 def delete_goal(db: Session, athlete_id: str, goal_id: int) -> bool:
-    result = db.execute(sa_delete(Goal).where(Goal.id == goal_id, Goal.athlete_id == athlete_id))
+    # Load and delete via the ORM so the ``sports`` relationship cascade removes
+    # the goal_sport join rows (a bulk DELETE would bypass that cascade, and
+    # SQLite does not enforce the foreign key on its own).
+    goal = get_goal(db, athlete_id, goal_id)
+    if goal is None:
+        return False
+    db.delete(goal)
     db.commit()
-    return result.rowcount > 0
+    return True
 
 
 def goal_progress(
@@ -277,8 +282,9 @@ def goal_progress(
             Activity.start_date_time <= end_dt,
         )
     )
-    if goal.sport_type:
-        base = base.where(Activity.sport_type == goal.sport_type)
+    sport_types = goal.sport_types
+    if sport_types:
+        base = base.where(Activity.sport_type.in_(sport_types))
 
     if goal.metric == "count":
         return float(db.execute(base).scalar_one())
@@ -295,8 +301,8 @@ def goal_progress(
             Activity.start_date_time <= end_dt,
         )
     )
-    if goal.sport_type:
-        stmt = stmt.where(Activity.sport_type == goal.sport_type)
+    if sport_types:
+        stmt = stmt.where(Activity.sport_type.in_(sport_types))
     return float(db.execute(stmt).scalar_one())
 
 
