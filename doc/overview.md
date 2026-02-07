@@ -76,7 +76,7 @@ fitme/
 │   │   │   ├── gpx.py         # GPX parser
 │   │   │   ├── tcx.py         # TCX parser
 │   │   │   └── polyline.py    # RDP downsampling
-│   │   ├── models.py       # SQLAlchemy models (9 tables)
+│   │   ├── models.py       # SQLAlchemy models (10 tables)
 │   │   ├── enums.py        # StreamType, sport/activity enums
 │   │   ├── repository.py   # Data access layer
 │   │   ├── athlete.py      # Athlete config loader (DB-backed)
@@ -90,7 +90,7 @@ fitme/
 │   │   ├── page.tsx             # Dashboard (incl. Eddington modal)
 │   │   ├── fitness/page.tsx     # Training load / form analysis
 │   │   ├── activities/page.tsx  # Activity list
-│   │   ├── activities/[id]/     # Activity detail (with inline note editor)
+│   │   ├── activities/[id]/     # Activity detail (sport-oriented; inline note editor)
 │   │   ├── calendar/page.tsx
 │   │   ├── goals/page.tsx       # Goal CRUD with progress tracking
 │   │   ├── heatmap/page.tsx
@@ -98,6 +98,7 @@ fitme/
 │   │   ├── rewind/page.tsx
 │   │   └── settings/page.tsx    # Sync config + athlete training params
 │   ├── components/
+│   │   ├── activities/     # Detail-page sections, profile-driven renderer, charts
 │   │   ├── charts/         # EChart wrapper + config
 │   │   ├── layout/         # Sidebar
 │   │   ├── map/            # Leaflet route/heatmap views
@@ -105,11 +106,13 @@ fitme/
 │   │   └── ui/             # Card, DataTable, Skeleton, ThemeToggle, etc.
 │   └── lib/
 │       ├── api.ts          # SWR hooks + Zod-validated fetchers
+│       ├── activityProfiles.ts  # Per-sport detail-page layout (stats + sections)
 │       ├── athlete-context.tsx  # React context for active athlete
 │       ├── echarts.ts      # Tree-shaken ECharts setup
 │       ├── format.ts       # Number/date formatting helpers
 │       ├── polyline.ts     # Polyline decoding
 │       ├── schemas.ts      # Zod response schemas
+│       ├── sportIcons.ts   # Per-activity-type icons
 │       ├── types.ts        # TypeScript interfaces
 │       └── use-is-dark.ts  # Dark-mode detection hook
 └── docker-compose.yml
@@ -119,7 +122,7 @@ fitme/
 
 ## 3. Data Model
 
-Nine tables, scoped per athlete:
+Ten tables, scoped per athlete:
 
 | Table | Primary Key | Purpose |
 |-------|-------------|---------|
@@ -128,6 +131,7 @@ Nine tables, scoped per athlete:
 | `best_effort` | `(activity_id, distance_m)` | Fastest time over standard distances (400 m, 1 km, 5 km, etc.) |
 | `gear` | `gear_id` (hash of name) | Bikes / shoes with accumulated distance |
 | `goal` | auto-increment | Training targets over flexible date ranges, progress computed at query time |
+| `goal_sport` | `(goal_id, sport_type)` | Sports a goal counts toward (empty = all); real SQL FK to `goal` with cascade delete |
 | `sync_config` | `provider` (string) | Credentials and watermark for continuous Intervals.icu sync |
 | `import_run` | auto-increment | Audit trail: timestamp, source path, counts (created/updated/skipped/errors) |
 | `athlete_profile` | `athlete_id` (string) | Athlete identity + training parameters (FTP, HR, weight, zones, unit system) |
@@ -358,7 +362,20 @@ Writes:  Component → updateGoal()   → fetch(PUT) → mutate() to revalidate 
 | **RDP polyline downsampling** | GPS coordinates are simplified during import using Ramer-Douglas-Peucker algorithm |
 | **URL state persistence** | Activity list pagination/filters are stored in URL search params |
 
-### 8.3 Dark Mode
+### 8.3 Sport-oriented activity detail
+
+The activity detail page renders by **sport profile**, not raw data presence. A
+declarative registry ([frontend/lib/activityProfiles.ts](frontend/lib/activityProfiles.ts))
+maps each broad activity type to the primary stat tiles and detail sections that
+are *appropriate* for that sport; [components/activities/](frontend/components/activities/)
+then renders a tile or section only when the profile allows it **and** the data
+is present. This stops, e.g., a yoga session from showing a Distance/Pace header
+or a speed chart. The authoritative `is_distance_based` flag (surfaced from the
+backend `SportType`) drives the fallback for any unregistered sport. Stream
+charts plot over GPS distance for distance-based sports and over elapsed time
+otherwise, so indoor/cardio sessions don't collapse onto a zero-distance axis.
+
+### 8.4 Dark Mode
 
 Dark mode uses Tailwind's `class` strategy with CSS custom properties:
 

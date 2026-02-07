@@ -31,16 +31,17 @@ year query.
 
 ## 2. Entity-Relationship Diagram
 
-The schema has **nine tables**, all logically scoped to a single `athlete_id`.
+The schema has **ten tables**, all logically scoped to a single `athlete_id`.
 
-> **Important:** The relationships below are *application-enforced* (logical).
+> **Important:** Most relationships below are *application-enforced* (logical).
 > The ORM models declare **no SQL `FOREIGN KEY` constraints** - columns such as
 > `activity.athlete_id`, `activity_stream.activity_id`, and `activity.gear_id`
 > are plain indexed string columns. Joins are performed explicitly in
 > [backend/app/repository.py](backend/app/repository.py), and cascade deletes
 > are handled in Python (see [backend/app/api/athletes.py](backend/app/api/athletes.py)).
 > The `PK`/`FK` markers in the diagram describe *intent*, not database-level
-> constraints.
+> constraints. The one exception is `goal_sport`, which declares a real SQL
+> `FOREIGN KEY (goal_id)` with `ON DELETE CASCADE` to `goal`.
 
 ```mermaid
 erDiagram
@@ -53,6 +54,7 @@ erDiagram
     activity        ||--o{ activity_stream : "has (activity_id)"
     activity        ||--o{ best_effort     : "has (activity_id)"
     gear            |o--o{ activity        : "used in (gear_id)"
+    goal            ||--o{ goal_sport      : "counts toward (goal_id, FK cascade)"
 
     athlete_profile {
         string   athlete_id PK "canonical athlete id"
@@ -156,12 +158,16 @@ erDiagram
         string   athlete_id FK "indexed"
         date     start_date    "inclusive"
         date     end_date      "inclusive"
-        string   sport_type    "nullable; null = all sports"
         string   metric        "distance_m | count | elevation_m | moving_time_s | calories"
         float    target_value  "numeric target"
         string   note          "nullable"
         datetime created_on
         datetime updated_on    "auto-updated"
+    }
+
+    goal_sport {
+        int      goal_id PK, FK "real SQL FK to goal.id, ON DELETE CASCADE"
+        string   sport_type PK "a sport this goal counts toward"
     }
 
     sync_config {
@@ -174,6 +180,7 @@ erDiagram
         datetime last_run_at    "nullable"
         string   last_status    "nullable; ok | error | running"
         string   last_message   "nullable"
+        date     last_auto_sync_on "nullable; gates once-per-day startup sync"
         datetime created_on
         datetime updated_on     "auto-updated"
     }
@@ -278,15 +285,29 @@ take precedence over hardcoded model defaults for any field left null.
 ### 3.7 `goal` - training goals
 
 Auto-increment PK. Tracks targets over flexible date ranges (e.g. "run 200 km
-in June 2026"). `sport_type` is nullable - null means all sports count.
-`metric` is one of `distance_m`, `count`, `elevation_m`, `moving_time_s`, or
-`calories`.
+in June 2026"). `metric` is one of `distance_m`, `count`, `elevation_m`,
+`moving_time_s`, or `calories`. The sports a goal counts toward are **not** a
+column on `goal`; they live in the `goal_sport` join table (see [§3.10](#310-goal_sport---goal-to-sport-association)),
+so one goal can target several sports at once.
 
 Progress is computed at query time by aggregating from the `activity` table
 (`WHERE start_date_time BETWEEN goal.start_date AND goal.end_date`), optionally
-filtered by `sport_type`. No denormalized counters to keep in sync.
+filtered by the goal's `sport_type` set. No denormalized counters to keep in sync.
 
 Composite index on `(athlete_id, start_date, end_date)` for date-range lookups.
+
+### 3.10 `goal_sport` - goal-to-sport association
+
+Composite PK `(goal_id, sport_type)`. Each row links a goal to one sport type it
+counts toward; an **empty set means "all sports"**. Modeling sports as their own
+rows (rather than a single `goal.sport_type` column) lets one goal target several
+sports at once, e.g. "Workout + Weight Training".
+
+This is the **only table with a database-level foreign key**: `goal_id` references
+`goal.id` with `ON DELETE CASCADE`, so deleting a goal removes its sport rows
+automatically. The goals API still deletes link rows through the ORM relationship
+(`cascade="all, delete-orphan"`, see [backend/app/models.py](backend/app/models.py))
+rather than relying on a bulk SQL delete.
 
 ### 3.8 `sync_config` - continuous provider sync
 
@@ -305,9 +326,11 @@ resolve automatically.
 
 ---
 
-## 4. Relationships (application-enforced, no SQL foreign keys)
+## 4. Relationships (application-enforced, except `goal_sport`)
 
-No DB-level foreign keys - integrity is maintained in code:
+With the single exception of `goal_sport` → `goal` (a real SQL FK with
+`ON DELETE CASCADE`), there are no DB-level foreign keys - integrity is
+maintained in code:
 
 - **Ownership scoping** - Every read goes through a repository helper that adds
   `WHERE athlete_id = :athlete_id`. Cross-athlete access is impossible because
@@ -329,6 +352,7 @@ flowchart TD
     BE["best_effort<br/>(activity_id, distance_m)"]
     G["gear<br/>(gear_id)"]
     GO["goal<br/>(id)"]
+    GS["goal_sport<br/>(goal_id, sport_type)"]
     SC["sync_config<br/>(provider)"]
     IR["import_run<br/>(id)"]
     SI["source_identity<br/>(source, source_athlete_id)"]
@@ -342,6 +366,7 @@ flowchart TD
     A  -->|"1 : N - activity_id"| AS
     A  -->|"1 : N - activity_id"| BE
     G  -.->|"0..1 : N - gear_id (denormalized)"| A
+    GO ==>|"1 : N - goal_id (SQL FK, cascade)"| GS
 ```
 
 ---
@@ -559,13 +584,16 @@ it via table copy).
 
 ```mermaid
 flowchart LR
-    A["baseline<br/>7 core tables + indexes"] --> B["sync_config<br/>continuous sync table"] --> C["notes_goals_config<br/>user_note, goal table,<br/>athlete training params"]
+    A["baseline<br/>all ten tables + indexes<br/>(revision = 'baseline', down_revision = None)"]
 ```
 
-- **`baseline`** - creates the original seven tables in one step.
-- **`sync_config`** - adds the `sync_config` table for Intervals.icu sync.
-- **`notes_goals_config`** - adds `user_note` column to `activity`, creates the
-  `goal` table, and extends `athlete_profile` with training parameter columns.
+The earlier incremental migrations (`sync_config`, `notes_goals_config`) have been
+**squashed into a single `baseline_schema.py`** that creates the full current
+schema - all ten tables (including `goal`, `goal_sport`, `sync_config` with
+`last_auto_sync_on`, and the athlete training-parameter columns) in one step. It
+is the only migration; `down_revision` is `None`. Because the project ships no
+released database that predates the squash, there is no need to keep the old
+intermediate revisions.
 
 > Generate new migrations with
 > `uv run alembic revision --autogenerate -m "describe change""`.
@@ -617,9 +645,10 @@ restarts (see [docker-compose.yml](docker-compose.yml)).
 
 ## 11. Summary
 
-- **One SQLite file** in WAL mode, nine tables, scoped per athlete.
-- **No DB-level foreign keys** - relationships and cascades are enforced in
-  application code (repository joins + Python cascade delete).
+- **One SQLite file** in WAL mode, ten tables, scoped per athlete.
+- **Almost no DB-level foreign keys** - relationships and cascades are enforced in
+  application code (repository joins + Python cascade delete); the one exception
+  is `goal_sport` → `goal` (`ON DELETE CASCADE`).
 - **Source-aware identity** - activities are unique per
   `(athlete_id, source, external_id)`, and a `dedup_key` fingerprint skips the
   same workout imported from a different provider. `source_identity` maps
