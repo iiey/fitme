@@ -10,6 +10,7 @@ import {
   FORM_ZONES,
   formZoneFor,
   trainingLoadDetailChart,
+  tsbColor,
 } from "@/components/charts/options"
 import { InfoTip } from "@/components/ui/InfoTip"
 import {
@@ -36,12 +37,14 @@ function MetricCard({
   sub,
   tip,
   colorClass,
+  color,
 }: {
   label: string
   value: string
   sub: string
   tip?: string
   colorClass?: string
+  color?: string
 }) {
   return (
     <div className="card flex flex-col gap-1 p-3">
@@ -49,7 +52,10 @@ function MetricCard({
         {label}
         {tip && <InfoTip text={tip} />}
       </span>
-      <span className={`text-xl font-bold ${colorClass ?? "text-gray-900 dark:text-gray-100"}`}>
+      <span
+        className={`text-xl font-bold ${color ? "" : (colorClass ?? "text-gray-900 dark:text-gray-100")}`}
+        style={color ? { color } : undefined}
+      >
         {value}
       </span>
       <span className="text-[11px] text-gray-400">{sub}</span>
@@ -238,19 +244,21 @@ export function TrainingLoadSection({
           value={String(analysis.ctl)}
           sub="42-day fitness trend"
           tip="Chronic Training Load - exponentially weighted average of daily training load over 42 days."
+          color={FITNESS_COLOR}
         />
         <MetricCard
           label="ATL (Fatigue)"
           value={String(analysis.atl)}
           sub="7-day fatigue level"
           tip="Acute Training Load - exponentially weighted average over 7 days."
+          color={FATIGUE_COLOR}
         />
         <MetricCard
           label="TSB (Form)"
           value={String(analysis.tsb)}
           sub={analysis.tsb_status}
           tip="Training Stress Balance = CTL − ATL. Positive = fresh, negative = fatigued."
-          colorClass={STATUS_COLORS[analysis.tsb_color] ?? STATUS_COLORS.neutral}
+          color={tsbColor(analysis.tsb, isDark)}
         />
         <MetricCard
           label="A:C Ratio"

@@ -407,6 +407,25 @@ export function formZoneFor(tsb: number): FormZone {
   return FORM_ZONES.find((zone) => tsb >= zone.from && tsb < zone.to) ?? FORM_ZONES[2]
 }
 
+// |TSB| at which the Form colour reaches full intensity.
+const TSB_INTENSITY_MAX = 30
+
+// Colour for the TSB (Form) number: green when fresh (positive), red when
+// fatigued (negative), deepening toward full intensity as the value moves away
+// from zero. Light/dark ramps keep the bold number readable on either surface.
+export function tsbColor(tsb: number, dark = false): string {
+  const intensity = Math.min(1, Math.abs(tsb) / TSB_INTENSITY_MAX)
+  const ramp =
+    tsb >= 0
+      ? dark
+        ? ["#22c55e", "#4ade80"] // green-500 → green-400 (brighter = fresher)
+        : ["#22c55e", "#166534"] // green-500 → green-800 (deeper = fresher)
+      : dark
+        ? ["#ef4444", "#f87171"] // red-500 → red-400 (brighter = more fatigued)
+        : ["#ef4444", "#991b1b"] // red-500 → red-800 (deeper = more fatigued)
+  return sampleRamp(ramp, intensity)
+}
+
 export function trainingLoadDetailChart(
   analysis: TrainingLoadAnalysis,
   dark = false,
