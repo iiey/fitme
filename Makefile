@@ -127,9 +127,13 @@ docker-down: ## Stop and remove Docker Compose services.
 # Housekeeping
 # ---------------------------------------------------------------------------
 
-.PHONY: clean
-clean: ## Remove caches, build artifacts and the local database.
+.PHONY: clean_caches
+clean_caches: ## Remove caches and build artifacts.
 	rm -rf $(BACKEND)/.venv $(BACKEND)/.ruff_cache $(BACKEND)/.pytest_cache
-	rm -rf $(BACKEND)/storage/*.db
 	rm -rf $(FRONTEND)/.next $(FRONTEND)/node_modules
 	find $(BACKEND) -type d -name __pycache__ -prune -exec rm -rf {} +
+
+.PHONY: clean_all
+clean_all: clean_caches ## Remove caches, build artifacts and the local database.
+	@echo "Removing local database…"
+	rm -rf $(BACKEND)/storage/*.db
