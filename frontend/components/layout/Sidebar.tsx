@@ -504,8 +504,19 @@ function AthleteSwitcher({
               )}
             >
               <User className="h-4 w-4 shrink-0" />
-              Athlete Profile
+              Profile
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                onOpenSettings()
+                setOpen(false)
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              Settings
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -543,17 +554,6 @@ function AthleteSwitcher({
             >
               <RefreshCw className={clsx("h-4 w-4 shrink-0", syncing && "animate-spin")} />
               {syncing ? "Syncing…" : "Sync"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onOpenSettings()
-                setOpen(false)
-              }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-            >
-              <Settings className="h-4 w-4 shrink-0" />
-              Settings
             </button>
             <div
               className="relative"
