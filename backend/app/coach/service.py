@@ -17,9 +17,30 @@ from app.coach.schemas import TrainingPlan
 _MIN_PLAN_WEEKS = 1
 _MAX_PLAN_WEEKS = 12
 
+# Cap how much prior conversation is replayed to the model each turn, so context
+# (and latency/cost) stays bounded on long chats. Tools re-fetch live data anyway.
+_MAX_HISTORY_MESSAGES = 20
+
 
 class CoachUnavailable(RuntimeError):
     """Raised when a chat is attempted but the coach is not configured/enabled."""
+
+
+def friendly_error(exc: Exception) -> str:
+    """Map a provider/runtime error to a short, user-facing message."""
+    text = str(exc).strip()
+    low = text.lower()
+    if any(
+        k in low for k in ("refused", "connection", "could not connect", "timeout", "timed out")
+    ):
+        return (
+            "Could not reach the model provider. Check it is running and the base URL is correct."
+        )
+    if any(k in low for k in ("api key", "unauthorized", "authentication", "401", "403")):
+        return "The model provider rejected the API key."
+    if "not found" in low or "404" in low:
+        return "The configured model was not found by the provider."
+    return (text.splitlines()[0] if text else "Unknown error.")[:300]
 
 
 def _require_model(coach_db: Session):
@@ -89,7 +110,8 @@ async def stream_chat(
     open for the whole stream.
     """
     model = _require_model(coach_db)
-    history = _message_history(store.list_messages(coach_db, session_id))
+    recent = store.list_messages(coach_db, session_id)[-_MAX_HISTORY_MESSAGES:]
+    history = _message_history(recent)
 
     # Persist the user's turn before the run so it survives a provider failure.
     store.add_message(coach_db, session_id, "user", message)

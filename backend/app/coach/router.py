@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -32,11 +32,14 @@ from app.coach.schemas import (
     CoachVerifyResult,
     TrainingPlan,
 )
-from app.coach.service import CoachUnavailable
+from app.coach.service import CoachUnavailable, friendly_error
 from app.coach.verify import verify_connection
 from app.db import SessionLocal as CoreSessionLocal
 
 logger = logging.getLogger("fitme.coach")
+
+# Reject oversized chat messages before they reach the model.
+_MAX_MESSAGE_CHARS = 4000
 
 router = APIRouter(prefix="/api/coach", tags=["coach"])
 
@@ -221,6 +224,7 @@ def _sse(payload: dict) -> bytes:
 
 @router.post("/chat")
 async def chat(
+    request: Request,
     payload: CoachChatRequest,
     athlete_id: str = Depends(get_required_athlete_id),
 ) -> StreamingResponse:
@@ -233,6 +237,8 @@ async def chat(
     message = payload.message.strip()
     if not message:
         raise HTTPException(422, "Message is required.")
+    if len(message) > _MAX_MESSAGE_CHARS:
+        raise HTTPException(422, "Message is too long.")
     context = payload.context or CoachChatContext()
     view = CoachView(view=context.view, activity_id=context.activity_id)
 
@@ -259,13 +265,16 @@ async def chat(
                 message=message,
                 view=view,
             ):
+                # Stop early if the user closed the drawer / navigated away.
+                if await request.is_disconnected():
+                    break
                 yield _sse({"type": "delta", "text": delta})
             yield _sse({"type": "done"})
         except CoachUnavailable as exc:
             yield _sse({"type": "error", "message": str(exc)})
         except Exception as exc:  # noqa: BLE001 - report provider/runtime errors to the client
             logger.exception("Coach chat failed")
-            yield _sse({"type": "error", "message": str(exc)[:300]})
+            yield _sse({"type": "error", "message": friendly_error(exc)})
         finally:
             coach_db.close()
             core_db.close()
@@ -333,7 +342,7 @@ async def create_plan(
         raise HTTPException(400, str(exc)) from None
     except Exception as exc:
         logger.exception("Plan generation failed")
-        raise HTTPException(502, f"Plan generation failed: {str(exc)[:200]}") from None
+        raise HTTPException(502, friendly_error(exc)) from None
     finally:
         coach_db.close()
         core_db.close()

@@ -86,8 +86,14 @@ def add_message(db: Session, session_id: int, role: str, content: str) -> CoachM
 def add_memory(
     db: Session, athlete_id: str, content: str, source_session_id: int | None = None
 ) -> CoachMemory:
+    # Skip near-duplicate facts (case-insensitive) so memory does not accumulate
+    # the same thing across turns.
+    normalized = content.strip().casefold()
+    for existing in list_memory(db, athlete_id):
+        if existing.content.strip().casefold() == normalized:
+            return existing
     memory = CoachMemory(
-        athlete_id=athlete_id, content=content, source_session_id=source_session_id
+        athlete_id=athlete_id, content=content.strip(), source_session_id=source_session_id
     )
     db.add(memory)
     db.commit()

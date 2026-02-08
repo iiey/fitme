@@ -260,6 +260,21 @@ def test_sessions_api(client):
     assert client.get(f"/api/coach/sessions/{sid}/messages").status_code == 404
 
 
+def test_memory_dedupe(coach_factory):
+    db = coach_factory()
+    try:
+        store.add_memory(db, ATHLETE, "Runs on Tuesdays")
+        store.add_memory(db, ATHLETE, "runs on tuesdays")  # case-insensitive duplicate
+        assert len(store.list_memory(db, ATHLETE)) == 1
+    finally:
+        db.close()
+
+
+def test_chat_rejects_empty_and_long_messages(client):
+    assert client.post("/api/coach/chat", json={"message": "   "}).status_code == 422
+    assert client.post("/api/coach/chat", json={"message": "x" * 5000}).status_code == 422
+
+
 def test_memory_api(client, coach_factory):
     seed = coach_factory()
     store.add_memory(seed, ATHLETE, "Prefers morning runs")

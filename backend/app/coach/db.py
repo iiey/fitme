@@ -29,6 +29,8 @@ if _is_sqlite:
         cursor.execute("PRAGMA synchronous=NORMAL")
         # Enforce ON DELETE CASCADE (session -> messages); off by default in SQLite.
         cursor.execute("PRAGMA foreign_keys=ON")
+        # Wait briefly instead of failing immediately if another write holds the lock.
+        cursor.execute("PRAGMA busy_timeout=5000")
         cursor.close()
 
 
