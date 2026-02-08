@@ -17,6 +17,8 @@ import {
   Menu,
   Monitor,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   Rewind,
   Settings,
@@ -46,6 +48,7 @@ import {
   useSyncStatus,
 } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
+import { useSidebar } from "@/lib/sidebar-context"
 import type { AthleteListItem, SyncStatus } from "@/lib/types"
 
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
@@ -151,6 +154,7 @@ export function Sidebar() {
   const { athleteId, setAthleteId, athletes, setAthletes } = useAthleteContext()
   const { data: meta } = useMeta(athleteId)
   const { data: syncConfig } = useSyncConfig()
+  const { collapsed, toggleCollapsed } = useSidebar()
   const [importOpen, setImportOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -224,17 +228,35 @@ export function Sidebar() {
     setMobileOpen(false)
   }, [pathname])
 
-  const sidebarContent = (
+  // Rendered for both the mobile slide-out (always expanded) and the desktop
+  // rail (collapsible). `rail` drives the icon-only, label-free layout.
+  const renderBody = (rail: boolean) => (
     <>
-      <div className="flex items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
-            <Activity className="h-5 w-5" strokeWidth={2.5} />
-          </span>
-          <span className="text-xl font-bold tracking-tight">
-            Fit<span className="text-brand">Me</span>
-          </span>
-        </div>
+      <div
+        className={clsx(
+          "flex items-center py-5",
+          rail ? "justify-center px-3" : "justify-between px-6",
+        )}
+      >
+        {!rail && (
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
+              <Activity className="h-5 w-5" strokeWidth={2.5} />
+            </span>
+            <span className="text-xl font-bold tracking-tight">
+              Fit<span className="text-brand">Me</span>
+            </span>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className="hidden rounded-lg p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 lg:block"
+          aria-label={rail ? "Expand sidebar" : "Collapse sidebar"}
+          title={rail ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {rail ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+        </button>
         <button
           type="button"
           onClick={() => setMobileOpen(false)}
@@ -244,7 +266,7 @@ export function Sidebar() {
           <X className="h-5 w-5" />
         </button>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
+      <nav className={clsx("flex flex-1 flex-col gap-1 py-2", rail ? "px-2" : "px-3")}>
         {NAV_ITEMS.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
           const Icon = item.icon
@@ -252,21 +274,24 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              title={rail ? item.label : undefined}
               className={clsx(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center rounded-lg py-2 text-sm font-medium transition-colors",
+                rail ? "justify-center px-2" : "gap-3 px-3",
                 active
                   ? "bg-brand/10 text-brand"
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200",
               )}
             >
               <Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.25 : 2} />
-              {item.label}
+              {!rail && item.label}
             </Link>
           )
         })}
       </nav>
-      <div className="border-t border-gray-200 p-3 dark:border-gray-700">
+      <div className={clsx("border-t border-gray-200 dark:border-gray-700", rail ? "p-2" : "p-3")}>
         <AthleteSwitcher
+          collapsed={rail}
           athletes={athletes}
           activeId={athleteId}
           onSwitch={setAthleteId}
@@ -319,12 +344,17 @@ export function Sidebar() {
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        {sidebarContent}
+        {renderBody(false)}
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 lg:flex">
-        {sidebarContent}
+      <aside
+        className={clsx(
+          "fixed left-0 top-0 z-20 hidden h-screen flex-col border-r border-gray-200 bg-white transition-[width] duration-200 dark:border-gray-700 dark:bg-gray-900 lg:flex",
+          collapsed ? "w-16" : "w-64",
+        )}
+      >
+        {renderBody(collapsed)}
       </aside>
     </>
   )
@@ -337,6 +367,7 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: LucideIcon }[] = [
 ]
 
 function AthleteSwitcher({
+  collapsed,
   athletes,
   activeId,
   onSwitch,
@@ -346,6 +377,7 @@ function AthleteSwitcher({
   syncing,
   onSync,
 }: {
+  collapsed: boolean
   athletes: AthleteListItem[]
   activeId: string | null
   onSwitch: (id: string | null) => void
@@ -409,22 +441,30 @@ function AthleteSwitcher({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+        title={collapsed ? (active?.name ?? "Menu") : undefined}
+        className={clsx(
+          "flex w-full items-center rounded-lg py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
+          collapsed ? "justify-center px-0" : "gap-2 px-2",
+        )}
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">
           {active ? initials(active.name) : <User className="h-4 w-4" />}
         </span>
-        <span className="min-w-0 flex-1 text-left">
-          <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-200">
-            {active?.name ?? (hasAthletes ? "Select athlete" : "FitMe")}
-          </span>
-          <span className="block truncate text-xs text-gray-400">
-            {active?.location ?? "Self-hosted"}
-          </span>
-        </span>
-        <span className="text-gray-400">
-          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </span>
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-200">
+                {active?.name ?? (hasAthletes ? "Select athlete" : "FitMe")}
+              </span>
+              <span className="block truncate text-xs text-gray-400">
+                {active?.location ?? "Self-hosted"}
+              </span>
+            </span>
+            <span className="text-gray-400">
+              {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </span>
+          </>
+        )}
       </button>
 
       {open && (
