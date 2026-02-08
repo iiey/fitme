@@ -1,6 +1,6 @@
 "use client"
 
-import { Brain, ChevronDown, ClipboardList, Sparkles, X } from "lucide-react"
+import { ArrowLeft, Plus, Sparkles, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useAthleteContext } from "@/lib/athlete-context"
 import {
@@ -42,6 +42,8 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   const [panel, setPanel] = useState<Panel>(null)
   const abortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [width, setWidth] = useState(420)
+  const resizingRef = useRef(false)
 
   useEffect(() => {
     if (!open) {
@@ -58,6 +60,31 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [items])
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!resizingRef.current) return
+      // Panel is docked right: distance from cursor to viewport edge is its width.
+      const next = window.innerWidth - e.clientX
+      setWidth(Math.min(Math.max(next, 320), window.innerWidth * 0.95))
+    }
+    function onUp() {
+      resizingRef.current = false
+      document.body.style.userSelect = ""
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+    return () => {
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+  }, [])
+
+  function startResize(e: React.MouseEvent) {
+    e.preventDefault()
+    resizingRef.current = true
+    document.body.style.userSelect = "none"
+  }
 
   const activeTitle =
     sessions.find((s) => s.id === activeSessionId)?.title ?? (activeSessionId ? "Chat" : "New chat")
@@ -179,7 +206,6 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   }
 
   async function handleDelete(session: CoachSession) {
-    if (!window.confirm(`Delete "${session.title}"?`)) return
     try {
       await deleteSession(session.id, athleteId)
       if (session.id === activeSessionId) newChat()
@@ -206,25 +232,24 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
       <aside
         role="dialog"
         aria-label="FitBuddy"
-        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-[420px] flex-col border-l border-gray-200 bg-surface shadow-xl transition-transform duration-200 dark:border-gray-700 ${
+        style={{ width: `${width}px` }}
+        className={`fixed inset-y-0 right-0 z-50 flex max-w-[95vw] flex-col border-l border-gray-200 bg-surface shadow-xl transition-transform duration-200 dark:border-gray-700 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
+        <div
+          onMouseDown={startResize}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize panel"
+          className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-ew-resize transition-colors hover:bg-brand/40"
+        />
         <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
           <div className="flex min-w-0 items-center gap-2">
             <Sparkles className="h-5 w-5 shrink-0 text-brand" />
-            <button
-              type="button"
-              onClick={() => togglePanel("sessions")}
-              className="flex min-w-0 items-center gap-1 text-left"
-              title={status.model ?? undefined}
-            >
-              <span className="flex flex-col leading-tight">
-                <span className="text-sm font-semibold">FitBuddy</span>
-                <span className="max-w-[150px] truncate text-xs text-gray-400">{activeTitle}</span>
-              </span>
-              <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
-            </button>
+            <span className="text-sm font-semibold" title={status.model ?? undefined}>
+              FitBuddy
+            </span>
           </div>
           <div className="flex items-center gap-1">
             <span className="mr-1 hidden rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800 sm:inline">
@@ -232,82 +257,91 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
             </span>
             <button
               type="button"
-              onClick={() => togglePanel("plan")}
-              aria-label="Build a training plan"
-              title="Build a training plan"
-              className={`rounded-md p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                panel === "plan" ? "text-brand" : "text-gray-500"
-              }`}
+              onClick={newChat}
+              aria-label="New chat"
+              title="New chat"
+              className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              <ClipboardList className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => togglePanel("memory")}
-              aria-label="What FitBuddy remembers"
-              title="Memory"
-              className={`rounded-md p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                panel === "memory" ? "text-brand" : "text-gray-500"
-              }`}
-            >
-              <Brain className="h-5 w-5" />
+              <Plus className="h-5 w-5" />
             </button>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </header>
 
-        {panel === "sessions" && (
+        {panel === "sessions" ? (
           <SessionMenu
             sessions={sessions}
             activeSessionId={activeSessionId}
             onSelect={selectSession}
-            onNew={newChat}
             onRename={handleRename}
             onDelete={handleDelete}
           />
-        )}
-        {panel === "memory" && <MemoryPanel athleteId={athleteId} />}
-        {panel === "plan" && <PlanForm busy={planBusy} onGenerate={handleGeneratePlan} />}
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setPanel("sessions")}
+              aria-label="Back to chats"
+              className="flex min-w-0 items-center gap-1.5 border-b border-gray-200 px-4 py-2 text-left text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <ArrowLeft className="h-4 w-4 shrink-0" />
+              <span className="truncate text-sm font-medium">{activeTitle}</span>
+            </button>
 
-        <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
-          {items.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <Sparkles className="h-8 w-8 text-gray-300 dark:text-gray-600" />
-              <p className="text-sm font-medium">How can I help with your training?</p>
-              <div className="flex flex-col gap-2">
-                {quickPrompts.map((prompt) => (
-                  <button
-                    key={prompt}
-                    type="button"
-                    onClick={() => handleSend(prompt)}
-                    className="rounded-full border border-gray-300 px-3 py-1.5 text-xs transition-colors hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            items.map((item, index) =>
-              item.kind === "plan" ? (
-                <PlanCard key={index} plan={item.plan} />
+            {panel === "memory" && <MemoryPanel athleteId={athleteId} />}
+            {panel === "plan" && <PlanForm busy={planBusy} onGenerate={handleGeneratePlan} />}
+
+            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+              {items.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                  <Sparkles className="h-8 w-8 text-gray-300 dark:text-gray-600" />
+                  <p className="text-sm font-medium">How can I help with your training?</p>
+                  <div className="flex flex-col gap-2">
+                    {quickPrompts.map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => handleSend(prompt)}
+                        className="rounded-full border border-gray-300 px-3 py-1.5 text-xs transition-colors hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ) : (
-                <MessageBubble key={index} message={{ role: item.role, content: item.content }} />
-              ),
-            )
-          )}
-          {planBusy && <p className="text-center text-xs text-gray-400">Building your plan…</p>}
-          {error && <p className="text-center text-sm text-red-600">{error}</p>}
-        </div>
+                items.map((item, index) =>
+                  item.kind === "plan" ? (
+                    <PlanCard key={index} plan={item.plan} />
+                  ) : (
+                    <MessageBubble
+                      key={index}
+                      message={{ role: item.role, content: item.content }}
+                    />
+                  ),
+                )
+              )}
+              {planBusy && <p className="text-center text-xs text-gray-400">Building your plan…</p>}
+              {error && <p className="text-center text-sm text-red-600">{error}</p>}
+            </div>
 
-        <MessageInput disabled={busy} onSend={handleSend} />
+            <MessageInput
+              disabled={busy}
+              onSend={handleSend}
+              onTogglePlan={() => togglePanel("plan")}
+              onToggleMemory={() => togglePanel("memory")}
+              planActive={panel === "plan"}
+              memoryActive={panel === "memory"}
+            />
+          </>
+        )}
       </aside>
     </>
   )
