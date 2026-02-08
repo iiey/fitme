@@ -1,6 +1,7 @@
 "use client"
 
-import { ArrowLeft, BicepsFlexed, Plus, Sparkles, X } from "lucide-react"
+import clsx from "clsx"
+import { ArrowLeft, BicepsFlexed, Pin, Plus, Sparkles, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useAthleteContext } from "@/lib/athlete-context"
 import {
@@ -22,6 +23,8 @@ import { PlanForm } from "./PlanForm"
 import { SessionMenu } from "./SessionMenu"
 
 type Panel = "sessions" | "memory" | "plan" | null
+
+const PINNED_KEY = "fitme-coach-pinned"
 
 interface CoachDrawerProps {
   open: boolean
@@ -46,17 +49,33 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(420)
   const resizingRef = useRef(false)
+  // When pinned, the panel stays docked while the rest of the app is used:
+  // no dimming backdrop, clicks pass through, and outside actions/Escape don't
+  // close it. Defaults to off and persists across reloads.
+  const [pinned, setPinned] = useState(false)
+
+  useEffect(() => {
+    setPinned(localStorage.getItem(PINNED_KEY) === "true")
+  }, [])
+
+  function togglePin() {
+    setPinned((prev) => {
+      const next = !prev
+      localStorage.setItem(PINNED_KEY, String(next))
+      return next
+    })
+  }
 
   // Keep generation running even while the drawer is closed: the stream finishes
   // and the backend persists it, so reopening the session shows the full reply.
   useEffect(() => {
-    if (!open) return
+    if (!open || pinned) return
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [open, onClose])
+  }, [open, pinned, onClose])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
@@ -271,9 +290,9 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     <>
       <div
         aria-hidden
-        onClick={onClose}
+        onClick={pinned ? undefined : onClose}
         className={`fixed inset-0 z-40 bg-black/20 transition-opacity ${
-          open ? "opacity-100" : "pointer-events-none opacity-0"
+          open && !pinned ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
       <aside
@@ -302,6 +321,25 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
             <span className="mr-1 hidden rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800 sm:inline">
               {contextLabel(context)}
             </span>
+            <button
+              type="button"
+              onClick={togglePin}
+              aria-label={pinned ? "Unpin panel" : "Pin panel"}
+              aria-pressed={pinned}
+              title={
+                pinned
+                  ? "Unpin: clicking outside or pressing Esc will close the panel again"
+                  : "Pin: keep the panel open while you navigate and use the rest of the app"
+              }
+              className={clsx(
+                "rounded-md p-1.5 transition-colors",
+                pinned
+                  ? "bg-brand/10 text-brand hover:bg-brand/20"
+                  : "text-gray-500 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
+              )}
+            >
+              <Pin className="h-5 w-5" strokeWidth={2} fill={pinned ? "currentColor" : "none"} />
+            </button>
             <button
               type="button"
               onClick={newChat}
