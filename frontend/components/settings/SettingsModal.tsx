@@ -41,7 +41,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="card flex h-[600px] max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden">
+      <div className="card flex h-[800px] max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden">
         <header className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
           <h2 className="text-lg font-semibold">Settings</h2>
           <button
