@@ -8,15 +8,21 @@ interface SidebarContextValue {
   /** Desktop sidebar collapsed to an icon-only rail. */
   collapsed: boolean
   toggleCollapsed: () => void
+  /** Whether the athlete/profile dropdown is open (so overlays can yield to it). */
+  profileMenuOpen: boolean
+  setProfileMenuOpen: (open: boolean) => void
 }
 
 const SidebarContext = createContext<SidebarContextValue>({
   collapsed: false,
   toggleCollapsed: () => {},
+  profileMenuOpen: false,
+  setProfileMenuOpen: () => {},
 })
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
 
   // Read the persisted choice after mount to avoid an SSR/client mismatch.
   useEffect(() => {
@@ -32,7 +38,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <SidebarContext.Provider value={{ collapsed, toggleCollapsed }}>
+    <SidebarContext.Provider
+      value={{ collapsed, toggleCollapsed, profileMenuOpen, setProfileMenuOpen }}
+    >
       {children}
     </SidebarContext.Provider>
   )

@@ -389,6 +389,7 @@ function AthleteSwitcher({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { setProfileMenuOpen } = useSidebar()
   const [open, setOpen] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [appearanceOpen, setAppearanceOpen] = useState(false)
@@ -398,6 +399,11 @@ function AthleteSwitcher({
   useEffect(() => {
     if (!open) setAppearanceOpen(false)
   }, [open])
+
+  // Let overlays (e.g. the chat launcher) step aside while this menu is open.
+  useEffect(() => {
+    setProfileMenuOpen(open)
+  }, [open, setProfileMenuOpen])
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
