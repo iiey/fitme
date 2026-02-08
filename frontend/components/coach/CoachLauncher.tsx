@@ -25,9 +25,9 @@ export function CoachLauncher() {
         onClick={() => setOpen(true)}
         aria-label="Open FitBuddy"
         title="FitBuddy"
-        className="fixed bottom-5 right-5 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white shadow-lg transition-colors hover:bg-brand-dark"
+        className="fixed bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-brand/80 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-brand"
       >
-        <Sparkles className="h-5 w-5" />
+        <Sparkles className="h-4 w-4" />
       </button>
       <CoachDrawer open={open} onClose={() => setOpen(false)} status={status} />
     </>

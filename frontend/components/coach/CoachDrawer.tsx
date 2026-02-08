@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft, Plus, Sparkles, X } from "lucide-react"
+import { ArrowLeft, BicepsFlexed, Plus, Sparkles, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useAthleteContext } from "@/lib/athlete-context"
 import {
@@ -293,7 +293,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
         />
         <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
           <div className="flex min-w-0 items-center gap-2">
-            <Sparkles className="h-5 w-5 shrink-0 text-brand" />
+            <BicepsFlexed className="h-5 w-5 shrink-0 text-brand" />
             <span className="text-sm font-semibold" title={status.model ?? undefined}>
               FitBuddy
             </span>
