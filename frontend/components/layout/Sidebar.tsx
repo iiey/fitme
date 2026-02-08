@@ -19,6 +19,7 @@ import {
   Moon,
   RefreshCw,
   Rewind,
+  Settings,
   Sun,
   Target,
   Trash2,
@@ -33,6 +34,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { ImportDialog } from "@/components/import/ImportDialog"
+import { SettingsModal } from "@/components/settings/SettingsModal"
 import { type Theme, useTheme } from "@/components/ui/ThemeToggle"
 import {
   ApiError,
@@ -150,6 +152,7 @@ export function Sidebar() {
   const { data: meta } = useMeta(athleteId)
   const { data: syncConfig } = useSyncConfig()
   const [importOpen, setImportOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   // -- Intervals.icu sync feedback ------------------------------------------
@@ -268,12 +271,14 @@ export function Sidebar() {
           activeId={athleteId}
           onSwitch={setAthleteId}
           onImport={() => setImportOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
           syncConfigured={!!syncConfig}
           syncing={syncBanner?.phase === "running"}
           onSync={startSync}
         />
       </div>
       {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </>
   )
 
@@ -336,6 +341,7 @@ function AthleteSwitcher({
   activeId,
   onSwitch,
   onImport,
+  onOpenSettings,
   syncConfigured,
   syncing,
   onSync,
@@ -344,6 +350,7 @@ function AthleteSwitcher({
   activeId: string | null
   onSwitch: (id: string | null) => void
   onImport: () => void
+  onOpenSettings: () => void
   syncConfigured: boolean
   syncing: boolean
   onSync: () => void
@@ -536,6 +543,17 @@ function AthleteSwitcher({
             >
               <RefreshCw className={clsx("h-4 w-4 shrink-0", syncing && "animate-spin")} />
               {syncing ? "Syncing…" : "Sync"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onOpenSettings()
+                setOpen(false)
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              Settings
             </button>
             <div
               className="relative"
