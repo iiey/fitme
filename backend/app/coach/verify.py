@@ -10,6 +10,17 @@ logger = logging.getLogger("fitme.coach")
 # A tiny prompt keeps the connectivity check cheap across providers.
 _PING_PROMPT = "Reply with the single word: OK"
 
+# Local providers (Ollama) may cold-load a multi-GB model on the first call,
+# which can take far longer than a warm cloud request. The cap only exists to
+# stop a truly stalled/unreachable provider from hanging the UI indefinitely,
+# so it is generous enough to let a large local model finish loading.
+_VERIFY_TIMEOUT_SECONDS = 60
+
+# Reasoning models spend output tokens on hidden reasoning, so too small a cap
+# can yield empty content. A modest budget keeps the ping cheap while leaving
+# room for a real reply.
+_VERIFY_MAX_TOKENS = 32
+
 
 async def verify_connection(config: CoachConfig) -> tuple[bool, str]:
     """Make a minimal model call to confirm the provider is reachable.
@@ -27,7 +38,13 @@ async def verify_connection(config: CoachConfig) -> tuple[bool, str]:
 
         agent = Agent(model)
         # Cap the request so a stalled or unreachable provider cannot hang the UI.
-        await agent.run(_PING_PROMPT, model_settings={"max_tokens": 5, "timeout": 15})
+        await agent.run(
+            _PING_PROMPT,
+            model_settings={
+                "max_tokens": _VERIFY_MAX_TOKENS,
+                "timeout": _VERIFY_TIMEOUT_SECONDS,
+            },
+        )
     except Exception as exc:  # noqa: BLE001 - report any provider error, do not suppress
         logger.info("Coach verify failed: %s", exc)
         return False, _short_error(str(exc))
