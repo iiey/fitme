@@ -14,6 +14,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 # Use an isolated in-memory database for the test session.
 os.environ.setdefault("FITME_DATABASE_URL", "sqlite:///:memory:")
 
+# The optional AI-coach plugin owns a separate SQLite db; keep it in memory in
+# tests so the suite never writes a storage/coach.db file. Coach tests override
+# the get_coach_db dependency with their own temp database.
+os.environ.setdefault("FITME_COACH_DATABASE_URL", "sqlite:///:memory:")
+
 
 @pytest.fixture
 def db_session():
