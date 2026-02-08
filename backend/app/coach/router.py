@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -40,6 +41,10 @@ logger = logging.getLogger("fitme.coach")
 
 # Reject oversized chat messages before they reach the model.
 _MAX_MESSAGE_CHARS = 4000
+
+# Hold references to detached generation tasks so they are not garbage-collected
+# while running after the client has disconnected.
+_background_tasks: set[asyncio.Task] = set()
 
 router = APIRouter(prefix="/api/coach", tags=["coach"])
 
@@ -230,15 +235,17 @@ def _sse(payload: dict) -> bytes:
 
 @router.post("/chat")
 async def chat(
-    request: Request,
     payload: CoachChatRequest,
     athlete_id: str = Depends(get_required_athlete_id),
 ) -> StreamingResponse:
     """Stream a coach reply as Server-Sent Events.
 
     Events: ``session`` (id + title), ``delta`` (text chunk), ``done``, ``error``.
-    The DB sessions are opened inside the generator so they outlive the request
-    function and stay valid for the whole stream.
+
+    Generation runs in a detached background task that always finishes and
+    persists both turns, even if the browser disconnects (closes the drawer,
+    switches session, reloads). The SSE response only tails that task, so the
+    reply is never lost - the client can re-open the session later to read it.
     """
     message = payload.message.strip()
     if not message:
@@ -247,10 +254,13 @@ async def chat(
         raise HTTPException(422, "Message is too long.")
     context = payload.context or CoachChatContext()
     view = CoachView(view=context.view, activity_id=context.activity_id)
+    queue: asyncio.Queue[dict | None] = asyncio.Queue()
 
-    async def event_stream() -> AsyncIterator[bytes]:
+    async def generate() -> None:
+        """Run the model to completion and persist, independent of the client."""
         coach_db = CoachSessionLocal()
         core_db = CoreSessionLocal()
+        session_id: int | None = None
         try:
             athlete = get_athlete_config(core_db, athlete_id)
             session = None
@@ -260,7 +270,8 @@ async def chat(
                 session = store.create_session(
                     coach_db, athlete_id, store.title_from_message(message)
                 )
-            yield _sse({"type": "session", "session_id": session.id, "title": session.title})
+            session_id = session.id
+            await queue.put({"type": "session", "session_id": session.id, "title": session.title})
 
             async for delta in service.stream_chat(
                 coach_db=coach_db,
@@ -271,19 +282,38 @@ async def chat(
                 message=message,
                 view=view,
             ):
-                # Stop early if the user closed the drawer / navigated away.
-                if await request.is_disconnected():
-                    break
-                yield _sse({"type": "delta", "text": delta})
-            yield _sse({"type": "done"})
+                await queue.put({"type": "delta", "text": delta})
+            await queue.put({"type": "done"})
         except CoachUnavailable as exc:
-            yield _sse({"type": "error", "message": str(exc)})
+            await queue.put({"type": "error", "message": str(exc)})
         except Exception as exc:  # noqa: BLE001 - report provider/runtime errors to the client
             logger.exception("Coach chat failed")
-            yield _sse({"type": "error", "message": friendly_error(exc)})
+            note = friendly_error(exc)
+            # Persist an assistant turn so the session ends answered and a client
+            # reattaching later sees the error instead of waiting forever.
+            if session_id is not None:
+                try:
+                    store.add_message(coach_db, session_id, "assistant", f"⚠️ {note}")
+                except Exception:
+                    logger.exception("Failed to persist coach error message")
+            await queue.put({"type": "error", "message": note})
         finally:
             coach_db.close()
             core_db.close()
+            await queue.put(None)  # sentinel: end of stream
+
+    task = asyncio.create_task(generate())
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+    async def event_stream() -> AsyncIterator[bytes]:
+        # Forward queued events to the client. If the client disconnects this
+        # generator is closed, but ``generate`` keeps running to completion.
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield _sse(item)
 
     return StreamingResponse(
         event_stream(),

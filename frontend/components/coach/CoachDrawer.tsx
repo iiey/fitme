@@ -39,17 +39,18 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   const [streaming, setStreaming] = useState(false)
   const [planBusy, setPlanBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingReply, setPendingReply] = useState(false)
   const [panel, setPanel] = useState<Panel>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const pollTokenRef = useRef(0)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(420)
   const resizingRef = useRef(false)
 
+  // Keep generation running even while the drawer is closed: the stream finishes
+  // and the backend persists it, so reopening the session shows the full reply.
   useEffect(() => {
-    if (!open) {
-      abortRef.current?.abort()
-      return
-    }
+    if (!open) return
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose()
     }
@@ -88,15 +89,55 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
 
   const activeTitle =
     sessions.find((s) => s.id === activeSessionId)?.title ?? (activeSessionId ? "Chat" : "New chat")
-  const busy = streaming || planBusy
+  const busy = streaming || planBusy || pendingReply
 
   function togglePanel(next: Panel) {
     setPanel((prev) => (prev === next ? null : next))
   }
 
-  function newChat() {
+  function stopStream() {
     abortRef.current?.abort()
+    abortRef.current = null
     setStreaming(false)
+  }
+
+  function cancelPoll() {
+    pollTokenRef.current++
+    setPendingReply(false)
+  }
+
+  // After reattaching to a session whose last turn is an unanswered question,
+  // poll until the assistant reply (generated in the background) is persisted.
+  async function pollForReply(sessionId: number) {
+    const token = ++pollTokenRef.current
+    setPendingReply(true)
+    try {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+        if (pollTokenRef.current !== token) return
+        let messages
+        try {
+          messages = await fetchSessionMessages(sessionId, athleteId)
+        } catch {
+          continue
+        }
+        if (pollTokenRef.current !== token) return
+        const last = messages[messages.length - 1]
+        if (last && last.role === "assistant") {
+          setItems(
+            messages.map((m) => ({ kind: "msg", id: m.id, role: m.role, content: m.content })),
+          )
+          return
+        }
+      }
+    } finally {
+      if (pollTokenRef.current === token) setPendingReply(false)
+    }
+  }
+
+  function newChat() {
+    stopStream()
+    cancelPoll()
     setActiveSessionId(null)
     setItems([])
     setError(null)
@@ -104,12 +145,17 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   }
 
   async function selectSession(id: number) {
+    stopStream()
+    cancelPoll()
     setPanel(null)
     setError(null)
     setActiveSessionId(id)
     try {
       const loaded = await fetchSessionMessages(id, athleteId)
       setItems(loaded.map((m) => ({ kind: "msg", id: m.id, role: m.role, content: m.content })))
+      // A trailing user turn means the reply is still generating; reattach to it.
+      const last = loaded[loaded.length - 1]
+      if (last && last.role === "user") void pollForReply(id)
     } catch {
       setItems([])
       setError("Could not load this chat.")
@@ -135,6 +181,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
 
   async function handleSend(text: string) {
     if (busy) return
+    cancelPoll()
     setError(null)
     setPanel(null)
     setItems((prev) => [
@@ -328,6 +375,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
                   ),
                 )
               )}
+              {pendingReply && <MessageBubble message={{ role: "assistant", content: "" }} />}
               {planBusy && <p className="text-center text-xs text-gray-400">Building your plan…</p>}
               {error && <p className="text-center text-sm text-red-600">{error}</p>}
             </div>
