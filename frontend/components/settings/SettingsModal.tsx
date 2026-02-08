@@ -1,7 +1,7 @@
 "use client"
 
 import clsx from "clsx"
-import { Bot, type LucideIcon, RefreshCw, X } from "lucide-react"
+import { type LucideIcon, MessagesSquare, RefreshCw, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { CoachSettingsSection } from "@/components/coach/CoachSettingsSection"
@@ -27,7 +27,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 
   const sections: Section[] = [
     { id: "intervals", label: "Intervals.icu", icon: RefreshCw },
-    ...(coachStatus ? [{ id: "fitbuddy" as const, label: "Fit Buddy", icon: Bot }] : []),
+    ...(coachStatus ? [{ id: "fitbuddy" as const, label: "Fit Buddy", icon: MessagesSquare }] : []),
   ]
 
   // Guard against an active tab that is no longer available (coach went away).
