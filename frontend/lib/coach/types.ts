@@ -69,3 +69,41 @@ export interface ChatMessage {
   role: ChatRole
   content: string
 }
+
+export interface CoachMemory {
+  id: number
+  content: string
+  created_on: string
+}
+
+export interface PlannedSession {
+  day: string
+  sport: string
+  workout_type: string
+  description: string
+  target_distance_km?: number | null
+  target_duration_min?: number | null
+  intensity?: string | null
+}
+
+export interface PlannedWeek {
+  week: number
+  focus: string
+  sessions: PlannedSession[]
+}
+
+export interface TrainingPlan {
+  title: string
+  summary: string
+  weeks: PlannedWeek[]
+}
+
+export interface CoachPlanResponse {
+  plan: TrainingPlan | null
+  message: string | null
+}
+
+// A rendered item in the chat thread: a text message or a generated plan card.
+export type ThreadItem =
+  | { kind: "msg"; id?: number; role: ChatRole; content: string }
+  | { kind: "plan"; plan: TrainingPlan }

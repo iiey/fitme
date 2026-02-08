@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
@@ -19,12 +19,15 @@ class CoachView:
 class CoachDeps:
     """Dependencies injected into the agent and its tools for one chat turn.
 
-    ``core_db`` is a session on the main fitme database (read-only use by tools);
-    the coach's own tables are written separately via the coach session in the
-    service layer, so a single run never mixes the two databases in one tool.
+    ``core_db`` is read by skill tools (the main fitme database); ``coach_db`` is
+    where the ``remember`` tool writes long-term memory. ``memory`` is the
+    athlete's stored facts, loaded once and injected into the instructions.
     """
 
     core_db: Session
+    coach_db: Session
     athlete_id: str
     athlete: AthleteConfig
     view: CoachView
+    memory: list[str] = field(default_factory=list)
+    session_id: int | None = None

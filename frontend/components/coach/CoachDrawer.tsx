@@ -1,21 +1,27 @@
 "use client"
 
-import { ChevronDown, Sparkles, X } from "lucide-react"
+import { Brain, ChevronDown, ClipboardList, Sparkles, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useAthleteContext } from "@/lib/athlete-context"
 import {
   deleteSession,
   fetchSessionMessages,
+  generatePlan,
   renameSession,
   streamChat,
   useCoachSessions,
 } from "@/lib/coach/api"
 import { contextLabel, useCoachContext } from "@/lib/coach/context"
-import type { ChatMessage, CoachSession, CoachStatus } from "@/lib/coach/types"
+import type { CoachSession, CoachStatus, ThreadItem } from "@/lib/coach/types"
 
+import { MemoryPanel } from "./MemoryPanel"
 import { MessageBubble } from "./MessageBubble"
 import { MessageInput } from "./MessageInput"
+import { PlanCard } from "./PlanCard"
+import { PlanForm } from "./PlanForm"
 import { SessionMenu } from "./SessionMenu"
+
+type Panel = "sessions" | "memory" | "plan" | null
 
 interface CoachDrawerProps {
   open: boolean
@@ -29,14 +35,14 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   const { data: sessions = [], mutate: mutateSessions } = useCoachSessions(athleteId, open)
 
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [items, setItems] = useState<ThreadItem[]>([])
   const [streaming, setStreaming] = useState(false)
+  const [planBusy, setPlanBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [panel, setPanel] = useState<Panel>(null)
   const abortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
-  // Close on Escape; abort any in-flight stream when the drawer closes.
   useEffect(() => {
     if (!open) {
       abortRef.current?.abort()
@@ -49,51 +55,65 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose])
 
-  // Keep the latest message in view as it streams.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [messages])
+  }, [items])
 
   const activeTitle =
     sessions.find((s) => s.id === activeSessionId)?.title ?? (activeSessionId ? "Chat" : "New chat")
+  const busy = streaming || planBusy
+
+  function togglePanel(next: Panel) {
+    setPanel((prev) => (prev === next ? null : next))
+  }
 
   function newChat() {
     abortRef.current?.abort()
     setStreaming(false)
     setActiveSessionId(null)
-    setMessages([])
+    setItems([])
     setError(null)
-    setMenuOpen(false)
+    setPanel(null)
   }
 
   async function selectSession(id: number) {
-    setMenuOpen(false)
+    setPanel(null)
     setError(null)
     setActiveSessionId(id)
     try {
       const loaded = await fetchSessionMessages(id, athleteId)
-      setMessages(loaded.map((m) => ({ id: m.id, role: m.role, content: m.content })))
+      setItems(loaded.map((m) => ({ kind: "msg", id: m.id, role: m.role, content: m.content })))
     } catch {
-      setMessages([])
+      setItems([])
       setError("Could not load this chat.")
     }
   }
 
   function appendDelta(text: string) {
-    setMessages((prev) => {
+    setItems((prev) => {
       const last = prev[prev.length - 1]
-      if (!last || last.role !== "assistant") return prev
+      if (!last || last.kind !== "msg" || last.role !== "assistant") return prev
       return [...prev.slice(0, -1), { ...last, content: last.content + text }]
     })
   }
 
+  function dropEmptyAssistant() {
+    setItems((prev) => {
+      const last = prev[prev.length - 1]
+      return last && last.kind === "msg" && last.role === "assistant" && !last.content
+        ? prev.slice(0, -1)
+        : prev
+    })
+  }
+
   async function handleSend(text: string) {
-    if (streaming) return
+    if (busy) return
     setError(null)
-    setMessages((prev) => [
+    setPanel(null)
+    setItems((prev) => [
       ...prev,
-      { role: "user", content: text },
-      { role: "assistant", content: "" },
+      { kind: "msg", role: "user", content: text },
+      { kind: "msg", role: "assistant", content: "" },
     ])
     setStreaming(true)
     const controller = new AbortController()
@@ -115,11 +135,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
           onError: (message) => {
             setStreaming(false)
             setError(message)
-            // Drop the empty assistant placeholder.
-            setMessages((prev) => {
-              const last = prev[prev.length - 1]
-              return last && last.role === "assistant" && !last.content ? prev.slice(0, -1) : prev
-            })
+            dropEmptyAssistant()
           },
         },
         controller.signal,
@@ -129,6 +145,25 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
         setError(err instanceof Error ? err.message : "Chat failed")
       }
       setStreaming(false)
+    }
+  }
+
+  async function handleGeneratePlan(goal: string, weeks: number) {
+    if (busy) return
+    setError(null)
+    setPlanBusy(true)
+    try {
+      const result = await generatePlan({ goal, weeks, context }, athleteId)
+      if (result.plan) {
+        setItems((prev) => [...prev, { kind: "plan", plan: result.plan! }])
+      } else if (result.message) {
+        setItems((prev) => [...prev, { kind: "msg", role: "assistant", content: result.message! }])
+      }
+      setPanel(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not generate plan")
+    } finally {
+      setPlanBusy(false)
     }
   }
 
@@ -180,21 +215,43 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
             <Sparkles className="h-5 w-5 shrink-0 text-brand" />
             <button
               type="button"
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={() => togglePanel("sessions")}
               className="flex min-w-0 items-center gap-1 text-left"
               title={status.model ?? undefined}
             >
               <span className="flex flex-col leading-tight">
                 <span className="text-sm font-semibold">FitBuddy</span>
-                <span className="max-w-[200px] truncate text-xs text-gray-400">{activeTitle}</span>
+                <span className="max-w-[150px] truncate text-xs text-gray-400">{activeTitle}</span>
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
             </button>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800">
+          <div className="flex items-center gap-1">
+            <span className="mr-1 hidden rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-800 sm:inline">
               {contextLabel(context)}
             </span>
+            <button
+              type="button"
+              onClick={() => togglePanel("plan")}
+              aria-label="Build a training plan"
+              title="Build a training plan"
+              className={`rounded-md p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                panel === "plan" ? "text-brand" : "text-gray-500"
+              }`}
+            >
+              <ClipboardList className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => togglePanel("memory")}
+              aria-label="What FitBuddy remembers"
+              title="Memory"
+              className={`rounded-md p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                panel === "memory" ? "text-brand" : "text-gray-500"
+              }`}
+            >
+              <Brain className="h-5 w-5" />
+            </button>
             <button
               type="button"
               onClick={onClose}
@@ -206,7 +263,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
           </div>
         </header>
 
-        {menuOpen && (
+        {panel === "sessions" && (
           <SessionMenu
             sessions={sessions}
             activeSessionId={activeSessionId}
@@ -216,9 +273,11 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
             onDelete={handleDelete}
           />
         )}
+        {panel === "memory" && <MemoryPanel athleteId={athleteId} />}
+        {panel === "plan" && <PlanForm busy={planBusy} onGenerate={handleGeneratePlan} />}
 
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
-          {messages.length === 0 ? (
+          {items.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <Sparkles className="h-8 w-8 text-gray-300 dark:text-gray-600" />
               <p className="text-sm font-medium">How can I help with your training?</p>
@@ -236,12 +295,19 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
               </div>
             </div>
           ) : (
-            messages.map((message, index) => <MessageBubble key={index} message={message} />)
+            items.map((item, index) =>
+              item.kind === "plan" ? (
+                <PlanCard key={index} plan={item.plan} />
+              ) : (
+                <MessageBubble key={index} message={{ role: item.role, content: item.content }} />
+              ),
+            )
           )}
+          {planBusy && <p className="text-center text-xs text-gray-400">Building your plan…</p>}
           {error && <p className="text-center text-sm text-red-600">{error}</p>}
         </div>
 
-        <MessageInput disabled={streaming} onSend={handleSend} />
+        <MessageInput disabled={busy} onSend={handleSend} />
       </aside>
     </>
   )

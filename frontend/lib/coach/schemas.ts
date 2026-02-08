@@ -39,3 +39,36 @@ export const CoachMessageSchema = z.object({
   content: z.string(),
   created_on: z.string(),
 })
+
+export const CoachMemorySchema = z.object({
+  id: z.number(),
+  content: z.string(),
+  created_on: z.string(),
+})
+
+const PlannedSessionSchema = z.object({
+  day: z.string(),
+  sport: z.string(),
+  workout_type: z.string(),
+  description: z.string(),
+  target_distance_km: z.number().nullable().optional(),
+  target_duration_min: z.number().nullable().optional(),
+  intensity: z.string().nullable().optional(),
+})
+
+const PlannedWeekSchema = z.object({
+  week: z.number(),
+  focus: z.string(),
+  sessions: z.array(PlannedSessionSchema),
+})
+
+export const TrainingPlanSchema = z.object({
+  title: z.string(),
+  summary: z.string(),
+  weeks: z.array(PlannedWeekSchema),
+})
+
+export const CoachPlanResponseSchema = z.object({
+  plan: TrainingPlanSchema.nullable(),
+  message: z.string().nullable(),
+})

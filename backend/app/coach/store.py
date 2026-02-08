@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.coach.models import CoachMessage, CoachSession
+from app.coach.models import CoachMemory, CoachMessage, CoachSession
 
 # Titles are derived from the first user message, trimmed to this length.
 _TITLE_MAX_LEN = 48
@@ -78,6 +78,39 @@ def add_message(db: Session, session_id: int, role: str, content: str) -> CoachM
     db.commit()
     db.refresh(message)
     return message
+
+
+# -- Long-term memory -------------------------------------------------------
+
+
+def add_memory(
+    db: Session, athlete_id: str, content: str, source_session_id: int | None = None
+) -> CoachMemory:
+    memory = CoachMemory(
+        athlete_id=athlete_id, content=content, source_session_id=source_session_id
+    )
+    db.add(memory)
+    db.commit()
+    db.refresh(memory)
+    return memory
+
+
+def list_memory(db: Session, athlete_id: str) -> list[CoachMemory]:
+    stmt = (
+        select(CoachMemory)
+        .where(CoachMemory.athlete_id == athlete_id)
+        .order_by(CoachMemory.id.asc())
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+def delete_memory(db: Session, memory_id: int, athlete_id: str) -> bool:
+    memory = db.get(CoachMemory, memory_id)
+    if memory is None or memory.athlete_id != athlete_id:
+        return False
+    db.delete(memory)
+    db.commit()
+    return True
 
 
 def title_from_message(message: str) -> str:

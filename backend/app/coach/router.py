@@ -21,12 +21,16 @@ from app.coach.schemas import (
     CoachChatRequest,
     CoachConfigRequest,
     CoachConfigResponse,
+    CoachMemoryResponse,
     CoachMessageResponse,
+    CoachPlanRequest,
+    CoachPlanResponse,
     CoachSessionRenameRequest,
     CoachSessionResponse,
     CoachStatusResponse,
     CoachVerifyRequest,
     CoachVerifyResult,
+    TrainingPlan,
 )
 from app.coach.service import CoachUnavailable
 from app.coach.verify import verify_connection
@@ -271,3 +275,65 @@ async def chat(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# -- Long-term memory -------------------------------------------------------
+
+
+@router.get("/memory", response_model=list[CoachMemoryResponse])
+def list_memory(
+    db: Session = Depends(get_coach_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> list[CoachMemoryResponse]:
+    return [CoachMemoryResponse.model_validate(m) for m in store.list_memory(db, athlete_id)]
+
+
+@router.delete("/memory/{memory_id}", status_code=204)
+def delete_memory(
+    memory_id: int,
+    db: Session = Depends(get_coach_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> None:
+    if not store.delete_memory(db, memory_id, athlete_id):
+        raise HTTPException(404, "Memory not found.")
+
+
+# -- Training plan generation -----------------------------------------------
+
+
+@router.post("/plan", response_model=CoachPlanResponse)
+async def create_plan(
+    payload: CoachPlanRequest,
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> CoachPlanResponse:
+    """Generate a structured training plan (or a clarifying message)."""
+    goal = payload.goal.strip()
+    if not goal:
+        raise HTTPException(422, "A goal is required.")
+    context = payload.context or CoachChatContext()
+    view = CoachView(view=context.view, activity_id=context.activity_id)
+
+    coach_db = CoachSessionLocal()
+    core_db = CoreSessionLocal()
+    try:
+        athlete = get_athlete_config(core_db, athlete_id)
+        output = await service.generate_plan(
+            coach_db=coach_db,
+            core_db=core_db,
+            athlete_id=athlete_id,
+            athlete=athlete,
+            goal=goal,
+            weeks=payload.weeks,
+            view=view,
+        )
+        if isinstance(output, TrainingPlan):
+            return CoachPlanResponse(plan=output)
+        return CoachPlanResponse(message=str(output))
+    except CoachUnavailable as exc:
+        raise HTTPException(400, str(exc)) from None
+    except Exception as exc:
+        logger.exception("Plan generation failed")
+        raise HTTPException(502, f"Plan generation failed: {str(exc)[:200]}") from None
+    finally:
+        coach_db.close()
+        core_db.close()

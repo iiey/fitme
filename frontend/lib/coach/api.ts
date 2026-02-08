@@ -4,7 +4,9 @@ import { ApiError } from "@/lib/api"
 
 import {
   CoachConfigSchema,
+  CoachMemorySchema,
   CoachMessageSchema,
+  CoachPlanResponseSchema,
   CoachSessionSchema,
   CoachStatusSchema,
   CoachVerifyResultSchema,
@@ -13,7 +15,9 @@ import type {
   CoachChatContext,
   CoachConfig,
   CoachConfigInput,
+  CoachMemory,
   CoachMessage,
+  CoachPlanResponse,
   CoachSession,
   CoachStatus,
   CoachVerifyResult,
@@ -215,4 +219,44 @@ export async function streamChat(
       }
     }
   }
+}
+
+// -- Long-term memory -------------------------------------------------------
+
+async function fetchMemory(url: string): Promise<CoachMemory[]> {
+  const response = await fetch(url)
+  if (!response.ok) throw new ApiError(response.status, `Request failed: ${response.status}`)
+  return CoachMemorySchema.array().parse(await response.json())
+}
+
+export function useCoachMemory(athleteId: string | null, enabled: boolean) {
+  return useSWR<CoachMemory[]>(
+    enabled && athleteId ? `/api/coach/memory${athleteQuery(athleteId)}` : null,
+    fetchMemory,
+  )
+}
+
+export async function deleteMemory(id: number, athleteId: string | null): Promise<void> {
+  const response = await fetch(`/api/coach/memory/${id}${athleteQuery(athleteId)}`, {
+    method: "DELETE",
+  })
+  if (!response.ok)
+    throw new ApiError(response.status, await readDetail(response, "Could not forget"))
+}
+
+// -- Training plan ----------------------------------------------------------
+
+export async function generatePlan(
+  input: { goal: string; weeks: number; context?: CoachChatContext },
+  athleteId: string | null,
+): Promise<CoachPlanResponse> {
+  const response = await fetch(`/api/coach/plan${athleteQuery(athleteId)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    throw new ApiError(response.status, await readDetail(response, "Could not generate plan"))
+  }
+  return CoachPlanResponseSchema.parse(await response.json())
 }

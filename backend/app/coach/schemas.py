@@ -85,3 +85,45 @@ class CoachChatRequest(BaseModel):
     # When omitted a new session is created and its id returned in the done event.
     session_id: int | None = None
     context: CoachChatContext | None = None
+
+
+class CoachMemoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content: str
+    created_on: datetime
+
+
+class PlannedSession(BaseModel):
+    day: str
+    sport: str
+    workout_type: str
+    description: str
+    target_distance_km: float | None = None
+    target_duration_min: int | None = None
+    intensity: str | None = None
+
+
+class PlannedWeek(BaseModel):
+    week: int
+    focus: str
+    sessions: list[PlannedSession]
+
+
+class TrainingPlan(BaseModel):
+    title: str
+    summary: str
+    weeks: list[PlannedWeek]
+
+
+class CoachPlanRequest(BaseModel):
+    goal: str
+    weeks: int = 4
+    context: CoachChatContext | None = None
+
+
+class CoachPlanResponse(BaseModel):
+    # Exactly one is set: a structured plan, or a clarifying message from the coach.
+    plan: TrainingPlan | None = None
+    message: str | None = None

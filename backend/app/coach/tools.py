@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic_ai import RunContext
 
-from app.coach import data_access
+from app.coach import data_access, store
 from app.coach.deps import CoachDeps
 
 # Each function below is a "skill": a focused tool the model can call to read one
@@ -74,6 +74,20 @@ def get_goals(ctx: RunContext[CoachDeps]) -> list[dict]:
     return data_access.goals(ctx.deps.core_db, ctx.deps.athlete_id)
 
 
+def remember(ctx: RunContext[CoachDeps], fact: str) -> str:
+    """Save a durable fact about the athlete to long-term memory.
+
+    Use this only for lasting facts you should recall in future chats: goals,
+    target events and dates, injuries or constraints, equipment, and strong
+    training preferences. Do not save transient details or single-workout notes.
+    """
+    text = fact.strip()
+    if not text:
+        return "Nothing to remember."
+    store.add_memory(ctx.deps.coach_db, ctx.deps.athlete_id, text, ctx.deps.session_id)
+    return f"Saved to memory: {text}"
+
+
 # Registered on the agent in agent.py.
 SKILL_TOOLS = [
     get_recent_activities,
@@ -83,4 +97,5 @@ SKILL_TOOLS = [
     get_athlete_profile,
     get_best_efforts,
     get_goals,
+    remember,
 ]

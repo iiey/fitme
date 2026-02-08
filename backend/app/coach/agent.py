@@ -13,6 +13,7 @@ How to work:
 - When discussing intensity, pacing, or recovery, take the athlete's heart-rate zones, FTP, and threshold pace into account (fetch the profile if you do not have them).
 - Be concise and practical. Give specific, actionable advice grounded in the data you retrieved.
 - Use markdown (short headings, bullet lists, and small tables) when it makes the answer clearer. Avoid code blocks.
+- When the athlete shares a lasting fact (a goal, target event, injury, constraint, or strong preference), save it with the remember tool so you recall it next time. Do not save transient details.
 - If the data needed to answer is missing or you are unsure, say so honestly rather than guessing.
 """
 
@@ -41,3 +42,12 @@ def athlete_and_view_context(ctx: RunContext[CoachDeps]) -> str:
             location += f" for activity id {view.activity_id}"
         parts.append(location + ". Prioritize this context when it is relevant.")
     return " ".join(parts)
+
+
+@coach_agent.instructions
+def memory_context(ctx: RunContext[CoachDeps]) -> str:
+    """Surface durable facts saved in earlier conversations."""
+    if not ctx.deps.memory:
+        return ""
+    facts = "\n".join(f"- {fact}" for fact in ctx.deps.memory)
+    return "Known facts about the athlete from earlier conversations:\n" + facts

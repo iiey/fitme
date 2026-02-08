@@ -11,10 +11,43 @@ from app.coach.config import CONFIG_ID
 from app.coach.deps import CoachDeps, CoachView
 from app.coach.models import CoachConfig, CoachMessage
 from app.coach.provider import build_model
+from app.coach.schemas import TrainingPlan
+
+# Bounds for the requested plan length.
+_MIN_PLAN_WEEKS = 1
+_MAX_PLAN_WEEKS = 12
 
 
 class CoachUnavailable(RuntimeError):
     """Raised when a chat is attempted but the coach is not configured/enabled."""
+
+
+def _require_model(coach_db: Session):
+    config = coach_db.get(CoachConfig, CONFIG_ID)
+    if config is None or not config.enabled:
+        raise CoachUnavailable("The AI coach is not configured.")
+    return build_model(config)
+
+
+def _build_deps(
+    *,
+    coach_db: Session,
+    core_db: Session,
+    athlete_id: str,
+    athlete: AthleteConfig,
+    view: CoachView,
+    session_id: int | None,
+) -> CoachDeps:
+    memory = [m.content for m in store.list_memory(coach_db, athlete_id)]
+    return CoachDeps(
+        core_db=core_db,
+        coach_db=coach_db,
+        athlete_id=athlete_id,
+        athlete=athlete,
+        view=view,
+        memory=memory,
+        session_id=session_id,
+    )
 
 
 def _message_history(messages: list[CoachMessage]) -> list:
@@ -55,17 +88,20 @@ async def stream_chat(
     Yields text deltas. The caller owns the database sessions and must keep them
     open for the whole stream.
     """
-    config = coach_db.get(CoachConfig, CONFIG_ID)
-    if config is None or not config.enabled:
-        raise CoachUnavailable("The AI coach is not configured.")
-
-    model = build_model(config)
+    model = _require_model(coach_db)
     history = _message_history(store.list_messages(coach_db, session_id))
 
     # Persist the user's turn before the run so it survives a provider failure.
     store.add_message(coach_db, session_id, "user", message)
 
-    deps = CoachDeps(core_db=core_db, athlete_id=athlete_id, athlete=athlete, view=view)
+    deps = _build_deps(
+        coach_db=coach_db,
+        core_db=core_db,
+        athlete_id=athlete_id,
+        athlete=athlete,
+        view=view,
+        session_id=session_id,
+    )
     answer_parts: list[str] = []
     async with coach_agent.run_stream(
         message, model=model, deps=deps, message_history=history
@@ -75,3 +111,39 @@ async def stream_chat(
             yield delta
 
     store.add_message(coach_db, session_id, "assistant", "".join(answer_parts))
+
+
+async def generate_plan(
+    *,
+    coach_db: Session,
+    core_db: Session,
+    athlete_id: str,
+    athlete: AthleteConfig,
+    goal: str,
+    weeks: int,
+    view: CoachView,
+) -> TrainingPlan | str:
+    """Generate a structured training plan (or a clarifying question as text).
+
+    Runs the same agent (so it can use the skill tools to ground the plan) but
+    with a structured output type. Returns a TrainingPlan, or a string when the
+    model needs more information.
+    """
+    model = _require_model(coach_db)
+    weeks = max(_MIN_PLAN_WEEKS, min(weeks, _MAX_PLAN_WEEKS))
+    deps = _build_deps(
+        coach_db=coach_db,
+        core_db=core_db,
+        athlete_id=athlete_id,
+        athlete=athlete,
+        view=view,
+        session_id=None,
+    )
+    prompt = (
+        f"Create a realistic, progressive {weeks}-week training plan for this goal: {goal}.\n"
+        "First use your tools to review the athlete's recent activities, training load, "
+        "and zones, then tailor the plan to their current fitness. Include rest days and "
+        "vary intensity sensibly."
+    )
+    result = await coach_agent.run(prompt, model=model, deps=deps, output_type=[TrainingPlan, str])
+    return result.output

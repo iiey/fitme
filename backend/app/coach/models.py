@@ -62,3 +62,16 @@ class CoachMessage(CoachBase):
     role: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(Text, default="")
     created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class CoachMemory(CoachBase):
+    """A durable fact about an athlete that the coach recalls across sessions."""
+
+    __tablename__ = "coach_memory"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    athlete_id: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    # Provenance only (no FK, so deleting a session never removes memory).
+    source_session_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
