@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 
+import { CoachSettingsSection } from "@/components/coach/CoachSettingsSection"
 import { Card } from "@/components/ui/Card"
 import { InfoTip } from "@/components/ui/InfoTip"
 import { Spinner } from "@/components/ui/States"
@@ -314,6 +315,8 @@ export default function SettingsPage() {
       )}
 
       {athleteId && <AthleteConfigSection athleteId={athleteId} />}
+
+      <CoachSettingsSection />
     </div>
   )
 }

@@ -97,6 +97,16 @@ def create_app() -> FastAPI:
     app.include_router(rewind.router)
     app.include_router(sync.router)
 
+    # Optional FitBuddy plugin (backend/app/coach). Imported and mounted behind a
+    # guard so a missing optional dependency (pydantic-ai) leaves the app running
+    # normally without the feature. This is the only core touch point.
+    try:
+        from app.coach import register_coach
+
+        register_coach(app)
+    except ImportError as exc:
+        logging.getLogger("fitme.coach").info("FitBuddy feature not available (%s); skipping.", exc)
+
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:
         return {"status": "ok"}

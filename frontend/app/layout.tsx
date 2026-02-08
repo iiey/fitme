@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 
 import "./globals.css"
 import "leaflet/dist/leaflet.css"
+import { CoachLauncher } from "@/components/coach/CoachLauncher"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { AthleteProvider } from "@/lib/athlete-context"
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="w-full">{children}</div>
             </main>
           </div>
+          <CoachLauncher />
         </AthleteProvider>
       </body>
     </html>
