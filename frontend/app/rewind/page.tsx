@@ -12,6 +12,7 @@ import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
 import { useMeta, useRewind } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDuration, formatHours, formatNumber } from "@/lib/format"
+import { useDefaultSport } from "@/lib/preferences"
 import type { Rewind } from "@/lib/types"
 import { useIsDark } from "@/lib/use-is-dark"
 
@@ -20,8 +21,11 @@ type SportMetric = "distance" | "hours"
 export default function RewindPage() {
   const { athleteId } = useAthleteContext()
   const isDark = useIsDark()
+  const { defaultSport } = useDefaultSport()
   const [filter, setFilter] = useState<string>("")
-  const [sportType, setSportType] = useState<string>("")
+  // null = follow the configured default; any string = an explicit user choice.
+  const [sportType, setSportType] = useState<string | null>(null)
+  const activeSport = sportType ?? defaultSport
   const [sportMetric, setSportMetric] = useState<SportMetric>("distance")
   const year = filter && filter !== "last365" ? Number(filter) : null
   const days = filter === "last365" ? 365 : null
@@ -30,7 +34,7 @@ export default function RewindPage() {
     athleteId,
     year,
     days,
-    sportType ? [sportType] : undefined,
+    activeSport ? [activeSport] : undefined,
   )
 
   if (isLoading && !data) return <Spinner label="Rewinding your year…" />
@@ -49,7 +53,7 @@ export default function RewindPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
-            value={sportType}
+            value={activeSport}
             onChange={(event) => setSportType(event.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
           >

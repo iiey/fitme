@@ -8,20 +8,27 @@ import { InfoTip } from "@/components/ui/InfoTip"
 import { EmptyState, Spinner } from "@/components/ui/States"
 import { useDashboard, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
+import { useDefaultSport } from "@/lib/preferences"
 
 export default function FitnessPage() {
   const { athleteId } = useAthleteContext()
   const { data: meta } = useMeta(athleteId)
-  const [sportType, setSportType] = useState("")
+  const { defaultSport } = useDefaultSport()
+  // null = follow the configured default; any string = an explicit user choice.
+  const [sportType, setSportType] = useState<string | null>(null)
+  const activeSport = sportType ?? defaultSport
 
-  const filters = useMemo(() => ({ sport_type: sportType ? [sportType] : undefined }), [sportType])
+  const filters = useMemo(
+    () => ({ sport_type: activeSport ? [activeSport] : undefined }),
+    [activeSport],
+  )
   const { data, error, isLoading } = useDashboard(athleteId, filters)
 
   const distanceUnit = meta?.distance_unit ?? "km"
 
   const filterControls = (
     <select
-      value={sportType}
+      value={activeSport}
       onChange={(event) => setSportType(event.target.value)}
       className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
     >

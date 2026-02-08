@@ -7,6 +7,7 @@ import { ErrorState, Spinner } from "@/components/ui/States"
 import { useHeatmap, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatNumber } from "@/lib/format"
+import { useDefaultSport } from "@/lib/preferences"
 
 const HeatmapView = dynamic(() => import("@/components/map/HeatmapView"), {
   ssr: false,
@@ -16,11 +17,14 @@ const HeatmapView = dynamic(() => import("@/components/map/HeatmapView"), {
 export default function HeatmapPage() {
   const { athleteId } = useAthleteContext()
   const { data: meta } = useMeta(athleteId)
-  const [sportType, setSportType] = useState<string>("")
+  const { defaultSport } = useDefaultSport()
+  // null = follow the configured default; any string = an explicit user choice.
+  const [sportType, setSportType] = useState<string | null>(null)
+  const activeSport = sportType ?? defaultSport
   const [commute, setCommute] = useState<string>("")
 
   const { data, error, isLoading } = useHeatmap(athleteId, {
-    sport_type: sportType ? [sportType] : undefined,
+    sport_type: activeSport ? [activeSport] : undefined,
     commute: commute === "" ? undefined : commute === "true",
   })
 
@@ -35,7 +39,7 @@ export default function HeatmapPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
-            value={sportType}
+            value={activeSport}
             onChange={(event) => setSportType(event.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none"
           >

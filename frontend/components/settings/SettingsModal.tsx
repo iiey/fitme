@@ -1,21 +1,22 @@
 "use client"
 
 import clsx from "clsx"
-import { type LucideIcon, MessagesSquare, RefreshCw, X } from "lucide-react"
+import { type LucideIcon, MessagesSquare, RefreshCw, SlidersHorizontal, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { CoachSettingsSection } from "@/components/coach/CoachSettingsSection"
+import { GeneralSettingsSection } from "@/components/settings/GeneralSettingsSection"
 import { IntervalsSettingsSection } from "@/components/settings/IntervalsSettingsSection"
 import { useCoachStatus } from "@/lib/coach/api"
 
-type SectionId = "intervals" | "fitbuddy"
+type SectionId = "general" | "intervals" | "fitbuddy"
 
 type Section = { id: SectionId; label: string; icon: LucideIcon }
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
   // The coach is an optional plugin: only offer its tab when its backend is up.
   const { data: coachStatus } = useCoachStatus()
-  const [active, setActive] = useState<SectionId>("intervals")
+  const [active, setActive] = useState<SectionId>("general")
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -26,12 +27,13 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   }, [onClose])
 
   const sections: Section[] = [
+    { id: "general", label: "General", icon: SlidersHorizontal },
     { id: "intervals", label: "Intervals.icu", icon: RefreshCw },
     ...(coachStatus ? [{ id: "fitbuddy" as const, label: "Fit Buddy", icon: MessagesSquare }] : []),
   ]
 
   // Guard against an active tab that is no longer available (coach went away).
-  const activeSection = sections.some((s) => s.id === active) ? active : "intervals"
+  const activeSection = sections.some((s) => s.id === active) ? active : "general"
   const activeLabel = sections.find((s) => s.id === activeSection)?.label ?? ""
 
   return (
@@ -79,6 +81,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 
           <div className="flex-1 overflow-y-auto p-5">
             <h3 className="mb-4 text-base font-semibold">{activeLabel}</h3>
+            {activeSection === "general" && <GeneralSettingsSection />}
             {activeSection === "intervals" && <IntervalsSettingsSection />}
             {activeSection === "fitbuddy" && <CoachSettingsSection />}
           </div>

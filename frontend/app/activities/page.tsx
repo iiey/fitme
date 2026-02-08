@@ -10,6 +10,7 @@ import { ErrorState, Spinner } from "@/components/ui/States"
 import { useActivities, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatActivityPace, formatDate, formatDuration, formatNumber } from "@/lib/format"
+import { useDefaultSport } from "@/lib/preferences"
 import type { ActivitySummary } from "@/lib/types"
 
 const PAGE_SIZES = [25, 50, 100, 300, 500, 1000]
@@ -48,6 +49,7 @@ export default function ActivitiesPage() {
   const { data: meta } = useMeta(athleteId)
   const searchParams = useSearchParams()
   const { get, set } = useUrlParams()
+  const { defaultSport } = useDefaultSport()
 
   const [search, setSearch] = useState(searchParams.get("search") ?? "")
   const [showDateFilter, setShowDateFilter] = useState(
@@ -57,7 +59,8 @@ export default function ActivitiesPage() {
     () => !!(searchParams.get("dmin") || searchParams.get("dmax")),
   )
 
-  const sportFilter = get("sport", "")
+  // With no explicit ?sport= in the URL, fall back to the configured default.
+  const sportFilter = get("sport", defaultSport)
   const sort = get("sort", "start_date_time")
   const order = get("order", "desc")
   const pageStr = get("page", "0")
@@ -67,7 +70,9 @@ export default function ActivitiesPage() {
   const distMin = get("dmin", "")
   const distMax = get("dmax", "")
 
-  const sportTypes = sportFilter ? [sportFilter] : []
+  // "all" is an explicit "All sports" choice that overrides the default sport;
+  // an absent param falls back to the default (see sportFilter above).
+  const sportTypes = sportFilter && sportFilter !== "all" ? [sportFilter] : []
   const pageSize = Math.max(1, parseInt(pageSizeStr, 10) || parseInt(DEFAULT_PAGE_SIZE, 10))
   const page = Math.max(0, parseInt(pageStr, 10) || 0)
 
@@ -229,8 +234,10 @@ export default function ActivitiesPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Sport type */}
           <select
-            value={sportFilter}
-            onChange={(event) => set({ sport: event.target.value, page: "" })}
+            value={sportFilter === "all" ? "" : sportFilter}
+            onChange={(event) =>
+              set({ sport: event.target.value === "" ? "all" : event.target.value, page: "" })
+            }
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
           >
             <option value="">All sports</option>
