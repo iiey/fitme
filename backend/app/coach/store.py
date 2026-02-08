@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from datetime import datetime
+
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from app.coach.models import CoachMessage, CoachSession
+
+# Titles are derived from the first user message, trimmed to this length.
+_TITLE_MAX_LEN = 48
+
+
+def create_session(db: Session, athlete_id: str, title: str = "New chat") -> CoachSession:
+    session = CoachSession(athlete_id=athlete_id, title=title)
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def list_sessions(db: Session, athlete_id: str) -> list[CoachSession]:
+    stmt = (
+        select(CoachSession)
+        .where(CoachSession.athlete_id == athlete_id)
+        .order_by(CoachSession.updated_on.desc())
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+def get_session(db: Session, session_id: int, athlete_id: str) -> CoachSession | None:
+    session = db.get(CoachSession, session_id)
+    if session is None or session.athlete_id != athlete_id:
+        return None
+    return session
+
+
+def rename_session(
+    db: Session, session_id: int, athlete_id: str, title: str
+) -> CoachSession | None:
+    session = get_session(db, session_id, athlete_id)
+    if session is None:
+        return None
+    session.title = title.strip() or session.title
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def delete_session(db: Session, session_id: int, athlete_id: str) -> bool:
+    session = get_session(db, session_id, athlete_id)
+    if session is None:
+        return False
+    # Delete messages explicitly so the result does not depend on the SQLite
+    # foreign-key cascade being enabled.
+    db.execute(delete(CoachMessage).where(CoachMessage.session_id == session_id))
+    db.delete(session)
+    db.commit()
+    return True
+
+
+def list_messages(db: Session, session_id: int) -> list[CoachMessage]:
+    stmt = (
+        select(CoachMessage)
+        .where(CoachMessage.session_id == session_id)
+        .order_by(CoachMessage.id.asc())
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+def add_message(db: Session, session_id: int, role: str, content: str) -> CoachMessage:
+    message = CoachMessage(session_id=session_id, role=role, content=content)
+    db.add(message)
+    # Bump the session so it sorts to the top of the recents list.
+    session = db.get(CoachSession, session_id)
+    if session is not None:
+        session.updated_on = datetime.utcnow()
+    db.commit()
+    db.refresh(message)
+    return message
+
+
+def title_from_message(message: str) -> str:
+    """A short session title derived from the first user message."""
+    text = " ".join(message.split())
+    if len(text) <= _TITLE_MAX_LEN:
+        return text or "New chat"
+    return text[:_TITLE_MAX_LEN].rstrip() + "…"

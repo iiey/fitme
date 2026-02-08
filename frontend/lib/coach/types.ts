@@ -39,3 +39,33 @@ export interface CoachConfigInput {
   base_url?: string | null
   enabled: boolean
 }
+
+export interface CoachSession {
+  id: number
+  title: string
+  created_on: string
+  updated_on: string
+}
+
+export type ChatRole = "user" | "assistant"
+
+export interface CoachMessage {
+  id: number
+  role: ChatRole
+  content: string
+  created_on: string
+}
+
+// What the user is currently viewing, derived from the route by the UI.
+export interface CoachChatContext {
+  view?: string | null
+  activity_id?: string | null
+}
+
+// A message held in the drawer (server messages have an id; an in-flight
+// streaming assistant message does not yet).
+export interface ChatMessage {
+  id?: number
+  role: ChatRole
+  content: string
+}

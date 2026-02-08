@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CoachConfigRequest(BaseModel):
@@ -49,3 +49,39 @@ class CoachStatusResponse(BaseModel):
     model: str | None = None
     last_status: str | None = None
     last_message: str | None = None
+
+
+class CoachSessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    created_on: datetime
+    updated_on: datetime
+
+
+class CoachMessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: str
+    content: str
+    created_on: datetime
+
+
+class CoachSessionRenameRequest(BaseModel):
+    title: str
+
+
+class CoachChatContext(BaseModel):
+    """What the user is currently viewing, derived from the route by the UI."""
+
+    view: str | None = None
+    activity_id: str | None = None
+
+
+class CoachChatRequest(BaseModel):
+    message: str
+    # When omitted a new session is created and its id returned in the done event.
+    session_id: int | None = None
+    context: CoachChatContext | None = None

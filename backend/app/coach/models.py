@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.coach.config import CONFIG_ID
@@ -33,3 +33,32 @@ class CoachConfig(CoachBase):
     updated_on: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+
+class CoachSession(CoachBase):
+    """A single chat conversation, scoped to one athlete. Renameable and deletable."""
+
+    __tablename__ = "coach_session"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    athlete_id: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String, default="New chat")
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_on: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class CoachMessage(CoachBase):
+    """One turn in a chat session. Deleted with its session (cascade)."""
+
+    __tablename__ = "coach_message"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("coach_session.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    # "user" or "assistant".
+    role: Mapped[str] = mapped_column(String, nullable=False)
+    content: Mapped[str] = mapped_column(Text, default="")
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -1,19 +1,38 @@
 from __future__ import annotations
 
+import json
+import logging
+from collections.abc import AsyncIterator
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.api.athletes import get_required_athlete_id
+from app.athlete import get_athlete_config
+from app.coach import service, store
 from app.coach.config import CONFIG_ID, Provider
+from app.coach.db import SessionLocal as CoachSessionLocal
 from app.coach.db import get_coach_db
+from app.coach.deps import CoachView
 from app.coach.models import CoachConfig
 from app.coach.schemas import (
+    CoachChatContext,
+    CoachChatRequest,
     CoachConfigRequest,
     CoachConfigResponse,
+    CoachMessageResponse,
+    CoachSessionRenameRequest,
+    CoachSessionResponse,
     CoachStatusResponse,
     CoachVerifyRequest,
     CoachVerifyResult,
 )
+from app.coach.service import CoachUnavailable
 from app.coach.verify import verify_connection
+from app.db import SessionLocal as CoreSessionLocal
+
+logger = logging.getLogger("fitme.coach")
 
 router = APIRouter(prefix="/api/coach", tags=["coach"])
 
@@ -132,4 +151,123 @@ def get_status(db: Session = Depends(get_coach_db)) -> CoachStatusResponse:
         model=config.model if config else None,
         last_status=config.last_status if config else None,
         last_message=config.last_message if config else None,
+    )
+
+
+# -- Chat sessions ----------------------------------------------------------
+
+
+@router.get("/sessions", response_model=list[CoachSessionResponse])
+def list_sessions(
+    db: Session = Depends(get_coach_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> list[CoachSessionResponse]:
+    return [CoachSessionResponse.model_validate(s) for s in store.list_sessions(db, athlete_id)]
+
+
+@router.post("/sessions", response_model=CoachSessionResponse)
+def create_session(
+    db: Session = Depends(get_coach_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> CoachSessionResponse:
+    return CoachSessionResponse.model_validate(store.create_session(db, athlete_id))
+
+
+@router.patch("/sessions/{session_id}", response_model=CoachSessionResponse)
+def rename_session(
+    session_id: int,
+    payload: CoachSessionRenameRequest,
+    db: Session = Depends(get_coach_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> CoachSessionResponse:
+    session = store.rename_session(db, session_id, athlete_id, payload.title)
+    if session is None:
+        raise HTTPException(404, "Session not found.")
+    return CoachSessionResponse.model_validate(session)
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def delete_session(
+    session_id: int,
+    db: Session = Depends(get_coach_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> None:
+    if not store.delete_session(db, session_id, athlete_id):
+        raise HTTPException(404, "Session not found.")
+
+
+@router.get("/sessions/{session_id}/messages", response_model=list[CoachMessageResponse])
+def get_session_messages(
+    session_id: int,
+    db: Session = Depends(get_coach_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> list[CoachMessageResponse]:
+    if store.get_session(db, session_id, athlete_id) is None:
+        raise HTTPException(404, "Session not found.")
+    return [CoachMessageResponse.model_validate(m) for m in store.list_messages(db, session_id)]
+
+
+# -- Streaming chat ---------------------------------------------------------
+
+
+def _sse(payload: dict) -> bytes:
+    """Encode one Server-Sent Event line."""
+    return f"data: {json.dumps(payload)}\n\n".encode()
+
+
+@router.post("/chat")
+async def chat(
+    payload: CoachChatRequest,
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> StreamingResponse:
+    """Stream a coach reply as Server-Sent Events.
+
+    Events: ``session`` (id + title), ``delta`` (text chunk), ``done``, ``error``.
+    The DB sessions are opened inside the generator so they outlive the request
+    function and stay valid for the whole stream.
+    """
+    message = payload.message.strip()
+    if not message:
+        raise HTTPException(422, "Message is required.")
+    context = payload.context or CoachChatContext()
+    view = CoachView(view=context.view, activity_id=context.activity_id)
+
+    async def event_stream() -> AsyncIterator[bytes]:
+        coach_db = CoachSessionLocal()
+        core_db = CoreSessionLocal()
+        try:
+            athlete = get_athlete_config(core_db, athlete_id)
+            session = None
+            if payload.session_id is not None:
+                session = store.get_session(coach_db, payload.session_id, athlete_id)
+            if session is None:
+                session = store.create_session(
+                    coach_db, athlete_id, store.title_from_message(message)
+                )
+            yield _sse({"type": "session", "session_id": session.id, "title": session.title})
+
+            async for delta in service.stream_chat(
+                coach_db=coach_db,
+                core_db=core_db,
+                athlete_id=athlete_id,
+                athlete=athlete,
+                session_id=session.id,
+                message=message,
+                view=view,
+            ):
+                yield _sse({"type": "delta", "text": delta})
+            yield _sse({"type": "done"})
+        except CoachUnavailable as exc:
+            yield _sse({"type": "error", "message": str(exc)})
+        except Exception as exc:  # noqa: BLE001 - report provider/runtime errors to the client
+            logger.exception("Coach chat failed")
+            yield _sse({"type": "error", "message": str(exc)[:300]})
+        finally:
+            coach_db.close()
+            core_db.close()
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

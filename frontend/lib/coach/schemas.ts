@@ -25,3 +25,17 @@ export const CoachVerifyResultSchema = z.object({
   ok: z.boolean(),
   message: z.string(),
 })
+
+export const CoachSessionSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  created_on: z.string(),
+  updated_on: z.string(),
+})
+
+export const CoachMessageSchema = z.object({
+  id: z.number(),
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+  created_on: z.string(),
+})
