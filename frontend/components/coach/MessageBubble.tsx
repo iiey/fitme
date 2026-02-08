@@ -44,6 +44,19 @@ const MARKDOWN_COMPONENTS: Components = {
   ),
 }
 
+// Animated "thinking" indicator shown in the assistant bubble while we wait for
+// the first streamed token (empty content). Pure CSS - the staggered negative
+// animation-delays start each dot mid-bounce to make a left-to-right wave.
+function TypingDots() {
+  return (
+    <span className="flex items-center gap-1 py-1" aria-label="FitBuddy is thinking">
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.15s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" />
+    </span>
+  )
+}
+
 export function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user"
   return (
@@ -57,10 +70,12 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
       >
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.content}</p>
-        ) : (
+        ) : message.content ? (
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
-            {message.content || "…"}
+            {message.content}
           </ReactMarkdown>
+        ) : (
+          <TypingDots />
         )}
       </div>
     </div>
