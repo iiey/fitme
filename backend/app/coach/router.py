@@ -124,6 +124,12 @@ def delete_config(db: Session = Depends(get_coach_db)) -> None:
         db.commit()
 
 
+@router.delete("/data", status_code=204)
+def reset_all(db: Session = Depends(get_coach_db)) -> None:
+    """Full wipe: delete the config plus all sessions, messages, and memory."""
+    store.reset_all(db)
+
+
 @router.post("/config/verify", response_model=CoachVerifyResult)
 async def verify_config(
     payload: CoachVerifyRequest, db: Session = Depends(get_coach_db)

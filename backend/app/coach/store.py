@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.coach.models import CoachMemory, CoachMessage, CoachSession
+from app.coach.models import CoachConfig, CoachMemory, CoachMessage, CoachSession
 
 # Titles are derived from the first user message, trimmed to this length.
 _TITLE_MAX_LEN = 48
@@ -117,6 +117,19 @@ def delete_memory(db: Session, memory_id: int, athlete_id: str) -> bool:
     db.delete(memory)
     db.commit()
     return True
+
+
+def reset_all(db: Session) -> None:
+    """Wipe every coach table: config, sessions, messages, and memory.
+
+    Backs the "Reset All" action. Messages are removed first so no rows are
+    orphaned regardless of cascade settings.
+    """
+    db.execute(delete(CoachMessage))
+    db.execute(delete(CoachSession))
+    db.execute(delete(CoachMemory))
+    db.execute(delete(CoachConfig))
+    db.commit()
 
 
 def title_from_message(message: str) -> str:

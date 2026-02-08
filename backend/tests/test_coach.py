@@ -260,6 +260,27 @@ def test_sessions_api(client):
     assert client.get(f"/api/coach/sessions/{sid}/messages").status_code == 404
 
 
+def test_reset_all_wipes_config_and_data(client, monkeypatch):
+    async def fake_verify(config):
+        return True, "Connection OK"
+
+    monkeypatch.setattr("app.coach.router.verify_connection", fake_verify)
+
+    client.put(
+        "/api/coach/config",
+        json={"provider": "openai", "model": "gpt-4o", "api_key": "secret", "enabled": True},
+    )
+    sid = client.post("/api/coach/sessions").json()["id"]
+    assert client.get("/api/coach/config").json() is not None
+    assert len(client.get("/api/coach/sessions").json()) == 1
+
+    assert client.delete("/api/coach/data").status_code == 204
+
+    assert client.get("/api/coach/config").json() is None
+    assert client.get("/api/coach/sessions").json() == []
+    assert client.get(f"/api/coach/sessions/{sid}/messages").status_code == 404
+
+
 def test_memory_dedupe(coach_factory):
     db = coach_factory()
     try:

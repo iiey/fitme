@@ -88,6 +88,14 @@ export async function deleteCoachConfig(): Promise<void> {
   }
 }
 
+/** Full wipe: delete the config plus all chats, messages, and memory. */
+export async function resetCoachData(): Promise<void> {
+  const response = await fetch("/api/coach/data", { method: "DELETE" })
+  if (!response.ok) {
+    throw new ApiError(response.status, await readDetail(response, "Could not reset coach data"))
+  }
+}
+
 export async function verifyCoachConfig(
   input: Partial<CoachConfigInput>,
 ): Promise<CoachVerifyResult> {

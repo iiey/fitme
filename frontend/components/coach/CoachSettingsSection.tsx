@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 
 import {
   deleteCoachConfig,
+  resetCoachData,
   saveCoachConfig,
   useCoachConfig,
   useCoachStatus,
@@ -104,8 +105,8 @@ export function CoachSettingsSection() {
     }
   }
 
-  async function handleRemove() {
-    if (!confirm("Remove the FitBuddy configuration?")) return
+  async function handleClearConfig() {
+    if (!confirm("Clear the FitBuddy configuration? Your chats and memory are kept.")) return
     setBusy(true)
     setError(null)
     setNotice(null)
@@ -113,10 +114,34 @@ export function CoachSettingsSection() {
     try {
       await deleteCoachConfig()
       setApiKey("")
-      setNotice("Coach configuration removed.")
+      setNotice("Coach configuration cleared.")
       await Promise.all([mutateConfig(), mutateStatus()])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove coach settings")
+      setError(err instanceof Error ? err.message : "Could not clear coach configuration")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleResetAll() {
+    if (
+      !confirm(
+        "Reset everything? This permanently deletes the configuration and ALL chats, " +
+          "messages, and memory. This cannot be undone.",
+      )
+    )
+      return
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    setVerifyResult(null)
+    try {
+      await resetCoachData()
+      setApiKey("")
+      setNotice("All FitBuddy data has been reset.")
+      await Promise.all([mutateConfig(), mutateStatus()])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reset coach data")
     } finally {
       setBusy(false)
     }
@@ -246,21 +271,43 @@ export function CoachSettingsSection() {
         </button>
         {config && (
           <button
-            onClick={handleRemove}
+            onClick={handleClearConfig}
             disabled={busy}
-            title="Remove the coach configuration and hide the coach"
+            title="Remove the provider configuration only; chats and memory are kept"
             className="ml-auto rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/30"
           >
-            Remove
+            Clear Config
           </button>
         )}
+        <button
+          onClick={handleResetAll}
+          disabled={busy}
+          title="Permanently delete the configuration and all chats, messages, and memory"
+          className={`rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-950/30 ${
+            config ? "" : "ml-auto"
+          }`}
+        >
+          Reset All
+        </button>
       </div>
 
-      <p className="text-xs text-gray-400">
-        <strong>Verify</strong> tests these settings without saving.{" "}
-        <strong>{config ? "Save & verify" : "Connect"}</strong> tests them and, if they work, saves
-        the configuration so the coach becomes available.
-      </p>
+      <div className="space-y-1 text-xs text-gray-400">
+        <p>
+          <strong>Verify</strong> — tests these settings without saving.
+        </p>
+        <p>
+          <strong>{config ? "Save & verify" : "Connect"}</strong> — tests them and, if they work,
+          saves the configuration so the coach becomes available.
+        </p>
+        <p>
+          <strong>Clear Config</strong> — removes the provider configuration only; your chats and
+          memory are kept.
+        </p>
+        <p>
+          <strong>Reset All</strong> — permanently deletes the configuration and all chats,
+          messages, and memory. This cannot be undone.
+        </p>
+      </div>
     </div>
   )
 }
