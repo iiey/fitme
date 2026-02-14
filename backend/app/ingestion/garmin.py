@@ -73,6 +73,14 @@ def is_garmin_export(source: str | Path) -> bool:
     )
 
 
+def _first_not_none(*values: object) -> object:
+    """First value that is not None, treating 0 as a real value (unlike ``or``)."""
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
 def _to_float(value: object) -> float | None:
     try:
         return float(value) if value is not None else None  # type: ignore[arg-type]
@@ -177,8 +185,8 @@ def _summary_to_row(entry: dict) -> CsvActivityRow | None:
     )
 
     distance_m = _cm_to_m(entry.get("distance"))
-    moving_s = _ms_to_s(entry.get("movingDuration")) or _ms_to_s(entry.get("duration"))
-    elapsed_s = _ms_to_s(entry.get("elapsedDuration")) or _ms_to_s(entry.get("duration"))
+    moving_s = _ms_to_s(_first_not_none(entry.get("movingDuration"), entry.get("duration")))
+    elapsed_s = _ms_to_s(_first_not_none(entry.get("elapsedDuration"), entry.get("duration")))
 
     # Average speed is derived from distance / moving time (always SI-correct);
     # the scaled summary field is only a fallback when distance is missing.
@@ -205,8 +213,12 @@ def _summary_to_row(entry: dict) -> CsvActivityRow | None:
         average_speed_ms=average_speed_ms,
         average_heart_rate=_int_or_none(entry.get("avgHr")),
         max_heart_rate=_int_or_none(entry.get("maxHr")),
-        average_cadence=_int_or_none(entry.get("avgRunCadence") or entry.get("avgBikeCadence")),
-        max_cadence=_int_or_none(entry.get("maxRunCadence") or entry.get("maxBikeCadence")),
+        average_cadence=_int_or_none(
+            _first_not_none(entry.get("avgRunCadence"), entry.get("avgBikeCadence"))
+        ),
+        max_cadence=_int_or_none(
+            _first_not_none(entry.get("maxRunCadence"), entry.get("maxBikeCadence"))
+        ),
         average_power=_int_or_none(entry.get("avgPower")),
         max_power=_int_or_none(entry.get("maxPower")),
         calories=_kj_to_kcal(entry.get("calories")),
