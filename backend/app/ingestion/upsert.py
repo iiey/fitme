@@ -274,7 +274,11 @@ def upsert_activity(
     activity.average_power = _merge(row.average_power, summary.average_power if summary else None)
     activity.max_power = _merge(row.max_power, summary.max_power if summary else None)
     activity.normalized_power = summary.normalized_power if summary else None
-    activity.calories = _merge(row.calories, parsed.calories if parsed else None)
+    # A device's own FIT ``total_calories`` is the authoritative figure, in
+    # kcal. Some provider summaries report energy in kilojoules (Garmin's bulk
+    # export reports ``calories`` ~4.184x too high), so trust the parsed file
+    # value when present and fall back to the summary only without one.
+    activity.calories = _merge(parsed.calories if parsed else None, row.calories)
     activity.is_commute = row.is_commute
     activity.gear_name = row.gear_name
     activity.gear_id = gear_slug(row.gear_name, athlete_id) if row.gear_name else None
