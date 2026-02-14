@@ -10,6 +10,10 @@ _is_sqlite = settings.database_url.startswith("sqlite")
 # SQLite needs ``check_same_thread=False`` for use across FastAPI's threadpool.
 _connect_args = {"check_same_thread": False} if _is_sqlite else {}
 
+# How long a reader waits for the single writer (e.g. a background import) before
+# giving up with "database is locked". SQLite's default is 0 (fail immediately).
+_SQLITE_BUSY_TIMEOUT_MS = 5000
+
 engine = create_engine(
     settings.database_url,
     connect_args=_connect_args,
@@ -23,6 +27,7 @@ if _is_sqlite:
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute(f"PRAGMA busy_timeout={_SQLITE_BUSY_TIMEOUT_MS}")
         cursor.close()
 
 
