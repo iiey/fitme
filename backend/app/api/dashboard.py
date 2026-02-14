@@ -28,7 +28,7 @@ from app.domain.training_load import (
     training_load_analysis,
 )
 from app.domain.units import distance_for_unit, elevation_for_unit
-from app.domain.vo2max import vo2max_trend
+from app.domain.vo2max import RUNNING_TYPES, vo2max_trend
 from app.enums import ActivityType, SportType
 from app.models import BestEffort
 
@@ -266,9 +266,20 @@ def get_dashboard(
         if activity_ids
         else []
     )
+    # Streams are the dashboard's heaviest read - each is a compressed BLOB that
+    # must be decompressed and JSON-parsed. Only three sections consume them, and
+    # only for a subset of activities: HR zones and peak power look at the recent
+    # window, while the VO2max trend needs every run. Loading streams for just
+    # those activities avoids decompressing the entire history on a cache miss.
+    stream_cutoff = anchor - timedelta(days=max(hr_window_days, power_window_days))
+    stream_ids = [
+        a.activity_id
+        for a in activities
+        if a.start_date_time >= stream_cutoff or a.sport_type in RUNNING_TYPES
+    ]
     all_streams = repository.streams_for_activities(
         db,
-        activity_ids,
+        stream_ids,
         stream_types=["heartrate", "time", "watts", "distance", "altitude"],
     )
     gear = repository.list_gear(db, athlete_id)
