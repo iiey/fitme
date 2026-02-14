@@ -126,13 +126,54 @@ def streams_for_activities(
     return result
 
 
-def activities_with_polyline(db: Session, athlete_id: str) -> list[Activity]:
-    stmt = (
-        select(Activity)
-        .where(Activity.athlete_id == athlete_id, Activity.polyline.is_not(None))
-        .order_by(Activity.start_date_time.asc())
+def heatmap_routes(
+    db: Session,
+    athlete_id: str,
+    *,
+    sport_types: list[str] | None = None,
+    activity_types: list[str] | None = None,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    commute: bool | None = None,
+    limit: int,
+    offset: int,
+) -> tuple[list[Activity], int, int]:
+    """Polyline activities matching the heatmap filters, paginated in SQL.
+
+    Returns ``(page, total, country_count)`` where ``total`` is the full match
+    count and ``country_count`` is the number of distinct countries across the
+    whole filtered set (not just the returned page).
+    """
+    conds = [Activity.athlete_id == athlete_id, Activity.polyline.is_not(None)]
+    if sport_types:
+        conds.append(Activity.sport_type.in_(sport_types))
+    if activity_types:
+        conds.append(Activity.activity_type.in_(activity_types))
+    if start is not None:
+        conds.append(Activity.start_date_time >= start)
+    if end is not None:
+        conds.append(Activity.start_date_time <= end)
+    if commute is not None:
+        conds.append(Activity.is_commute == commute)
+
+    total = db.execute(select(func.count()).select_from(Activity).where(*conds)).scalar_one()
+    country_count = db.execute(
+        select(func.count(func.distinct(Activity.country_code))).where(
+            *conds, Activity.country_code.is_not(None)
+        )
+    ).scalar_one()
+    page = list(
+        db.execute(
+            select(Activity)
+            .where(*conds)
+            .order_by(Activity.start_date_time.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+        .scalars()
+        .all()
     )
-    return list(db.execute(stmt).scalars().all())
+    return page, total, country_count
 
 
 def best_efforts_for_activity_types(

@@ -28,31 +28,17 @@ def get_routes(
     offset: int = Query(default=0, ge=0),
 ) -> dict:
     """Encoded polylines for matching activities, for the Leaflet heatmap."""
-    activities = repository.activities_with_polyline(db, athlete_id)
-
-    filtered = []
-    sport_set = set(sport_type) if sport_type else None
-    activity_set = set(activity_type) if activity_type else None
-    country_codes: set[str] = set()
-
-    for activity in activities:
-        if sport_set and activity.sport_type not in sport_set:
-            continue
-        if activity_set and activity.activity_type not in activity_set:
-            continue
-        if start and activity.start_date_time < start:
-            continue
-        if end and activity.start_date_time > end:
-            continue
-        if commute is not None and activity.is_commute != commute:
-            continue
-
-        if activity.country_code:
-            country_codes.add(activity.country_code)
-        filtered.append(activity)
-
-    total = len(filtered)
-    page = filtered[offset : offset + limit]
+    page, total, country_count = repository.heatmap_routes(
+        db,
+        athlete_id,
+        sport_types=sport_type,
+        activity_types=activity_type,
+        start=start,
+        end=end,
+        commute=commute,
+        limit=limit,
+        offset=offset,
+    )
     routes = [
         {
             "activity_id": a.activity_id,
@@ -68,6 +54,6 @@ def get_routes(
     return {
         "total": total,
         "count": len(routes),
-        "country_count": len(country_codes),
+        "country_count": country_count,
         "routes": routes,
     }
