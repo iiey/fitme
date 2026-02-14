@@ -64,10 +64,13 @@ def _clean_distance_stream(
     """
     cleaned = [distances[0]]
     for i in range(1, len(distances)):
-        delta_d = distances[i] - distances[i - 1]
+        delta_d = max(distances[i] - distances[i - 1], 0.0)
         delta_t = times[i] - times[i - 1]
-        max_step = max_speed_ms * delta_t if delta_t > 0 else 0.0
-        cleaned.append(cleaned[-1] + min(max(delta_d, 0.0), max_step))
+        # With no elapsed time (duplicate timestamps) there is no speed to cap
+        # against, so keep the raw forward step instead of discarding real
+        # distance.
+        step = min(delta_d, max_speed_ms * delta_t) if delta_t > 0 else delta_d
+        cleaned.append(cleaned[-1] + step)
     return cleaned
 
 
