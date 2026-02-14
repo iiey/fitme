@@ -15,6 +15,10 @@ _BANISTER_K_FEMALE = 1.67
 # Lactate-threshold heart rate as a fraction of max HR (zone-5 lower bound).
 _LTHR_FRACTION = 0.90
 SECONDS_PER_HOUR = 3600
+# A perfectly uniform week (zero load variance, but non-zero load) is maximally
+# monotonous; Foster's mean/std is then undefined, so report this saturated
+# high value rather than the "good" 0 the divide-by-zero guard would give.
+_UNIFORM_WEEK_MONOTONY = 2.5
 
 
 def power_intensity_factor(activity: Activity, athlete: AthleteConfig) -> float | None:
@@ -162,7 +166,12 @@ def training_load_analysis(
 
     if len(week_loads) >= 2:
         std = statistics.pstdev(week_loads)
-        monotony = round(mean_load / std, 2) if std > 0 else 0
+        if std > 0:
+            monotony = round(mean_load / std, 2)
+        elif mean_load > 0:
+            monotony = _UNIFORM_WEEK_MONOTONY
+        else:
+            monotony = 0
     else:
         monotony = 0
 
