@@ -32,26 +32,7 @@ HR_CURVE_DURATIONS = [
 
 def peak_power_for_duration(time_s: list[int], watts: list[float], duration: int) -> float | None:
     """Maximum average power sustained over any window of >= ``duration`` seconds."""
-    n = min(len(time_s), len(watts))
-    if n == 0:
-        return None
-
-    prefix = [0.0] * (n + 1)
-    for i in range(n):
-        prefix[i + 1] = prefix[i] + (watts[i] or 0.0)
-
-    best: float | None = None
-    start = 0
-    for end in range(n):
-        while time_s[end] - time_s[start] > duration and start < end:
-            start += 1
-        if time_s[end] - time_s[start] >= duration * 0.9:
-            samples = end - start + 1
-            if samples > 0:
-                avg = (prefix[end + 1] - prefix[start]) / samples
-                if best is None or avg > best:
-                    best = avg
-    return best
+    return _max_average_for_duration(time_s, watts, duration)
 
 
 def peak_power_outputs(streams: dict[str, list]) -> dict[int, float]:
@@ -70,23 +51,33 @@ def peak_power_outputs(streams: dict[str, list]) -> dict[int, float]:
 def _max_average_for_duration(
     time_s: list[float], values: list[float], duration: int
 ) -> float | None:
-    """Highest average of ``values`` over any window of >= ``duration`` seconds."""
+    """Highest time-weighted average of ``values`` over any window of
+    >= ``duration`` seconds.
+
+    The average is weighted by elapsed time (trapezoidal integration over the
+    window), not by sample count, so it stays correct on the irregularly-sampled
+    streams that GPX/TCX exports produce - a cluster of closely-spaced samples
+    no longer biases the result.
+    """
     n = min(len(time_s), len(values))
     if n == 0:
         return None
 
-    prefix = [0.0] * (n + 1)
-    for i in range(n):
-        prefix[i + 1] = prefix[i] + (values[i] or 0.0)
+    # area[k] is the cumulative trapezoidal integral of value over time from
+    # sample 0 to sample k; a window's integral is area[end] - area[start].
+    area = [0.0] * n
+    for i in range(1, n):
+        dt = time_s[i] - time_s[i - 1]
+        area[i] = area[i - 1] + ((values[i] or 0.0) + (values[i - 1] or 0.0)) / 2 * dt
 
     best: float | None = None
     start = 0
     for end in range(n):
         while time_s[end] - time_s[start] > duration and start < end:
             start += 1
-        if time_s[end] - time_s[start] >= duration * 0.9:
-            samples = end - start + 1
-            avg = (prefix[end + 1] - prefix[start]) / samples
+        elapsed = time_s[end] - time_s[start]
+        if elapsed >= duration * 0.9 and elapsed > 0:
+            avg = (area[end] - area[start]) / elapsed
             if best is None or avg > best:
                 best = avg
     return best
