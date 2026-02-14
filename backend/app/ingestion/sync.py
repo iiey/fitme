@@ -27,7 +27,7 @@ import json
 import logging
 from collections import defaultdict
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -210,13 +210,13 @@ def _run_sync(
     return summary
 
 
-def _resolve_range(
-    db: Session, config: SyncConfig, *, full_resync: bool
-) -> tuple[datetime, datetime]:
+def _resolve_range(db: Session, config: SyncConfig, *, full_resync: bool) -> tuple[date, date]:
     """Resolve the inclusive ``(oldest, newest)`` local-date range to fetch.
 
-    Returned as datetimes; the client formats them as ISO dates. ``newest`` runs
-    a day past now so activities recorded today are always in range.
+    Returned as ``date`` values because the Intervals.icu endpoint expects ISO
+    dates; returning ``datetime`` made the client emit a full timestamp.
+    ``newest`` runs a day past now so activities recorded today are always in
+    range.
     """
     now = datetime.utcnow()
     newest = now + timedelta(days=1)
@@ -227,7 +227,7 @@ def _resolve_range(
             now - timedelta(days=DEFAULT_LOOKBACK_DAYS)
         )
     oldest = anchor - timedelta(days=OVERLAP_DAYS)
-    return oldest, newest
+    return oldest.date(), newest.date()
 
 
 def _newest_existing_start(db: Session, athlete_id: str) -> datetime | None:
