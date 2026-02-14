@@ -41,7 +41,12 @@ def list_activities(
     )
 
     sort_column = getattr(Activity, order_by, Activity.start_date_time)
-    stmt = stmt.order_by(sort_column.desc() if descending else sort_column.asc())
+    # activity_id breaks ties so LIMIT/OFFSET paging is deterministic even when
+    # the sort column has duplicates or NULLs (e.g. average_heart_rate).
+    stmt = stmt.order_by(
+        sort_column.desc() if descending else sort_column.asc(),
+        Activity.activity_id.asc(),
+    )
 
     if offset is not None:
         stmt = stmt.offset(offset)
@@ -166,7 +171,7 @@ def heatmap_routes(
         db.execute(
             select(Activity)
             .where(*conds)
-            .order_by(Activity.start_date_time.asc())
+            .order_by(Activity.start_date_time.asc(), Activity.activity_id.asc())
             .limit(limit)
             .offset(offset)
         )
