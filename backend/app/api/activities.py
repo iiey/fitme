@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import repository
@@ -99,9 +100,12 @@ def get_activity(
 
     streams = repository.streams_for_activity(db, activity_id)
     efforts = (
-        db.query(BestEffort)
-        .filter(BestEffort.activity_id == activity_id)
-        .order_by(BestEffort.distance_m.asc())
+        db.execute(
+            select(BestEffort)
+            .where(BestEffort.activity_id == activity_id)
+            .order_by(BestEffort.distance_m.asc())
+        )
+        .scalars()
         .all()
     )
     best_efforts = [(e.distance_m, e.time_s) for e in efforts]
