@@ -24,6 +24,7 @@ All Garmin units are converted to FitMe's SI base units here:
 
 * distance / elevation are stored in **centimetres** -> divide by 100 for metres,
 * durations are stored in **milliseconds** -> divide by 1000 for seconds,
+* energy is stored in **kilojoules** -> divide by 4.184 for kcal,
 * summarized ``avgSpeed`` / ``maxSpeed`` are stored at **1/10 m/s** -> times 10,
 * ``startTimeLocal`` is an epoch already carrying the local offset, so reading it
   as UTC yields the naive local wall-clock time (matching the importer's
@@ -98,6 +99,15 @@ def _speed_ms(value: object) -> float | None:
     """Garmin summarized avg/max speed is stored at 1/10 of m/s."""
     f = _to_float(value)
     return f * 10.0 if f is not None else None
+
+
+# Garmin's summarized export stores energy in kilojoules; FitMe uses kcal.
+_KJ_PER_KCAL = 4.184
+
+
+def _kj_to_kcal(value: object) -> int | None:
+    f = _to_float(value)
+    return round(f / _KJ_PER_KCAL) if f is not None else None
 
 
 def _ms_to_local_dt(value: object) -> datetime | None:
@@ -199,7 +209,7 @@ def _summary_to_row(entry: dict) -> CsvActivityRow | None:
         max_cadence=_int_or_none(entry.get("maxRunCadence") or entry.get("maxBikeCadence")),
         average_power=_int_or_none(entry.get("avgPower")),
         max_power=_int_or_none(entry.get("maxPower")),
-        calories=_int_or_none(entry.get("calories")),
+        calories=_kj_to_kcal(entry.get("calories")),
         start_latitude=_to_float(entry.get("startLatitude")),
         start_longitude=_to_float(entry.get("startLongitude")),
         device_name=_clean(entry.get("manufacturer")),

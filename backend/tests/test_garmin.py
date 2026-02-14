@@ -108,6 +108,7 @@ def test_garmin_reader_converts_units(tmp_path):
     assert row.distance_m == 5000.0  # cm -> m
     assert row.moving_time_s == 1750  # ms -> s
     assert row.elevation_gain_m == 50.0  # cm -> m
+    assert row.calories == 96  # 400 kJ -> kcal
     assert row.max_speed_ms == 3.5  # field * 10
     # Average speed is derived from distance / moving time.
     assert abs(row.average_speed_ms - 5000.0 / 1750.0) < 1e-6
