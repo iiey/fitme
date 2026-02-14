@@ -28,6 +28,10 @@ if _is_sqlite:
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute(f"PRAGMA busy_timeout={_SQLITE_BUSY_TIMEOUT_MS}")
+        # SQLite ignores foreign keys unless asked, per connection. Without this
+        # the goal_sport -> goal ON DELETE CASCADE is silently inert, leaving
+        # orphan goal_sport rows when a goal (or its athlete) is bulk-deleted.
+        cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
 
 
