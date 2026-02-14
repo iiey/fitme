@@ -71,6 +71,32 @@ def _merge(csv_value, stream_value):
     return csv_value if csv_value is not None else stream_value
 
 
+# A barometric altimeter can spike, making a provider's summary "total ascent"
+# read an order of magnitude high (a flat run reporting ~2 km of climb). When we
+# have our own stream-derived gain and the provider summary dwarfs it, treat the
+# summary as a glitch and trust the stream instead.
+_ELEVATION_GLITCH_FACTOR = 3.0
+_ELEVATION_GLITCH_MARGIN_M = 50.0
+
+
+def _merge_elevation(source: float | None, stream_gain: float | None) -> float:
+    """Prefer the source summary, unless it is an implausible barometric spike.
+
+    Falls back to the stream-derived gain only when an altitude stream exists and
+    the summary both exceeds it by a wide ratio and by a meaningful absolute
+    margin, so legitimate climbs (where the two roughly agree) keep the summary.
+    """
+    if source is None:
+        return stream_gain or 0.0
+    if stream_gain is None:
+        return source
+    implausible = (
+        source > stream_gain * _ELEVATION_GLITCH_FACTOR
+        and source - stream_gain > _ELEVATION_GLITCH_MARGIN_M
+    )
+    return stream_gain if implausible else source
+
+
 def _downsample(values: list, max_points: int) -> list:
     if len(values) <= max_points:
         return values
@@ -128,7 +154,9 @@ def canonical_metrics(row: CsvActivityRow, parsed: ParsedActivityFile | None) ->
     start_utc = (parsed.start_time if parsed else None) or row.start_utc or start_dt
 
     distance_m = _merge(row.distance_m, summary.distance_m if summary else None) or 0.0
-    elevation_m = _merge(row.elevation_gain_m, summary.elevation_gain_m if summary else None) or 0.0
+    elevation_m = _merge_elevation(
+        row.elevation_gain_m, summary.elevation_gain_m if summary else None
+    )
     moving_s = _merge(row.moving_time_s, summary.moving_time_s if summary else None) or 0
     elapsed_s = _merge(row.elapsed_time_s, summary.elapsed_time_s if summary else None) or moving_s
     return Canonical(

@@ -107,11 +107,34 @@ def summarize_streams(parsed: ParsedActivityFile) -> StreamSummary:
     return summary
 
 
-def _elevation_gain(altitudes: list[float], threshold: float = 1.0) -> float:
-    """Sum positive altitude deltas above a small noise threshold."""
+def _smooth(values: list[float], window: int) -> list[float]:
+    """Centered moving average to damp barometric/GPS altitude noise."""
+    if window <= 1 or len(values) <= window:
+        return values
+    half = window // 2
+    smoothed: list[float] = []
+    for i in range(len(values)):
+        chunk = values[max(0, i - half) : min(len(values), i + half + 1)]
+        smoothed.append(sum(chunk) / len(chunk))
+    return smoothed
+
+
+def _elevation_gain(
+    altitudes: list[float], threshold: float = 2.0, smooth_window: int = 15
+) -> float:
+    """Total ascent: sum of positive altitude deltas after de-noising.
+
+    Raw barometric/GPS altitude is noisy, and naively summing every up-tick
+    inflates total ascent by an order of magnitude (a flat run can read ~2 km).
+    A centered moving average removes the high-frequency jitter first, then a
+    threshold adds hysteresis so only sustained climbs accumulate.
+    """
+    if not altitudes:
+        return 0.0
+    series = _smooth(altitudes, smooth_window)
     gain = 0.0
-    last = altitudes[0]
-    for value in altitudes[1:]:
+    last = series[0]
+    for value in series[1:]:
         delta = value - last
         if delta >= threshold:
             gain += delta
