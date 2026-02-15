@@ -87,25 +87,31 @@ def get_config(db: Session = Depends(get_coach_db)) -> CoachConfigResponse | Non
 async def put_config(
     payload: CoachConfigRequest, db: Session = Depends(get_coach_db)
 ) -> CoachConfigResponse:
-    """Verify connectivity, then create/update the single config row.
+    """Create/update the single config row, verifying first when enabling.
 
-    Saving always re-verifies so a stored config is known-good. An empty api_key
-    keeps the previously stored key (mirrors the Intervals.icu sync config).
+    Enabling re-verifies so a usable config is always known-good. Disabling skips
+    the check so the coach can be switched off even when the model is
+    unreachable. An empty api_key keeps the previously stored key (mirrors the
+    Intervals.icu sync config).
     """
     _validate_provider(payload.provider)
     existing = _load_config(db)
     api_key = payload.api_key.strip() or (existing.api_key if existing else None)
 
-    candidate = CoachConfig(
-        provider=payload.provider,
-        model=payload.model,
-        api_key=api_key,
-        base_url=payload.base_url or None,
-        enabled=payload.enabled,
-    )
-    ok, message = await verify_connection(candidate)
-    if not ok:
-        raise HTTPException(400, f"Verification failed: {message}")
+    last_status = existing.last_status if existing else None
+    last_message = existing.last_message if existing else None
+    if payload.enabled:
+        candidate = CoachConfig(
+            provider=payload.provider,
+            model=payload.model,
+            api_key=api_key,
+            base_url=payload.base_url or None,
+            enabled=True,
+        )
+        ok, last_message = await verify_connection(candidate)
+        if not ok:
+            raise HTTPException(400, f"Verification failed: {last_message}")
+        last_status = "ok"
 
     config = existing or CoachConfig(id=CONFIG_ID)
     config.provider = payload.provider
@@ -113,8 +119,8 @@ async def put_config(
     config.api_key = api_key
     config.base_url = payload.base_url or None
     config.enabled = payload.enabled
-    config.last_status = "ok"
-    config.last_message = message
+    config.last_status = last_status
+    config.last_message = last_message
     db.add(config)
     db.commit()
     db.refresh(config)

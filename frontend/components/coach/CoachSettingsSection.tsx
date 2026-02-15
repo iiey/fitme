@@ -63,13 +63,13 @@ export function CoachSettingsSection() {
   const canSubmit =
     model.trim().length > 0 && (!needsKey || hasKey) && (!needsBaseUrl || baseUrl.trim().length > 0)
 
-  function buildPayload() {
+  function buildPayload(enabledOverride?: boolean) {
     return {
       provider,
       model: model.trim(),
       api_key: apiKey.trim(),
       base_url: needsBaseUrl ? baseUrl.trim() : null,
-      enabled,
+      enabled: enabledOverride ?? enabled,
     }
   }
 
@@ -96,10 +96,38 @@ export function CoachSettingsSection() {
     try {
       await saveCoachConfig(buildPayload())
       setApiKey("")
-      setNotice("Saved and verified. The coach is ready.")
+      setNotice(
+        enabled ? "Verified and saved. The coach is ready." : "Saved. The coach is turned off.",
+      )
       await Promise.all([mutateConfig(), mutateStatus()])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save coach settings")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // The "Enable coach" checkbox doubles as an on/off switch for an already
+  // saved coach: flipping it persists immediately instead of waiting for a
+  // separate save. Turning it on re-verifies the connection; turning it off is
+  // applied without a check so the coach can be switched off even when the
+  // model is unreachable. Before any config exists the checkbox is just local
+  // state captured by the initial "Connect" action.
+  async function handleToggleEnabled(next: boolean) {
+    setEnabled(next)
+    if (!config) return
+    setBusy(true)
+    setError(null)
+    setNotice(null)
+    setVerifyResult(null)
+    try {
+      await saveCoachConfig(buildPayload(next))
+      setApiKey("")
+      setNotice(next ? "Coach enabled." : "Coach disabled.")
+      await Promise.all([mutateConfig(), mutateStatus()])
+    } catch (err) {
+      setEnabled(!next)
+      setError(err instanceof Error ? err.message : "Could not update the coach")
     } finally {
       setBusy(false)
     }
@@ -231,12 +259,18 @@ export function CoachSettingsSection() {
           <input
             type="checkbox"
             checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
+            onChange={(e) => handleToggleEnabled(e.target.checked)}
             disabled={busy}
             className="h-4 w-4 rounded border-gray-300 text-brand"
           />
           Enable coach
         </label>
+        {config && (
+          <span className="mt-1 block text-xs text-gray-400">
+            Takes effect immediately. Turning it on re-checks the connection; turning it off hides
+            the coach right away.
+          </span>
+        )}
       </div>
 
       <p className="text-xs text-gray-400">
@@ -264,10 +298,10 @@ export function CoachSettingsSection() {
         <button
           onClick={handleSave}
           disabled={busy || !canSubmit}
-          title="Verify these settings and, if they work, save them. On success the configuration is stored and the coach icon appears."
+          title="Verify these settings and save them only if the check passes. On success the configuration is stored and the coach icon appears."
           className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-dark disabled:opacity-50"
         >
-          {config ? "Save & verify" : "Connect"}
+          {config ? "Verify & Save" : "Connect"}
         </button>
         {config && (
           <button
@@ -296,8 +330,8 @@ export function CoachSettingsSection() {
           <strong>Verify</strong> — tests these settings without saving.
         </p>
         <p>
-          <strong>{config ? "Save & verify" : "Connect"}</strong> — tests them and, if they work,
-          saves the configuration so the coach becomes available.
+          <strong>{config ? "Verify & Save" : "Connect"}</strong> — tests them and saves only if the
+          check passes, so a stored configuration is always known-good.
         </p>
         <p>
           <strong>Clear Config</strong> — removes the provider configuration only; your chats and

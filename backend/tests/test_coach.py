@@ -207,7 +207,12 @@ def test_config_crud_redaction_and_status(client, monkeypatch):
     # Save an OpenAI config with a secret key.
     saved = client.put(
         "/api/coach/config",
-        json={"provider": "openai", "model": "gpt-4o", "api_key": "supersecret", "enabled": True},
+        json={
+            "provider": "openai",
+            "model": "gpt-4o",
+            "api_key": "supersecret",
+            "enabled": True,
+        },
     )
     assert saved.status_code == 200
     body = saved.json()
@@ -220,7 +225,12 @@ def test_config_crud_redaction_and_status(client, monkeypatch):
     # Blank key on update keeps the stored key.
     kept = client.put(
         "/api/coach/config",
-        json={"provider": "openai", "model": "gpt-4o-mini", "api_key": "", "enabled": True},
+        json={
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "api_key": "",
+            "enabled": True,
+        },
     )
     assert kept.json()["has_api_key"] is True
 
@@ -238,6 +248,39 @@ def test_verify_failure_blocks_save(client, monkeypatch):
         json={"provider": "openai", "model": "gpt-4o", "api_key": "k", "enabled": True},
     )
     assert resp.status_code == 400
+    assert client.get("/api/coach/status").json()["usable"] is False
+
+
+def test_disable_skips_verification(client, monkeypatch):
+    calls = {"n": 0}
+
+    async def ok_verify(config):
+        calls["n"] += 1
+        return True, "Connection OK"
+
+    monkeypatch.setattr("app.coach.router.verify_connection", ok_verify)
+
+    # Enabling verifies and makes the coach usable.
+    client.put(
+        "/api/coach/config",
+        json={"provider": "openai", "model": "gpt-4o", "api_key": "k", "enabled": True},
+    )
+    assert calls["n"] == 1
+    assert client.get("/api/coach/status").json()["usable"] is True
+
+    # Disabling must take effect without re-verifying, even if a check would fail.
+    async def fail_verify(config):
+        calls["n"] += 1
+        return False, "model offline"
+
+    monkeypatch.setattr("app.coach.router.verify_connection", fail_verify)
+    disabled = client.put(
+        "/api/coach/config",
+        json={"provider": "openai", "model": "gpt-4o", "api_key": "", "enabled": False},
+    )
+    assert disabled.status_code == 200
+    assert disabled.json()["enabled"] is False
+    assert calls["n"] == 1  # verify was not called for the disable
     assert client.get("/api/coach/status").json()["usable"] is False
 
 
@@ -268,7 +311,12 @@ def test_reset_all_wipes_config_and_data(client, monkeypatch):
 
     client.put(
         "/api/coach/config",
-        json={"provider": "openai", "model": "gpt-4o", "api_key": "secret", "enabled": True},
+        json={
+            "provider": "openai",
+            "model": "gpt-4o",
+            "api_key": "secret",
+            "enabled": True,
+        },
     )
     sid = client.post("/api/coach/sessions").json()["id"]
     assert client.get("/api/coach/config").json() is not None
