@@ -125,12 +125,19 @@ async def stream_chat(
         session_id=session_id,
     )
     answer_parts: list[str] = []
-    async with coach_agent.run_stream(
-        message, model=model, deps=deps, message_history=history
-    ) as result:
-        async for delta in result.stream_text(delta=True):
-            answer_parts.append(delta)
-            yield delta
+    try:
+        async with coach_agent.run_stream(
+            message, model=model, deps=deps, message_history=history
+        ) as result:
+            async for delta in result.stream_text(delta=True):
+                answer_parts.append(delta)
+                yield delta
+    except Exception:  # noqa: BLE001 - persist partial text, then re-raise
+        # Save whatever streamed before the failure so the partial answer the
+        # user already saw survives a reload; the caller adds the error turn.
+        if answer_parts:
+            store.add_message(coach_db, session_id, "assistant", "".join(answer_parts))
+        raise
 
     store.add_message(coach_db, session_id, "assistant", "".join(answer_parts))
 
