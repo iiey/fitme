@@ -1,7 +1,7 @@
 "use client"
 
 import type { LatLngBoundsExpression } from "leaflet"
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet"
 
 import { decodePolyline } from "@/lib/polyline"
@@ -36,7 +36,10 @@ export default function RouteMap({
   color?: string
   height?: number
 }) {
-  const points = decodePolyline(polyline)
+  // Memoize so the decoded array keeps a stable reference across renders;
+  // otherwise FitBounds' effect dep changes every render and re-fits the map,
+  // fighting the user's pan/zoom.
+  const points = useMemo(() => decodePolyline(polyline), [polyline])
   if (points.length < 2) {
     return (
       <div
