@@ -200,6 +200,27 @@ export async function streamChat(
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
+
+  const processChunk = (chunk: string): void => {
+    const line = chunk.trim()
+    if (!line.startsWith("data:")) return
+    let event: { type: string; [key: string]: unknown }
+    try {
+      event = JSON.parse(line.slice(5).trim())
+    } catch {
+      return
+    }
+    if (event.type === "session") {
+      handlers.onSession?.(event.session_id as number, event.title as string)
+    } else if (event.type === "delta") {
+      handlers.onDelta?.(event.text as string)
+    } else if (event.type === "done") {
+      handlers.onDone?.()
+    } else if (event.type === "error") {
+      handlers.onError?.(event.message as string)
+    }
+  }
+
   let buffer = ""
   while (true) {
     const { done, value } = await reader.read()
@@ -207,26 +228,13 @@ export async function streamChat(
     buffer += decoder.decode(value, { stream: true })
     const chunks = buffer.split("\n\n")
     buffer = chunks.pop() ?? ""
-    for (const chunk of chunks) {
-      const line = chunk.trim()
-      if (!line.startsWith("data:")) continue
-      let event: { type: string; [key: string]: unknown }
-      try {
-        event = JSON.parse(line.slice(5).trim())
-      } catch {
-        continue
-      }
-      if (event.type === "session") {
-        handlers.onSession?.(event.session_id as number, event.title as string)
-      } else if (event.type === "delta") {
-        handlers.onDelta?.(event.text as string)
-      } else if (event.type === "done") {
-        handlers.onDone?.()
-      } else if (event.type === "error") {
-        handlers.onError?.(event.message as string)
-      }
-    }
+    for (const chunk of chunks) processChunk(chunk)
   }
+  // Flush a trailing event that arrived without its terminating blank line
+  // (e.g. a stream cut short), so a truncated done/error isn't dropped and the
+  // UI is not left stuck in the streaming state.
+  buffer += decoder.decode()
+  if (buffer.trim()) processChunk(buffer)
 }
 
 // -- Long-term memory -------------------------------------------------------
