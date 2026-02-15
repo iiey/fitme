@@ -27,6 +27,19 @@ const COLORS = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"]
 
 const DARK_COLORS = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"]
 
+/**
+ * Format a Date as a local "YYYY-MM-DD" string. The grid is built from
+ * local-midnight dates, so it must be read back with local getters; using
+ * toISOString() would shift to UTC and land activities on the wrong day for
+ * users in non-UTC timezones. Matches the backend's tz-naive date keys.
+ */
+function toLocalISO(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 function colorForLoad(load: number, max: number, dark: boolean): string {
   const palette = dark ? DARK_COLORS : COLORS
   if (load <= 0) return palette[0]
@@ -99,7 +112,7 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
 
     for (let i = 0; i < totalDays; i++) {
       const current = new Date(alignedStart.getTime() + i * DAY_MS)
-      const iso = current.toISOString().slice(0, 10)
+      const iso = toLocalISO(current)
       const point = byDate.get(iso)
       const col = Math.floor(i / 7)
       const row = i % 7
