@@ -91,6 +91,96 @@ export function streamChart(
   }
 }
 
+/** A named series to overlay in {@link multiStreamChart}. */
+export type StreamSeries = {
+  name: string
+  values: (number | null)[]
+  color: string
+}
+
+/**
+ * Overlay several named line series on one shared distance/time axis - used to
+ * compare e.g. raw pace against grade-adjusted pace on a single graph. A legend
+ * is rendered so the curves can be told apart; area fills are dropped because
+ * overlapping translucent fills muddy the comparison.
+ */
+export function multiStreamChart(
+  axisStream: (number | null)[],
+  series: StreamSeries[],
+  unit: string,
+  axis: StreamAxis = "distance",
+): EChartsOption {
+  const formatX = (x: number) =>
+    axis === "distance" ? `${formatNumber(x, 2)} km` : formatWindowLabel(x)
+  const toPoint = (value: number | null, index: number): [number, number | null] =>
+    axis === "distance"
+      ? [axisStream[index] ? (axisStream[index] as number) / 1000 : 0, value]
+      : [axisStream[index] ?? 0, value]
+  return {
+    grid: { left: 50, right: 20, top: 28, bottom: 36 },
+    legend: {
+      top: 0,
+      right: 0,
+      data: series.map((s) => s.name),
+      textStyle: { fontSize: 11, color: "#9ca3af" },
+      itemWidth: 14,
+      itemHeight: 8,
+    },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "rgba(255,255,255,0.95)",
+      borderColor: "#e5e7eb",
+      textStyle: { color: "#374151", fontSize: 12 },
+      formatter: (params: unknown) => {
+        const list = (Array.isArray(params) ? params : [params]) as {
+          value: [number, number]
+          marker: string
+          seriesName: string
+        }[]
+        if (list.length === 0) return ""
+        const rows = list
+          .map(
+            (p) =>
+              `${p.marker}${p.seriesName} <strong>${formatNumber(p.value[1], 1)} ${unit}</strong>`,
+          )
+          .join("<br/>")
+        return `${rows}<br/><span style="color:#9ca3af">${formatX(list[0].value[0])}</span>`
+      },
+    },
+    xAxis: {
+      type: "value",
+      name: axis === "distance" ? "km" : "time",
+      nameLocation: "middle",
+      nameGap: 22,
+      nameTextStyle: { color: "#9ca3af", fontSize: 11 },
+      axisLabel: {
+        fontSize: 10,
+        color: "#9ca3af",
+        ...(axis === "time" ? { formatter: (v: number) => formatWindowLabel(v) } : {}),
+      },
+      axisLine: { lineStyle: { color: "#e5e7eb" } },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      type: "value",
+      name: unit,
+      nameTextStyle: { color: "#9ca3af", fontSize: 11 },
+      axisLabel: { fontSize: 10, color: "#9ca3af" },
+      axisLine: { show: false },
+      splitLine: { lineStyle: { color: "#dadce0", type: "dashed" } },
+    },
+    series: series.map((s) => ({
+      name: s.name,
+      type: "line",
+      data: s.values.map(toPoint),
+      showSymbol: false,
+      smooth: 0.3,
+      lineStyle: { color: s.color, width: 1.5 },
+      itemStyle: { color: s.color },
+    })),
+  }
+}
+
 /** Format a window length (seconds) compactly: "15s", "5m", "1.5h". */
 export function formatWindowLabel(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`

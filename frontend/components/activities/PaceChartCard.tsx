@@ -9,9 +9,28 @@ import { StatCard } from "@/components/ui/StatCard"
 import { formatActivityPace, formatNumber, formatPace } from "@/lib/format"
 import type { ActivityDetail } from "@/lib/types"
 
-import { streamChart } from "./charts"
+import { multiStreamChart, streamChart } from "./charts"
 
-/** Pace chart with a Pace ↔ GAP toggle (top-right) for running activities. */
+type SpeedMode = "pace" | "gap" | "both"
+
+const PACE_COLOR = "#2563eb"
+const GAP_COLOR = "#7c3aed"
+
+const SPEED_MODES: { key: SpeedMode; label: string }[] = [
+  { key: "pace", label: "Pace" },
+  { key: "gap", label: "GAP" },
+  { key: "both", label: "Both" },
+]
+
+/** Convert a m/s velocity stream to km/h, preserving null gaps. */
+const toKmh = (stream: (number | null)[]): (number | null)[] =>
+  stream.map((v) => (v ? v * 3.6 : null))
+
+/**
+ * Speed chart for running activities with a Pace / GAP / Both toggle (top-right).
+ * "Both" overlays the raw-pace and grade-adjusted curves on one graph so the
+ * terrain's impact is visible at a glance; the default view stays on raw Pace.
+ */
 export function PaceChartCard({
   activity,
   distanceStream,
@@ -22,10 +41,11 @@ export function PaceChartCard({
   const rawVelocity = activity.streams.velocity_smooth ?? []
   const gapVelocity = activity.streams.grade_adjusted_velocity
   const hasGap = Array.isArray(gapVelocity) && gapVelocity.length > 0
-  const [mode, setMode] = useState<"pace" | "gap">("pace")
+  const [mode, setMode] = useState<SpeedMode>("pace")
   const showGap = hasGap && mode === "gap"
+  const showBoth = hasGap && mode === "both"
   const series = showGap && gapVelocity ? gapVelocity : rawVelocity
-  const color = showGap ? "#7c3aed" : "#2563eb"
+  const color = showGap ? GAP_COLOR : PACE_COLOR
 
   // Plot speed over distance for GPS sports, else over elapsed time (treadmill /
   // indoor), so a missing distance stream doesn't collapse the line onto x=0.
@@ -56,20 +76,16 @@ export function PaceChartCard({
   const toggle = hasGap ? (
     <div className="flex items-center">
       <div className="flex rounded-md border border-gray-300 text-xs dark:border-gray-600">
-        <button
-          type="button"
-          onClick={() => setMode("pace")}
-          className={`rounded-l-md px-2.5 py-1 ${mode === "pace" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
-        >
-          Pace
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("gap")}
-          className={`rounded-r-md px-2.5 py-1 ${mode === "gap" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
-        >
-          GAP
-        </button>
+        {SPEED_MODES.map((m, i) => (
+          <button
+            key={m.key}
+            type="button"
+            onClick={() => setMode(m.key)}
+            className={`px-2.5 py-1 ${i === 0 ? "rounded-l-md" : "border-l border-gray-300 dark:border-gray-600"} ${i === SPEED_MODES.length - 1 ? "rounded-r-md" : ""} ${mode === m.key ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
       <InfoTip width="w-72" align="right">
         <p className="font-semibold">GAP - Grade Adjusted Pace</p>
@@ -82,6 +98,10 @@ export function PaceChartCard({
           effort than 6:00/km flat. GAP converts that hill pace into its flat equivalent so you can
           compare efforts consistently across any terrain.
         </p>
+        <p className="mt-2">
+          Pick <span className="font-medium">Both</span> to overlay raw pace and GAP on one chart
+          and see the terrain&apos;s impact at a glance.
+        </p>
       </InfoTip>
     </div>
   ) : undefined
@@ -93,13 +113,19 @@ export function PaceChartCard({
         <StatCard label="Max Speed" value={maxSpeedValue} />
       </div>
       <EChart
-        option={streamChart(
-          axisStream,
-          series.map((v) => (v ? v * 3.6 : null)),
-          color,
-          "km/h",
-          axis,
-        )}
+        option={
+          showBoth
+            ? multiStreamChart(
+                axisStream,
+                [
+                  { name: "Pace", values: toKmh(rawVelocity), color: PACE_COLOR },
+                  { name: "GAP", values: toKmh(gapVelocity ?? []), color: GAP_COLOR },
+                ],
+                "km/h",
+                axis,
+              )
+            : streamChart(axisStream, toKmh(series), color, "km/h", axis)
+        }
         height={220}
       />
     </Card>
