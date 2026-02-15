@@ -26,6 +26,7 @@ import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDate, formatHours, formatNumber } from "@/lib/format"
 import { useDefaultSports } from "@/lib/preferences"
 import { useIsDark } from "@/lib/use-is-dark"
+import { useUrlParams } from "@/lib/use-url-params"
 
 const WINDOW_OPTIONS = [
   { value: 7, label: "7 days" },
@@ -61,12 +62,18 @@ export default function DashboardPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [eddingtonOpen, setEddingtonOpen] = useState(false)
   const { defaultSports } = useDefaultSports()
-  // null = follow the configured default; an array = an explicit user choice.
-  const [sports, setSports] = useState<string[] | null>(null)
-  const activeSports = sports ?? defaultSports
-  const [year, setYear] = useState("")
-  const [hrWindow, setHrWindow] = useState(30)
-  const [powerWindow, setPowerWindow] = useState(120)
+  const { get, set } = useUrlParams()
+
+  // Filter state lives in the URL so a refresh or shared link keeps the view.
+  // ?sport= absent => follow the configured default; "all" => explicit All-sports.
+  const sportParam = get("sport", "")
+  const activeSports = useMemo(
+    () => (sportParam === "" ? defaultSports : sportParam === "all" ? [] : sportParam.split(",")),
+    [sportParam, defaultSports],
+  )
+  const year = get("year", "")
+  const hrWindow = Number(get("hr", "30")) || 30
+  const powerWindow = Number(get("pw", "120")) || 120
   const [weeklyMetric, setWeeklyMetric] = useState<"hours" | "km">("hours")
 
   const filters = useMemo(
@@ -108,12 +115,12 @@ export default function DashboardPage() {
       <SportFilter
         options={meta?.sport_types ?? []}
         selected={activeSports}
-        onChange={setSports}
+        onChange={(next) => set({ sport: next.length ? next.join(",") : "all" })}
         align="right"
       />
       <select
         value={year}
-        onChange={(event) => setYear(event.target.value)}
+        onChange={(event) => set({ year: event.target.value })}
         className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
       >
         <option value="">All time</option>
@@ -344,7 +351,7 @@ export default function DashboardPage() {
                   <InfoTooltip text="Time spent in each HR zone. Z1=Recovery, Z2=Endurance, Z3=Tempo, Z4=Threshold, Z5=VO2max" />
                 </div>
               }
-              action={<WindowSelector value={hrWindow} onChange={setHrWindow} />}
+              action={<WindowSelector value={hrWindow} onChange={(v) => set({ hr: String(v) })} />}
             >
               <EChart
                 option={hrZoneBarChart(
@@ -372,7 +379,9 @@ export default function DashboardPage() {
                   <InfoTooltip text="Best average watts for each duration. 5s=Sprint, 30s=Anaerobic, 1m=Power, 5m=VO2max, 20m=FTP" />
                 </div>
               }
-              action={<WindowSelector value={powerWindow} onChange={setPowerWindow} />}
+              action={
+                <WindowSelector value={powerWindow} onChange={(v) => set({ pw: String(v) })} />
+              }
             >
               <EChart
                 option={barChart(

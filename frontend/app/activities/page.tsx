@@ -2,8 +2,8 @@
 
 import { X } from "lucide-react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { useState } from "react"
 
 import { type Column, DataTable } from "@/components/ui/DataTable"
 import { SportFilter } from "@/components/ui/SportFilter"
@@ -13,37 +13,10 @@ import { useAthleteContext } from "@/lib/athlete-context"
 import { formatActivityPace, formatDate, formatDuration, formatNumber } from "@/lib/format"
 import { useDefaultSports } from "@/lib/preferences"
 import type { ActivitySummary } from "@/lib/types"
+import { useUrlParams } from "@/lib/use-url-params"
 
 const PAGE_SIZES = [25, 50, 100, 300, 500, 1000]
 const DEFAULT_PAGE_SIZE = "300"
-
-function useUrlParams() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-
-  const get = useCallback(
-    (key: string, fallback: string) => searchParams.get(key) ?? fallback,
-    [searchParams],
-  )
-
-  const set = useCallback(
-    (updates: Record<string, string>) => {
-      const params = new URLSearchParams(searchParams.toString())
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === "") {
-          params.delete(key)
-        } else {
-          params.set(key, value)
-        }
-      }
-      const qs = params.toString()
-      router.replace(qs ? `?${qs}` : "?", { scroll: false })
-    },
-    [searchParams, router],
-  )
-
-  return { get, set }
-}
 
 export default function ActivitiesPage() {
   const { athleteId } = useAthleteContext()
