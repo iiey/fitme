@@ -365,7 +365,7 @@ export default function DashboardPage() {
                 {Object.entries(HR_ZONE_INFO).map(([zone, desc]) => (
                   <span key={zone} className="text-[11px] text-gray-400">
                     <strong className="text-gray-500 dark:text-gray-300">{zone}</strong>{" "}
-                    {desc.split("—")[1]?.trim()}
+                    {desc.split(" - ").slice(1).join(" - ").trim()}
                   </span>
                 ))}
               </div>
@@ -397,7 +397,7 @@ export default function DashboardPage() {
                 {Object.entries(POWER_DURATION_INFO).map(([dur, desc]) => (
                   <span key={dur} className="text-[11px] text-gray-400">
                     <strong className="text-gray-500 dark:text-gray-300">{dur}</strong>{" "}
-                    {desc.split("—")[1]?.trim()}
+                    {desc.split(" - ").slice(1).join(" - ").trim()}
                   </span>
                 ))}
               </div>
