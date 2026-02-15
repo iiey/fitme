@@ -18,12 +18,13 @@ import { ImportDialog } from "@/components/import/ImportDialog"
 import { Card } from "@/components/ui/Card"
 import { DeferredSection } from "@/components/ui/DeferredSection"
 import { hasActivitiesButNoLoad, LoadConfigHint } from "@/components/ui/LoadConfigHint"
+import { SportFilter } from "@/components/ui/SportFilter"
 import { StatCard } from "@/components/ui/StatCard"
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
 import { isTransientError, useDashboard, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDate, formatHours, formatNumber } from "@/lib/format"
-import { useDefaultSport } from "@/lib/preferences"
+import { useDefaultSports } from "@/lib/preferences"
 import { useIsDark } from "@/lib/use-is-dark"
 
 const WINDOW_OPTIONS = [
@@ -59,10 +60,10 @@ export default function DashboardPage() {
   const isDark = useIsDark()
   const [importOpen, setImportOpen] = useState(false)
   const [eddingtonOpen, setEddingtonOpen] = useState(false)
-  const { defaultSport } = useDefaultSport()
-  // null = follow the configured default; any string = an explicit user choice.
-  const [sportType, setSportType] = useState<string | null>(null)
-  const activeSport = sportType ?? defaultSport
+  const { defaultSports } = useDefaultSports()
+  // null = follow the configured default; an array = an explicit user choice.
+  const [sports, setSports] = useState<string[] | null>(null)
+  const activeSports = sports ?? defaultSports
   const [year, setYear] = useState("")
   const [hrWindow, setHrWindow] = useState(30)
   const [powerWindow, setPowerWindow] = useState(120)
@@ -70,13 +71,13 @@ export default function DashboardPage() {
 
   const filters = useMemo(
     () => ({
-      sport_type: activeSport ? [activeSport] : undefined,
+      sport_type: activeSports.length ? activeSports : undefined,
       start: year ? `${year}-01-01` : undefined,
       end: year ? `${year}-12-31T23:59:59` : undefined,
       hr_window: hrWindow,
       power_window: powerWindow,
     }),
-    [activeSport, year, hrWindow, powerWindow],
+    [activeSports, year, hrWindow, powerWindow],
   )
   const { data, error, isLoading } = useDashboard(athleteId, filters)
 
@@ -104,18 +105,12 @@ export default function DashboardPage() {
 
   const filterControls = (
     <div className="flex flex-wrap items-center gap-2">
-      <select
-        value={activeSport}
-        onChange={(event) => setSportType(event.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
-      >
-        <option value="">All sports</option>
-        {meta?.sport_types.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <SportFilter
+        options={meta?.sport_types ?? []}
+        selected={activeSports}
+        onChange={setSports}
+        align="right"
+      />
       <select
         value={year}
         onChange={(event) => setYear(event.target.value)}

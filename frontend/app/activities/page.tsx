@@ -6,11 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useState } from "react"
 
 import { type Column, DataTable } from "@/components/ui/DataTable"
+import { SportFilter } from "@/components/ui/SportFilter"
 import { ErrorState, Spinner } from "@/components/ui/States"
 import { useActivities, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatActivityPace, formatDate, formatDuration, formatNumber } from "@/lib/format"
-import { useDefaultSport } from "@/lib/preferences"
+import { useDefaultSports } from "@/lib/preferences"
 import type { ActivitySummary } from "@/lib/types"
 
 const PAGE_SIZES = [25, 50, 100, 300, 500, 1000]
@@ -49,7 +50,7 @@ export default function ActivitiesPage() {
   const { data: meta } = useMeta(athleteId)
   const searchParams = useSearchParams()
   const { get, set } = useUrlParams()
-  const { defaultSport } = useDefaultSport()
+  const { defaultSports } = useDefaultSports()
 
   const [search, setSearch] = useState(searchParams.get("search") ?? "")
   const [showDateFilter, setShowDateFilter] = useState(
@@ -59,8 +60,9 @@ export default function ActivitiesPage() {
     () => !!(searchParams.get("dmin") || searchParams.get("dmax")),
   )
 
-  // With no explicit ?sport= in the URL, fall back to the configured default.
-  const sportFilter = get("sport", defaultSport)
+  // The ?sport= param holds a comma-separated list. Absent => follow the
+  // configured default; "all" => an explicit All-sports choice (empty filter).
+  const sportParam = get("sport", "")
   const sort = get("sort", "start_date_time")
   const order = get("order", "desc")
   const pageStr = get("page", "0")
@@ -70,9 +72,8 @@ export default function ActivitiesPage() {
   const distMin = get("dmin", "")
   const distMax = get("dmax", "")
 
-  // "all" is an explicit "All sports" choice that overrides the default sport;
-  // an absent param falls back to the default (see sportFilter above).
-  const sportTypes = sportFilter && sportFilter !== "all" ? [sportFilter] : []
+  const sportTypes =
+    sportParam === "" ? defaultSports : sportParam === "all" ? [] : sportParam.split(",")
   const pageSize = Math.max(1, parseInt(pageSizeStr, 10) || parseInt(DEFAULT_PAGE_SIZE, 10))
   const page = Math.max(0, parseInt(pageStr, 10) || 0)
 
@@ -233,20 +234,11 @@ export default function ActivitiesPage() {
       <div className="card space-y-3 p-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Sport type */}
-          <select
-            value={sportFilter === "all" ? "" : sportFilter}
-            onChange={(event) =>
-              set({ sport: event.target.value === "" ? "all" : event.target.value, page: "" })
-            }
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
-          >
-            <option value="">All sports</option>
-            {meta?.sport_types.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <SportFilter
+            options={meta?.sport_types ?? []}
+            selected={sportTypes}
+            onChange={(next) => set({ sport: next.length ? next.join(",") : "all", page: "" })}
+          />
 
           {/* Date filter toggle */}
           <button

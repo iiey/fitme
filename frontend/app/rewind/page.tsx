@@ -7,12 +7,13 @@ import { useState } from "react"
 import { EChart } from "@/components/charts/EChart"
 import { barChart, donutChart, themeColors } from "@/components/charts/options"
 import { Card } from "@/components/ui/Card"
+import { SportFilter } from "@/components/ui/SportFilter"
 import { StatCard } from "@/components/ui/StatCard"
 import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
 import { useMeta, useRewind } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDuration, formatHours, formatNumber } from "@/lib/format"
-import { useDefaultSport } from "@/lib/preferences"
+import { useDefaultSports } from "@/lib/preferences"
 import type { Rewind } from "@/lib/types"
 import { useIsDark } from "@/lib/use-is-dark"
 
@@ -21,11 +22,11 @@ type SportMetric = "distance" | "hours"
 export default function RewindPage() {
   const { athleteId } = useAthleteContext()
   const isDark = useIsDark()
-  const { defaultSport } = useDefaultSport()
+  const { defaultSports } = useDefaultSports()
   const [filter, setFilter] = useState<string>("")
-  // null = follow the configured default; any string = an explicit user choice.
-  const [sportType, setSportType] = useState<string | null>(null)
-  const activeSport = sportType ?? defaultSport
+  // null = follow the configured default; an array = an explicit user choice.
+  const [sports, setSports] = useState<string[] | null>(null)
+  const activeSports = sports ?? defaultSports
   const [sportMetric, setSportMetric] = useState<SportMetric>("distance")
   const year = filter && filter !== "last365" ? Number(filter) : null
   const days = filter === "last365" ? 365 : null
@@ -34,7 +35,7 @@ export default function RewindPage() {
     athleteId,
     year,
     days,
-    activeSport ? [activeSport] : undefined,
+    activeSports.length ? activeSports : undefined,
   )
 
   if (isLoading && !data) return <Spinner label="Rewinding your year…" />
@@ -52,18 +53,11 @@ export default function RewindPage() {
           <p className="text-sm text-gray-500">A fun look back at your year in motion</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={activeSport}
-            onChange={(event) => setSportType(event.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
-          >
-            <option value="">All sports</option>
-            {meta?.sport_types.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <SportFilter
+            options={meta?.sport_types ?? []}
+            selected={activeSports}
+            onChange={setSports}
+          />
           <select
             value={filter}
             onChange={(event) => setFilter(event.target.value)}

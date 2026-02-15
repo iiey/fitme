@@ -5,40 +5,35 @@ import { useMemo, useState } from "react"
 import { TrainingLoadSection } from "@/components/charts/TrainingLoadSection"
 import { DeferredSection } from "@/components/ui/DeferredSection"
 import { InfoTip } from "@/components/ui/InfoTip"
+import { SportFilter } from "@/components/ui/SportFilter"
 import { EmptyState, Spinner } from "@/components/ui/States"
 import { useDashboard, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
-import { useDefaultSport } from "@/lib/preferences"
+import { useDefaultSports } from "@/lib/preferences"
 
 export default function FitnessPage() {
   const { athleteId } = useAthleteContext()
   const { data: meta } = useMeta(athleteId)
-  const { defaultSport } = useDefaultSport()
-  // null = follow the configured default; any string = an explicit user choice.
-  const [sportType, setSportType] = useState<string | null>(null)
-  const activeSport = sportType ?? defaultSport
+  const { defaultSports } = useDefaultSports()
+  // null = follow the configured default; an array = an explicit user choice.
+  const [sports, setSports] = useState<string[] | null>(null)
+  const activeSports = sports ?? defaultSports
 
   const filters = useMemo(
-    () => ({ sport_type: activeSport ? [activeSport] : undefined }),
-    [activeSport],
+    () => ({ sport_type: activeSports.length ? activeSports : undefined }),
+    [activeSports],
   )
   const { data, error, isLoading } = useDashboard(athleteId, filters)
 
   const distanceUnit = meta?.distance_unit ?? "km"
 
   const filterControls = (
-    <select
-      value={activeSport}
-      onChange={(event) => setSportType(event.target.value)}
-      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-gray-600 dark:bg-surface dark:text-foreground"
-    >
-      <option value="">All sports</option>
-      {meta?.sport_types.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <SportFilter
+      options={meta?.sport_types ?? []}
+      selected={activeSports}
+      onChange={setSports}
+      align="right"
+    />
   )
 
   const header = (

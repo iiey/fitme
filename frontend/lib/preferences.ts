@@ -2,28 +2,42 @@
 
 import { useCallback, useEffect, useState } from "react"
 
-const DEFAULT_SPORT_KEY = "fitme-default-sport"
+const DEFAULT_SPORTS_KEY = "fitme-default-sports"
+const LEGACY_DEFAULT_SPORT_KEY = "fitme-default-sport"
+
+/** Read the persisted default sports, migrating the legacy single-value key. */
+function readDefaultSports(): string[] {
+  const stored = localStorage.getItem(DEFAULT_SPORTS_KEY)
+  if (stored !== null) {
+    try {
+      const parsed = JSON.parse(stored)
+      if (Array.isArray(parsed)) return parsed.filter((entry) => typeof entry === "string")
+    } catch {
+      // Corrupt value - fall through to "All sports".
+    }
+    return []
+  }
+  const legacy = localStorage.getItem(LEGACY_DEFAULT_SPORT_KEY)
+  return legacy ? [legacy] : []
+}
 
 /**
- * The sport the stats pages (Dashboard, Fitness, Activities, Heatmap, Rewind)
- * open filtered to. Empty string means "All sports". Backed by localStorage.
+ * The sports the stats pages (Dashboard, Fitness, Activities, Heatmap, Rewind)
+ * open filtered to. An empty array means "All sports". Backed by localStorage.
  */
-export function useDefaultSport() {
-  const [defaultSport, setDefaultSportState] = useState("")
+export function useDefaultSports() {
+  const [defaultSports, setDefaultSportsState] = useState<string[]>([])
 
   // Read after mount so server and first client render agree (no hydration mismatch).
   useEffect(() => {
-    setDefaultSportState(localStorage.getItem(DEFAULT_SPORT_KEY) ?? "")
+    setDefaultSportsState(readDefaultSports())
   }, [])
 
-  const setDefaultSport = useCallback((value: string) => {
-    setDefaultSportState(value)
-    if (value) {
-      localStorage.setItem(DEFAULT_SPORT_KEY, value)
-    } else {
-      localStorage.removeItem(DEFAULT_SPORT_KEY)
-    }
+  const setDefaultSports = useCallback((next: string[]) => {
+    setDefaultSportsState(next)
+    localStorage.setItem(DEFAULT_SPORTS_KEY, JSON.stringify(next))
+    localStorage.removeItem(LEGACY_DEFAULT_SPORT_KEY)
   }, [])
 
-  return { defaultSport, setDefaultSport } as const
+  return { defaultSports, setDefaultSports } as const
 }
