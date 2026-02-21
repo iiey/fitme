@@ -1,7 +1,7 @@
 "use client"
 
 import clsx from "clsx"
-import { Brain, ClipboardList, Send, X } from "lucide-react"
+import { Brain, ClipboardList, Globe, Send, X } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import type { CoachSkill } from "@/lib/coach/types"
@@ -10,8 +10,10 @@ interface MessageInputProps {
   disabled: boolean
   skills: CoachSkill[]
   onSend: (text: string, skillId: string | null) => void
+  onToggleWeb: () => void
   onTogglePlan: () => void
   onToggleMemory: () => void
+  webActive: boolean
   planActive: boolean
   memoryActive: boolean
 }
@@ -23,8 +25,10 @@ export function MessageInput({
   disabled,
   skills,
   onSend,
+  onToggleWeb,
   onTogglePlan,
   onToggleMemory,
+  webActive,
   planActive,
   memoryActive,
 }: MessageInputProps) {
@@ -186,6 +190,18 @@ export function MessageInput({
       </div>
       <div className="mt-1 flex items-center justify-between">
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onToggleWeb}
+            aria-label="Search the web"
+            aria-pressed={webActive}
+            title="Use websearch (duckduckgo) to response to questions"
+            className={`rounded-md p-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
+              webActive ? "text-brand" : "text-gray-500"
+            }`}
+          >
+            <Globe className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={onTogglePlan}

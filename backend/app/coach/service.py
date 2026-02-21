@@ -12,6 +12,7 @@ from app.coach.deps import CoachDeps, CoachView
 from app.coach.models import CoachConfig, CoachMessage
 from app.coach.provider import build_model
 from app.coach.schemas import TrainingPlan
+from app.coach.web_tools import build_web_toolset
 
 # Bounds for the requested plan length.
 _MIN_PLAN_WEEKS = 1
@@ -59,6 +60,7 @@ def _build_deps(
     view: CoachView,
     session_id: int | None,
     skill: str | None = None,
+    web: bool = False,
 ) -> CoachDeps:
     memory = [m.content for m in store.list_memory(coach_db, athlete_id)]
     # Unknown skill ids resolve to None and simply contribute no instructions.
@@ -73,6 +75,7 @@ def _build_deps(
         session_id=session_id,
         skill_name=selected.name if selected else None,
         skill_instructions=selected.body if selected else None,
+        web_search=web,
     )
 
 
@@ -109,12 +112,14 @@ async def stream_chat(
     message: str,
     view: CoachView,
     skill: str | None = None,
+    web: bool = False,
 ) -> AsyncIterator[str]:
     """Stream the assistant's reply token-by-token, persisting both turns.
 
     Yields text deltas. The caller owns the database sessions and must keep them
     open for the whole stream. ``skill`` is an optional skill id whose guidance is
-    injected for this message only.
+    injected for this message only. When ``web`` is set, a free DuckDuckGo search
+    + page-fetch toolset is added for this turn only.
     """
     model = _require_model(coach_db)
     recent = store.list_messages(coach_db, session_id)[-_MAX_HISTORY_MESSAGES:]
@@ -131,11 +136,16 @@ async def stream_chat(
         view=view,
         session_id=session_id,
         skill=skill,
+        web=web,
     )
+    # Add the web toolset only for this run; None when the toggle is off or the
+    # optional web deps are not installed.
+    web_toolset = build_web_toolset() if web else None
+    toolsets = [web_toolset] if web_toolset else None
     answer_parts: list[str] = []
     try:
         async with coach_agent.run_stream(
-            message, model=model, deps=deps, message_history=history
+            message, model=model, deps=deps, message_history=history, toolsets=toolsets
         ) as result:
             async for delta in result.stream_text(delta=True):
                 answer_parts.append(delta)

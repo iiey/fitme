@@ -95,6 +95,8 @@ class CoachChatRequest(BaseModel):
     context: CoachChatContext | None = None
     # Optional skill id chosen from the "/" menu; applied to this message only.
     skill: str | None = None
+    # When true, give the coach free web search + page fetch for this message.
+    web: bool = False
 
 
 class CoachMemoryResponse(BaseModel):

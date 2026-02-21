@@ -298,6 +298,7 @@ async def chat(
                 message=message,
                 view=view,
                 skill=payload.skill,
+                web=payload.web,
             ):
                 await queue.put({"type": "delta", "text": delta})
             await queue.put({"type": "done"})

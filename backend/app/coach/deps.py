@@ -35,3 +35,6 @@ class CoachDeps:
     # into the agent for this message only (None when no skill is active).
     skill_name: str | None = None
     skill_instructions: str | None = None
+    # Whether the athlete enabled the web toggle for this message. Gates both the
+    # web toolset (added at run time) and the web-usage guidance in instructions.
+    web_search: bool = False

@@ -46,6 +46,8 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   const [error, setError] = useState<string | null>(null)
   const [pendingReply, setPendingReply] = useState(false)
   const [panel, setPanel] = useState<Panel>(null)
+  // Sticky web-search toggle: when on, each send gives the coach free web access.
+  const [webActive, setWebActive] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const pollTokenRef = useRef(0)
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -215,7 +217,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     abortRef.current = controller
     try {
       await streamChat(
-        { message: text, session_id: activeSessionId, context, skill: skillId },
+        { message: text, session_id: activeSessionId, context, skill: skillId, web: webActive },
         athleteId,
         {
           onSession: (id) => {
@@ -424,8 +426,10 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
               disabled={busy}
               skills={skills}
               onSend={handleSend}
+              onToggleWeb={() => setWebActive((prev) => !prev)}
               onTogglePlan={() => togglePanel("plan")}
               onToggleMemory={() => togglePanel("memory")}
+              webActive={webActive}
               planActive={panel === "plan"}
               memoryActive={panel === "memory"}
             />

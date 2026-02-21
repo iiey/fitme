@@ -4,6 +4,7 @@ from pydantic_ai import Agent, RunContext
 
 from app.coach.deps import CoachDeps
 from app.coach.tools import FUNCTION_TOOLS
+from app.coach.web_tools import WEB_INSTRUCTIONS
 
 SYSTEM_PROMPT = """\
 You are FitBuddy, a knowledgeable and encouraging endurance and fitness coach built into the FitMe app.
@@ -64,3 +65,9 @@ def skill_context(ctx: RunContext[CoachDeps]) -> str:
         "Active coaching skill for this message - apply these sport-specific "
         "guidelines:\n\n" + ctx.deps.skill_instructions
     )
+
+
+@coach_agent.instructions
+def web_context(ctx: RunContext[CoachDeps]) -> str:
+    """Guide web-tool use, only when the athlete enabled web search this turn."""
+    return WEB_INSTRUCTIONS if ctx.deps.web_search else ""

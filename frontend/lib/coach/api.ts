@@ -190,6 +190,8 @@ export async function streamChat(
     context?: CoachChatContext
     // Skill id chosen from the "/" menu; applied to this message only.
     skill?: string | null
+    // When true, enable free web search + page fetch for this message.
+    web?: boolean
   },
   athleteId: string | null,
   handlers: ChatHandlers,
