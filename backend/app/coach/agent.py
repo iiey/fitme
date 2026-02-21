@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic_ai import Agent, RunContext
 
 from app.coach.deps import CoachDeps
-from app.coach.tools import SKILL_TOOLS
+from app.coach.tools import FUNCTION_TOOLS
 
 SYSTEM_PROMPT = """\
 You are FitBuddy, a knowledgeable and encouraging endurance and fitness coach built into the FitMe app.
@@ -21,7 +21,7 @@ How to work:
 coach_agent = Agent(
     deps_type=CoachDeps,
     instructions=SYSTEM_PROMPT,
-    tools=SKILL_TOOLS,
+    tools=FUNCTION_TOOLS,
 )
 
 

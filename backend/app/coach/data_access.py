@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app import repository
-from app.athlete import AthleteConfig
+from app.athlete import HR_ZONE_LABELS, PACE_ZONE_LABELS, AthleteConfig
 from app.domain import stats, training_load
 from app.models import Activity
 
@@ -117,6 +117,43 @@ def athlete_profile(athlete: AthleteConfig) -> dict:
         "power_zone_upper_bounds_w": athlete.power_zone_boundaries(),
         "pace_zone_bounds_s_per_km": athlete.pace_zone_boundaries(),
     }
+
+
+def hr_zones(athlete: AthleteConfig) -> list[dict] | None:
+    """Labeled heart-rate training zones (None if max HR is unknown)."""
+    bounds = athlete.hr_zone_boundaries()
+    if not bounds or len(bounds) < 5:
+        return None
+    max_hr = athlete.estimated_max_heart_rate()
+    return [
+        {
+            "zone": i + 1,
+            "label": HR_ZONE_LABELS[i],
+            "lower_bpm": bounds[i],
+            "upper_bpm": bounds[i + 1] - 1 if i < 4 else max_hr,
+        }
+        for i in range(5)
+    ]
+
+
+def pace_zones(athlete: AthleteConfig) -> list[dict] | None:
+    """Labeled pace training zones (None if threshold pace is unknown).
+
+    Paces are in seconds per km; higher zones are faster, so each zone runs
+    from a slower (larger) to a faster (smaller) pace bound.
+    """
+    bounds = athlete.pace_zone_boundaries()
+    if not bounds or len(bounds) < 4:
+        return None
+    return [
+        {
+            "zone": i + 1,
+            "label": PACE_ZONE_LABELS[i],
+            "slow_pace_s_per_km": bounds[i - 1] if i > 0 else None,
+            "fast_pace_s_per_km": bounds[i] if i < 4 else None,
+        }
+        for i in range(5)
+    ]
 
 
 def best_efforts(db: Session, athlete_id: str) -> list[dict]:

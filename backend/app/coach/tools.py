@@ -5,9 +5,10 @@ from pydantic_ai import RunContext
 from app.coach import data_access, store
 from app.coach.deps import CoachDeps
 
-# Each function below is a "skill": a focused tool the model can call to read one
-# aspect of the athlete's real data. Docstrings are sent to the model as the tool
-# description, so they are written for the model to read.
+# Each function below is a function tool: a focused callable the model can invoke
+# to read one aspect of the athlete's real data. (These are not "skills" - skills
+# are rule/instruction sets defined in markdown.) Docstrings are sent to the model
+# as the tool description, so they are written for the model to read.
 
 
 def get_recent_activities(ctx: RunContext[CoachDeps], limit: int = 10) -> list[dict]:
@@ -64,6 +65,26 @@ def get_athlete_profile(ctx: RunContext[CoachDeps]) -> dict:
     return data_access.athlete_profile(ctx.deps.athlete)
 
 
+def get_hr_zones(ctx: RunContext[CoachDeps]) -> list[dict] | None:
+    """Get the athlete's labeled heart-rate zones (None if max HR is unknown).
+
+    Returns each zone's number, label (e.g. "Threshold"), and lower/upper bpm
+    bounds. Use this to judge whether an activity's average/max HR was easy,
+    aerobic, or hard, and to prescribe target HR ranges for workouts.
+    """
+    return data_access.hr_zones(ctx.deps.athlete)
+
+
+def get_pace_zones(ctx: RunContext[CoachDeps]) -> list[dict] | None:
+    """Get the athlete's labeled running pace zones (None if threshold pace is unknown).
+
+    Returns each zone's number, label (e.g. "Tempo"), and slow/fast pace bounds
+    in seconds per km. Use this to classify run pace and to prescribe target
+    pace ranges for easy runs, tempo, and intervals.
+    """
+    return data_access.pace_zones(ctx.deps.athlete)
+
+
 def get_best_efforts(ctx: RunContext[CoachDeps]) -> list[dict]:
     """Get the athlete's fastest times for standard distances, per activity type."""
     return data_access.best_efforts(ctx.deps.core_db, ctx.deps.athlete_id)
@@ -89,12 +110,14 @@ def remember(ctx: RunContext[CoachDeps], fact: str) -> str:
 
 
 # Registered on the agent in agent.py.
-SKILL_TOOLS = [
+FUNCTION_TOOLS = [
     get_recent_activities,
     get_activity_details,
     get_training_load,
     get_period_totals,
     get_athlete_profile,
+    get_hr_zones,
+    get_pace_zones,
     get_best_efforts,
     get_goals,
     remember,

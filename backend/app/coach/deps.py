@@ -19,7 +19,7 @@ class CoachView:
 class CoachDeps:
     """Dependencies injected into the agent and its tools for one chat turn.
 
-    ``core_db`` is read by skill tools (the main fitme database); ``coach_db`` is
+    ``core_db`` is read by the function tools (the main fitme database); ``coach_db`` is
     where the ``remember`` tool writes long-term memory. ``memory`` is the
     athlete's stored facts, loaded once and injected into the instructions.
     """

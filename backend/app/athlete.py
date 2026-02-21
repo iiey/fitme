@@ -26,6 +26,11 @@ _DB_FIELDS = (
     "pace_zones",
 )
 
+# Canonical labels for the 5 training zones, shared by the API serializers and
+# the coach so a "Threshold" zone means the same thing everywhere.
+HR_ZONE_LABELS = ["Warm Up", "Easy", "Aerobic", "Threshold", "Maximum"]
+PACE_ZONE_LABELS = ["Recovery", "Aerobic", "Tempo", "Sub-Threshold", "VO2 Max"]
+
 
 class AthleteConfig(BaseModel):
     """Athlete profile loaded from the database."""

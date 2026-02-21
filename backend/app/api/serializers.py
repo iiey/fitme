@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.athlete import HR_ZONE_LABELS, PACE_ZONE_LABELS
 from app.domain.best_efforts import DISTANCE_LABELS
 from app.domain.streams_analysis import (
     GRADE_ADJUSTED_VELOCITY_STREAM,
@@ -62,9 +63,6 @@ def serialize_activity_summary(activity: Activity) -> ActivitySummary:
     )
 
 
-_ZONE_LABELS = ["Warm Up", "Easy", "Aerobic", "Threshold", "Maximum"]
-
-
 def _build_hr_zones(
     streams: dict[str, list], zone_bounds: list[int] | None
 ) -> list[HrZoneItem] | None:
@@ -79,7 +77,7 @@ def _build_hr_zones(
         items.append(
             HrZoneItem(
                 zone=i + 1,
-                label=_ZONE_LABELS[i],
+                label=HR_ZONE_LABELS[i],
                 lower_bpm=zone_bounds[i],
                 upper_bpm=zone_bounds[i + 1] - 1 if i < 4 else None,
                 seconds=seconds[i],
@@ -87,9 +85,6 @@ def _build_hr_zones(
             )
         )
     return items
-
-
-_PACE_ZONE_LABELS = ["Recovery", "Aerobic", "Tempo", "Sub-Threshold", "VO2 Max"]
 
 
 def _build_pace_zones(
@@ -106,7 +101,7 @@ def _build_pace_zones(
         items.append(
             PaceZoneItem(
                 zone=i + 1,
-                label=_PACE_ZONE_LABELS[i],
+                label=PACE_ZONE_LABELS[i],
                 slow_pace=zone_boundaries[i - 1] if i > 0 else None,
                 fast_pace=zone_boundaries[i] if i < 4 else None,
                 seconds=seconds[i],
