@@ -76,6 +76,13 @@ export interface CoachMemory {
   created_on: string
 }
 
+// A selectable coaching skill, surfaced in the chat "/" menu.
+export interface CoachSkill {
+  id: string
+  name: string
+  description: string
+}
+
 export interface PlannedSession {
   day: string
   sport: string

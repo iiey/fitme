@@ -8,6 +8,7 @@ import {
   CoachMessageSchema,
   CoachPlanResponseSchema,
   CoachSessionSchema,
+  CoachSkillSchema,
   CoachStatusSchema,
   CoachVerifyResultSchema,
 } from "./schemas"
@@ -19,6 +20,7 @@ import type {
   CoachMessage,
   CoachPlanResponse,
   CoachSession,
+  CoachSkill,
   CoachStatus,
   CoachVerifyResult,
 } from "./types"
@@ -182,7 +184,13 @@ export interface ChatHandlers {
  * ``session`` / ``delta`` / ``done`` / ``error`` events to the handlers.
  */
 export async function streamChat(
-  input: { message: string; session_id?: number | null; context?: CoachChatContext },
+  input: {
+    message: string
+    session_id?: number | null
+    context?: CoachChatContext
+    // Skill id chosen from the "/" menu; applied to this message only.
+    skill?: string | null
+  },
   athleteId: string | null,
   handlers: ChatHandlers,
   signal?: AbortSignal,
@@ -258,6 +266,23 @@ export async function deleteMemory(id: number, athleteId: string | null): Promis
   })
   if (!response.ok)
     throw new ApiError(response.status, await readDetail(response, "Could not forget"))
+}
+
+// -- Skills (per-sport instruction sets) ------------------------------------
+
+async function fetchSkills(url: string): Promise<CoachSkill[]> {
+  const response = await fetch(url)
+  if (!response.ok) throw new ApiError(response.status, `Request failed: ${response.status}`)
+  return CoachSkillSchema.array().parse(await response.json())
+}
+
+/**
+ * Fetch the skill catalog, only when ``enabled`` (the drawer is open, which only
+ * mounts when the coach is usable). SWR caches it, so the "/" menu reads it
+ * instantly without re-fetching or blocking the app.
+ */
+export function useCoachSkills(enabled: boolean) {
+  return useSWR<CoachSkill[]>(enabled ? "/api/coach/skills" : null, fetchSkills)
 }
 
 // -- Training plan ----------------------------------------------------------

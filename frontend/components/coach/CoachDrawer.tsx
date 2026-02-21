@@ -11,6 +11,7 @@ import {
   renameSession,
   streamChat,
   useCoachSessions,
+  useCoachSkills,
 } from "@/lib/coach/api"
 import { contextLabel, useCoachContext } from "@/lib/coach/context"
 import type { CoachSession, CoachStatus, ThreadItem } from "@/lib/coach/types"
@@ -36,6 +37,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   const { athleteId } = useAthleteContext()
   const context = useCoachContext()
   const { data: sessions = [], mutate: mutateSessions } = useCoachSessions(athleteId, open)
+  const { data: skills = [] } = useCoachSkills(open)
 
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null)
   const [items, setItems] = useState<ThreadItem[]>([])
@@ -198,7 +200,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     })
   }
 
-  async function handleSend(text: string) {
+  async function handleSend(text: string, skillId: string | null = null) {
     if (busy) return
     cancelPoll()
     setError(null)
@@ -213,7 +215,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     abortRef.current = controller
     try {
       await streamChat(
-        { message: text, session_id: activeSessionId, context },
+        { message: text, session_id: activeSessionId, context, skill: skillId },
         athleteId,
         {
           onSession: (id) => {
@@ -420,6 +422,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
 
             <MessageInput
               disabled={busy}
+              skills={skills}
               onSend={handleSend}
               onTogglePlan={() => togglePanel("plan")}
               onToggleMemory={() => togglePanel("memory")}

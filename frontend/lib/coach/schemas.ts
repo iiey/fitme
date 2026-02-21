@@ -46,6 +46,12 @@ export const CoachMemorySchema = z.object({
   created_on: z.string(),
 })
 
+export const CoachSkillSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+})
+
 const PlannedSessionSchema = z.object({
   day: z.string(),
   sport: z.string(),
