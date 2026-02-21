@@ -85,6 +85,35 @@ def get_pace_zones(ctx: RunContext[CoachDeps]) -> list[dict] | None:
     return data_access.pace_zones(ctx.deps.athlete)
 
 
+def get_activity_intensity_distribution(
+    ctx: RunContext[CoachDeps], activity_id: str
+) -> dict | None:
+    """Get how one activity's time was split across HR and pace zones.
+
+    Returns the minutes and percentage spent in each zone (heart-rate and pace
+    breakdowns, either of which may be None if that stream is missing). Use this
+    to judge how a workout was actually executed - whether an easy run stayed
+    easy, how much time a session spent at threshold, or whether intervals hit
+    the intended zone - instead of reasoning from averages alone.
+    """
+    return data_access.activity_intensity_distribution(
+        ctx.deps.core_db, ctx.deps.athlete_id, activity_id, ctx.deps.athlete
+    )
+
+
+def get_intensity_distribution(ctx: RunContext[CoachDeps], days: int = 28) -> dict | None:
+    """Get the athlete's heart-rate-zone distribution over a recent window.
+
+    Aggregates time-in-zone across all activities in the last ``days`` (default
+    28, max 365). This is the polarization signal - the share of training time
+    spent easy versus hard. Use it to assess whether the athlete trains too much
+    in the moderate "grey zone", and to ground recovery and balance advice.
+    """
+    return data_access.intensity_distribution(
+        ctx.deps.core_db, ctx.deps.athlete_id, ctx.deps.athlete, days
+    )
+
+
 def get_best_efforts(ctx: RunContext[CoachDeps]) -> list[dict]:
     """Get the athlete's fastest times for standard distances, per activity type."""
     return data_access.best_efforts(ctx.deps.core_db, ctx.deps.athlete_id)
@@ -118,6 +147,8 @@ FUNCTION_TOOLS = [
     get_athlete_profile,
     get_hr_zones,
     get_pace_zones,
+    get_activity_intensity_distribution,
+    get_intensity_distribution,
     get_best_efforts,
     get_goals,
     remember,

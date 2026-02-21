@@ -161,6 +161,54 @@ def test_data_access_reads_core(core_factory):
         session.close()
 
 
+def test_intensity_distribution_reads_zones(core_factory):
+    from app.coach import data_access
+    from app.enums import StreamType
+    from app.models import ActivityStream
+
+    session = core_factory()
+    try:
+        session.add_all(
+            [
+                ActivityStream(
+                    activity_id="a0",
+                    stream_type=StreamType.TIME.value,
+                    data=[0, 60, 120, 180],
+                ),
+                ActivityStream(
+                    activity_id="a0",
+                    stream_type=StreamType.HEART_RATE.value,
+                    data=[140, 140, 170, 170],
+                ),
+            ]
+        )
+        session.commit()
+        athlete = get_athlete_config(session, ATHLETE)
+
+        per_activity = data_access.activity_intensity_distribution(session, ATHLETE, "a0", athlete)
+        assert per_activity is not None
+        hr_zones = per_activity["hr_zones"]
+        assert hr_zones is not None
+        assert round(sum(z["percentage"] for z in hr_zones)) == 100
+        assert sum(z["minutes"] for z in hr_zones) == 3.0  # 180s of stream
+
+        # Unknown activity returns None rather than raising.
+        assert (
+            data_access.activity_intensity_distribution(session, ATHLETE, "missing", athlete)
+            is None
+        )
+
+        period = data_access.intensity_distribution(session, ATHLETE, athlete, days=28)
+        assert period is not None
+        assert period["activities_counted"] >= 1
+        assert round(sum(z["percentage"] for z in period["hr_zones"])) == 100
+
+        # Labeled zone helpers stay aligned with the canonical labels.
+        assert data_access.hr_zones(athlete)[3]["label"] == "Threshold"
+    finally:
+        session.close()
+
+
 # -- Store (sessions + memory) ----------------------------------------------
 
 

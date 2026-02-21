@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app import repository
 from app.athlete import HR_ZONE_LABELS, PACE_ZONE_LABELS, AthleteConfig
 from app.domain import stats, training_load
+from app.domain.streams_analysis import time_in_hr_zones, time_in_pace_zones
+from app.enums import StreamType
 from app.models import Activity
 
 # This module is the ONLY place the coach reads core data. Tools call these
@@ -154,6 +156,97 @@ def pace_zones(athlete: AthleteConfig) -> list[dict] | None:
         }
         for i in range(5)
     ]
+
+
+def _label_zone_seconds(seconds: list[int], labels: list[str]) -> list[dict] | None:
+    """Turn a 5-element seconds-per-zone list into labeled shares (None if empty)."""
+    total = sum(seconds)
+    if total == 0:
+        return None
+    return [
+        {
+            "zone": i + 1,
+            "label": labels[i],
+            "minutes": round(seconds[i] / 60, 1),
+            "percentage": round(100 * seconds[i] / total, 1),
+        }
+        for i in range(5)
+    ]
+
+
+def activity_intensity_distribution(
+    db: Session, athlete_id: str, activity_id: str, athlete: AthleteConfig
+) -> dict | None:
+    """Time spent in each HR and pace zone within one activity (None if not found).
+
+    The streams may lack heart rate or velocity, in which case that breakdown is
+    ``None``.
+    """
+    activity = repository.get_activity(db, athlete_id, activity_id)
+    if activity is None:
+        return None
+    streams = repository.streams_for_activity(db, activity_id)
+    hr_bounds = athlete.hr_zone_boundaries()
+    pace_bounds = athlete.pace_zone_boundaries()
+    return {
+        "activity_id": activity_id,
+        "sport_type": activity.sport_type,
+        "hr_zones": (
+            _label_zone_seconds(time_in_hr_zones(streams, hr_bounds), HR_ZONE_LABELS)
+            if hr_bounds
+            else None
+        ),
+        "pace_zones": (
+            _label_zone_seconds(time_in_pace_zones(streams, pace_bounds), PACE_ZONE_LABELS)
+            if pace_bounds
+            else None
+        ),
+    }
+
+
+_INTENSITY_WINDOW_MAX_DAYS = 365
+
+
+def intensity_distribution(
+    db: Session, athlete_id: str, athlete: AthleteConfig, days: int = 28
+) -> dict | None:
+    """Aggregate heart-rate-zone time across all activities in a recent window.
+
+    This is the polarization signal: the share of training time spent easy
+    versus hard. ``days`` is clamped to [1, 365]. Returns ``None`` when no
+    heart-rate data exists in the window.
+    """
+    hr_bounds = athlete.hr_zone_boundaries()
+    if not hr_bounds:
+        return None
+    days = max(1, min(days, _INTENSITY_WINDOW_MAX_DAYS))
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    activities = [
+        a
+        for a in repository.all_activities(db, athlete_id)
+        if a.start_date_time >= cutoff and a.average_heart_rate
+    ]
+    if not activities:
+        return None
+    all_streams = repository.streams_for_activities(
+        db,
+        [a.activity_id for a in activities],
+        stream_types=[StreamType.TIME.value, StreamType.HEART_RATE.value],
+    )
+    totals = [0, 0, 0, 0, 0]
+    for activity in activities:
+        streams = all_streams.get(activity.activity_id, {})
+        for index, seconds in enumerate(time_in_hr_zones(streams, hr_bounds)):
+            totals[index] += seconds
+    zones = _label_zone_seconds(totals, HR_ZONE_LABELS)
+    if zones is None:
+        return None
+    return {
+        "days": days,
+        "activities_counted": len(activities),
+        "total_hours": round(sum(totals) / 3600, 1),
+        "hr_zones": zones,
+    }
 
 
 def best_efforts(db: Session, athlete_id: str) -> list[dict]:
