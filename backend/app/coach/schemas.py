@@ -51,6 +51,22 @@ class CoachStatusResponse(BaseModel):
     last_message: str | None = None
 
 
+class CoachInsightsResponse(BaseModel):
+    """Today's training-load snapshot, computed deterministically (no model call).
+
+    Powers the "Today's insights" quick action in the chat empty state.
+    """
+
+    ctl: float
+    atl: float
+    tsb: float
+    tsb_status: str
+    ac_ratio: float
+    ac_status: str
+    rest_days: int
+    weekly_trimp: float
+
+
 class CoachSessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

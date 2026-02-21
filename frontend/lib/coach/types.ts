@@ -110,7 +110,21 @@ export interface CoachPlanResponse {
   message: string | null
 }
 
-// A rendered item in the chat thread: a text message or a generated plan card.
+// Today's training-load snapshot, computed by the backend (no model call).
+export interface CoachInsights {
+  ctl: number
+  atl: number
+  tsb: number
+  tsb_status: string
+  ac_ratio: number
+  ac_status: string
+  rest_days: number
+  weekly_trimp: number
+}
+
+// A rendered item in the chat thread: a text message, a generated plan card,
+// or a today's-insights snapshot.
 export type ThreadItem =
   | { kind: "msg"; id?: number; role: ChatRole; content: string }
   | { kind: "plan"; plan: TrainingPlan }
+  | { kind: "insights"; insights: CoachInsights }

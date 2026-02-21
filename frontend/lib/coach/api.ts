@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api"
 
 import {
   CoachConfigSchema,
+  CoachInsightsSchema,
   CoachMemorySchema,
   CoachMessageSchema,
   CoachPlanResponseSchema,
@@ -16,6 +17,7 @@ import type {
   CoachChatContext,
   CoachConfig,
   CoachConfigInput,
+  CoachInsights,
   CoachMemory,
   CoachMessage,
   CoachPlanResponse,
@@ -245,6 +247,17 @@ export async function streamChat(
   // UI is not left stuck in the streaming state.
   buffer += decoder.decode()
   if (buffer.trim()) processChunk(buffer)
+}
+
+// -- Today's insights -------------------------------------------------------
+
+/** Fetch the deterministic training-load snapshot for the empty-state chip. */
+export async function fetchCoachInsights(athleteId: string | null): Promise<CoachInsights> {
+  const response = await fetch(`/api/coach/insights${athleteQuery(athleteId)}`)
+  if (!response.ok) {
+    throw new ApiError(response.status, await readDetail(response, "Could not load insights"))
+  }
+  return CoachInsightsSchema.parse(await response.json())
 }
 
 // -- Long-term memory -------------------------------------------------------

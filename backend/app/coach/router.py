@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.athletes import get_required_athlete_id
 from app.athlete import get_athlete_config
-from app.coach import service, skills, store
+from app.coach import data_access, service, skills, store
 from app.coach.config import CONFIG_ID, Provider
 from app.coach.db import SessionLocal as CoachSessionLocal
 from app.coach.db import get_coach_db
@@ -22,6 +22,7 @@ from app.coach.schemas import (
     CoachChatRequest,
     CoachConfigRequest,
     CoachConfigResponse,
+    CoachInsightsResponse,
     CoachMemoryResponse,
     CoachMessageResponse,
     CoachPlanRequest,
@@ -37,6 +38,7 @@ from app.coach.schemas import (
 from app.coach.service import CoachUnavailable, friendly_error
 from app.coach.verify import verify_connection
 from app.db import SessionLocal as CoreSessionLocal
+from app.db import get_db
 
 logger = logging.getLogger("fitme.coach")
 
@@ -176,6 +178,31 @@ def get_status(db: Session = Depends(get_coach_db)) -> CoachStatusResponse:
         model=config.model if config else None,
         last_status=config.last_status if config else None,
         last_message=config.last_message if config else None,
+    )
+
+
+@router.get("/insights", response_model=CoachInsightsResponse)
+def get_insights(
+    core_db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> CoachInsightsResponse:
+    """Today's training-load snapshot, computed directly from the core data.
+
+    Deterministic and free: it reuses the same analysis the agent's
+    ``get_training_load`` tool reads, so the chat empty state can surface live
+    numbers without spending a model call.
+    """
+    athlete = get_athlete_config(core_db, athlete_id)
+    summary = data_access.training_load_summary(core_db, athlete_id, athlete)
+    return CoachInsightsResponse(
+        ctl=summary["ctl"],
+        atl=summary["atl"],
+        tsb=summary["tsb"],
+        tsb_status=summary["tsb_status"],
+        ac_ratio=summary["ac_ratio"],
+        ac_status=summary["ac_status"],
+        rest_days=summary["rest_days"],
+        weekly_trimp=summary["weekly_trimp"],
     )
 
 

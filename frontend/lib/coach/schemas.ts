@@ -40,6 +40,17 @@ export const CoachMessageSchema = z.object({
   created_on: z.string(),
 })
 
+export const CoachInsightsSchema = z.object({
+  ctl: z.number(),
+  atl: z.number(),
+  tsb: z.number(),
+  tsb_status: z.string(),
+  ac_ratio: z.number(),
+  ac_status: z.string(),
+  rest_days: z.number(),
+  weekly_trimp: z.number(),
+})
+
 export const CoachMemorySchema = z.object({
   id: z.number(),
   content: z.string(),

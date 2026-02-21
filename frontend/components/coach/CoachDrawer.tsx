@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { useAthleteContext } from "@/lib/athlete-context"
 import {
   deleteSession,
+  fetchCoachInsights,
   fetchSessionMessages,
   generatePlan,
   renameSession,
@@ -16,6 +17,7 @@ import {
 import { contextLabel, useCoachContext } from "@/lib/coach/context"
 import type { CoachSession, CoachStatus, ThreadItem } from "@/lib/coach/types"
 
+import { InsightsCard } from "./InsightsCard"
 import { MemoryPanel } from "./MemoryPanel"
 import { MessageBubble } from "./MessageBubble"
 import { MessageInput } from "./MessageInput"
@@ -43,6 +45,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   const [items, setItems] = useState<ThreadItem[]>([])
   const [streaming, setStreaming] = useState(false)
   const [planBusy, setPlanBusy] = useState(false)
+  const [insightsBusy, setInsightsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingReply, setPendingReply] = useState(false)
   const [panel, setPanel] = useState<Panel>(null)
@@ -112,7 +115,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
 
   const activeTitle =
     sessions.find((s) => s.id === activeSessionId)?.title ?? (activeSessionId ? "Chat" : "New chat")
-  const busy = streaming || planBusy || pendingReply
+  const busy = streaming || planBusy || pendingReply || insightsBusy
 
   function togglePanel(next: Panel) {
     setPanel((prev) => (prev === next ? null : next))
@@ -264,6 +267,23 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     }
   }
 
+  // The "Today's insights" chip surfaces real computed metrics directly, with no
+  // model call: fetch the snapshot and drop it into the thread as a card.
+  async function handleInsights() {
+    if (busy) return
+    setError(null)
+    setPanel(null)
+    setInsightsBusy(true)
+    try {
+      const insights = await fetchCoachInsights(athleteId)
+      setItems((prev) => [...prev, { kind: "insights", insights }])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load insights")
+    } finally {
+      setInsightsBusy(false)
+    }
+  }
+
   async function handleRename(session: CoachSession) {
     const title = window.prompt("Rename chat", session.title)
     if (title === null) return
@@ -393,6 +413,14 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
                   <Sparkles className="h-8 w-8 text-gray-300 dark:text-gray-600" />
                   <p className="text-sm font-medium">How can I help with your training?</p>
                   <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={handleInsights}
+                      disabled={insightsBusy}
+                      className="rounded-full border border-brand/40 bg-brand/5 px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:bg-brand/10 disabled:opacity-60"
+                    >
+                      {insightsBusy ? "Loading insights…" : "Today's insights"}
+                    </button>
                     {quickPrompts.map((prompt) => (
                       <button
                         key={prompt}
@@ -406,16 +434,17 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
                   </div>
                 </div>
               ) : (
-                items.map((item, index) =>
-                  item.kind === "plan" ? (
-                    <PlanCard key={index} plan={item.plan} />
-                  ) : (
+                items.map((item, index) => {
+                  if (item.kind === "plan") return <PlanCard key={index} plan={item.plan} />
+                  if (item.kind === "insights")
+                    return <InsightsCard key={index} insights={item.insights} />
+                  return (
                     <MessageBubble
                       key={index}
                       message={{ role: item.role, content: item.content }}
                     />
-                  ),
-                )
+                  )
+                })
               )}
               {pendingReply && <MessageBubble message={{ role: "assistant", content: "" }} />}
               {planBusy && <p className="text-center text-xs text-gray-400">Building your plan…</p>}

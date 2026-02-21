@@ -387,6 +387,24 @@ def test_memory_dedupe(coach_factory):
         db.close()
 
 
+def test_insights_returns_training_load_snapshot(client):
+    resp = client.get("/api/coach/insights")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body) == {
+        "ctl",
+        "atl",
+        "tsb",
+        "tsb_status",
+        "ac_ratio",
+        "ac_status",
+        "rest_days",
+        "weekly_trimp",
+    }
+    assert isinstance(body["tsb_status"], str)
+    assert isinstance(body["rest_days"], int)
+
+
 def test_chat_rejects_empty_and_long_messages(client):
     assert client.post("/api/coach/chat", json={"message": "   "}).status_code == 422
     assert client.post("/api/coach/chat", json={"message": "x" * 5000}).status_code == 422
