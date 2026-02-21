@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from sqlalchemy.orm import Session
 
 from app.athlete import AthleteConfig
-from app.coach import store
+from app.coach import skills, store
 from app.coach.agent import coach_agent
 from app.coach.config import CONFIG_ID
 from app.coach.deps import CoachDeps, CoachView
@@ -58,8 +58,11 @@ def _build_deps(
     athlete: AthleteConfig,
     view: CoachView,
     session_id: int | None,
+    skill: str | None = None,
 ) -> CoachDeps:
     memory = [m.content for m in store.list_memory(coach_db, athlete_id)]
+    # Unknown skill ids resolve to None and simply contribute no instructions.
+    selected = skills.load_skill(skill) if skill else None
     return CoachDeps(
         core_db=core_db,
         coach_db=coach_db,
@@ -68,6 +71,8 @@ def _build_deps(
         view=view,
         memory=memory,
         session_id=session_id,
+        skill_name=selected.name if selected else None,
+        skill_instructions=selected.body if selected else None,
     )
 
 
@@ -103,11 +108,13 @@ async def stream_chat(
     session_id: int,
     message: str,
     view: CoachView,
+    skill: str | None = None,
 ) -> AsyncIterator[str]:
     """Stream the assistant's reply token-by-token, persisting both turns.
 
     Yields text deltas. The caller owns the database sessions and must keep them
-    open for the whole stream.
+    open for the whole stream. ``skill`` is an optional skill id whose guidance is
+    injected for this message only.
     """
     model = _require_model(coach_db)
     recent = store.list_messages(coach_db, session_id)[-_MAX_HISTORY_MESSAGES:]
@@ -123,6 +130,7 @@ async def stream_chat(
         athlete=athlete,
         view=view,
         session_id=session_id,
+        skill=skill,
     )
     answer_parts: list[str] = []
     try:

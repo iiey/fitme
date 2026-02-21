@@ -80,11 +80,21 @@ class CoachChatContext(BaseModel):
     activity_id: str | None = None
 
 
+class CoachSkillResponse(BaseModel):
+    """A selectable coaching skill, for the chat "/" menu. Body is not exposed."""
+
+    id: str
+    name: str
+    description: str
+
+
 class CoachChatRequest(BaseModel):
     message: str
     # When omitted a new session is created and its id returned in the done event.
     session_id: int | None = None
     context: CoachChatContext | None = None
+    # Optional skill id chosen from the "/" menu; applied to this message only.
+    skill: str | None = None
 
 
 class CoachMemoryResponse(BaseModel):

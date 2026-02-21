@@ -53,3 +53,14 @@ def memory_context(ctx: RunContext[CoachDeps]) -> str:
         return ""
     facts = "\n".join(f"- {fact}" for fact in ctx.deps.memory)
     return "Known facts about the athlete from earlier conversations:\n" + facts
+
+
+@coach_agent.instructions
+def skill_context(ctx: RunContext[CoachDeps]) -> str:
+    """Inject the guidance for a skill the athlete picked for this message."""
+    if not ctx.deps.skill_instructions:
+        return ""
+    return (
+        "Active coaching skill for this message - apply these sport-specific "
+        "guidelines:\n\n" + ctx.deps.skill_instructions
+    )

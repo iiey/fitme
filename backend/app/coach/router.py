@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.athletes import get_required_athlete_id
 from app.athlete import get_athlete_config
-from app.coach import service, store
+from app.coach import service, skills, store
 from app.coach.config import CONFIG_ID, Provider
 from app.coach.db import SessionLocal as CoachSessionLocal
 from app.coach.db import get_coach_db
@@ -28,6 +28,7 @@ from app.coach.schemas import (
     CoachPlanResponse,
     CoachSessionRenameRequest,
     CoachSessionResponse,
+    CoachSkillResponse,
     CoachStatusResponse,
     CoachVerifyRequest,
     CoachVerifyResult,
@@ -178,6 +179,15 @@ def get_status(db: Session = Depends(get_coach_db)) -> CoachStatusResponse:
     )
 
 
+@router.get("/skills", response_model=list[CoachSkillResponse])
+def list_skills() -> list[CoachSkillResponse]:
+    """The catalog of selectable coaching skills for the chat "/" menu."""
+    return [
+        CoachSkillResponse(id=skill.id, name=skill.name, description=skill.description)
+        for skill in skills.list_skills()
+    ]
+
+
 # -- Chat sessions ----------------------------------------------------------
 
 
@@ -287,6 +297,7 @@ async def chat(
                 session_id=session.id,
                 message=message,
                 view=view,
+                skill=payload.skill,
             ):
                 await queue.put({"type": "delta", "text": delta})
             await queue.put({"type": "done"})

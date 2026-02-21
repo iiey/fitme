@@ -498,3 +498,79 @@ def test_service_generate_plan(core_factory, coach_factory):
     finally:
         core_db.close()
         coach_db.close()
+
+
+# -- Skills (per-sport instruction sets) ------------------------------------
+
+
+def test_skills_catalog_and_lookup():
+    from app.coach import skills
+
+    catalog = {skill.id for skill in skills.list_skills()}
+    assert {"run", "ride", "swim", "strength", "yoga", "nutrition"} <= catalog
+
+    run = skills.load_skill("run")
+    assert run is not None
+    assert run.name == "Run"
+    assert run.body  # frontmatter stripped, markdown body present
+    assert "name:" not in run.body  # frontmatter is not leaked into the body
+
+    assert skills.load_skill("does-not-exist") is None
+
+
+def test_skill_resolves_into_deps(core_factory, coach_factory):
+    core_db = core_factory()
+    coach_db = coach_factory()
+    athlete = get_athlete_config(core_db, ATHLETE)
+
+    def build(skill):
+        return service._build_deps(
+            coach_db=coach_db,
+            core_db=core_db,
+            athlete_id=ATHLETE,
+            athlete=athlete,
+            view=CoachView(),
+            session_id=None,
+            skill=skill,
+        )
+
+    try:
+        chosen = build("run")
+        assert chosen.skill_name == "Run"
+        assert chosen.skill_instructions
+
+        assert build(None).skill_instructions is None
+        assert build("does-not-exist").skill_instructions is None
+    finally:
+        core_db.close()
+        coach_db.close()
+
+
+def test_skill_context_injector():
+    from app.coach import agent
+
+    class _Ctx:
+        """Minimal stand-in for RunContext; the injector only reads ``deps``."""
+
+        def __init__(self, skill_instructions):
+            self.deps = CoachDeps(
+                core_db=None,
+                coach_db=None,
+                athlete_id=ATHLETE,
+                athlete=None,
+                view=CoachView(),
+                skill_instructions=skill_instructions,
+            )
+
+    assert agent.skill_context(_Ctx(None)) == ""
+    assert "ZONE RULES" in agent.skill_context(_Ctx("ZONE RULES"))
+
+
+def test_skills_endpoint(client):
+    response = client.get("/api/coach/skills")
+    assert response.status_code == 200
+    payload = response.json()
+    ids = {item["id"] for item in payload}
+    assert {"run", "ride", "swim", "strength", "yoga", "nutrition"} <= ids
+    # Only id/name/description are exposed - never the instruction body.
+    assert all(set(item) == {"id", "name", "description"} for item in payload)

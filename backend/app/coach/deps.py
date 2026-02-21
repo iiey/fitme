@@ -31,3 +31,7 @@ class CoachDeps:
     view: CoachView
     memory: list[str] = field(default_factory=list)
     session_id: int | None = None
+    # Resolved instructions for a skill picked from the chat "/" menu, injected
+    # into the agent for this message only (None when no skill is active).
+    skill_name: str | None = None
+    skill_instructions: str | None = None
