@@ -20,8 +20,10 @@ dependencies = [
 [project.optional-dependencies]
 # FitBuddy plugin (backend/app/coach). Optional: the app runs without it.
 # Install with: uv sync --extra coach
+# The duckduckgo + web-fetch extras add free, key-less web search (ddgs) and an
+# HTML-to-markdown page fetcher (markdownify); no third-party API cost.
 coach = [
-    "pydantic-ai-slim[openai,anthropic]>=0.4",
+    "pydantic-ai-slim[openai,anthropic,duckduckgo,web-fetch]>=0.4",
 ]
 
 [dependency-groups]
