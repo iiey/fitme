@@ -47,6 +47,16 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+/** Whole days from today until a goal's end date; ``null`` once it has passed. */
+function daysLeftLabel(endDateISO: string): string | null {
+  const end = new Date(`${endDateISO}T00:00:00`)
+  const today = new Date(`${todayISO()}T00:00:00`)
+  const days = Math.round((end.getTime() - today.getTime()) / 86_400_000)
+  if (days < 0) return null
+  if (days === 0) return "Last day"
+  return `${days} ${days === 1 ? "day" : "days"} left`
+}
+
 function endOfYearISO(): string {
   return `${new Date().getFullYear()}-12-31`
 }
@@ -261,6 +271,7 @@ function GoalCard({
   const pct = Math.min(goal.percentage, 100)
   const isComplete = pct >= 100
   const barColor = isComplete ? "bg-green-500" : "bg-brand"
+  const daysLeft = daysLeftLabel(goal.end_date)
 
   async function handleDelete() {
     if (!athleteId) return
@@ -327,6 +338,7 @@ function GoalCard({
             <p className="text-sm text-gray-500">
               {formatDate(goal.start_date, "MMM d, yyyy")} &ndash;{" "}
               {formatDate(goal.end_date, "MMM d, yyyy")}
+              {daysLeft && <span className="ml-2 text-gray-400">&middot; {daysLeft}</span>}
             </p>
             {goal.note && <p className="mt-1 text-sm text-gray-500 italic">{goal.note}</p>}
           </div>
