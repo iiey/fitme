@@ -122,7 +122,7 @@ export function MessageInput({
         {showMenu && (
           <div
             role="listbox"
-            className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+            className="absolute bottom-full left-0 right-0 z-20 mb-2 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
           >
             {filtered.map((skill, index) => (
               <button
@@ -143,7 +143,7 @@ export function MessageInput({
                     : "hover:bg-gray-50 dark:hover:bg-gray-800/60",
                 )}
               >
-                <span className="text-sm font-medium">
+                <span className="text-xs font-medium">
                   <span className="text-brand">/{skill.id}</span> {skill.name}
                 </span>
                 <span className="truncate text-xs text-gray-500">{skill.description}</span>
