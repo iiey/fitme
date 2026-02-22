@@ -74,8 +74,13 @@ frontend: ## Run the Next.js frontend (http://localhost:3000).
 
 .PHONY: stop
 stop: ## Kill any orphaned running backend/frontend dev servers.
-	@-lsof -ti :8000 | xargs -r kill 2>/dev/null; true
-	@-lsof -ti :3000 | xargs -r kill 2>/dev/null; true
+	@for port in 8000 3000; do \
+		pids=$$(lsof -ti :$$port 2>/dev/null); \
+		if [ -z "$$pids" ] && command -v fuser >/dev/null 2>&1; then \
+			pids=$$(fuser $$port/tcp 2>/dev/null); \
+		fi; \
+		[ -n "$$pids" ] && kill $$pids 2>/dev/null || true; \
+	done
 	@echo "Stopped servers on :8000 and :3000."
 
 .PHONY: run
