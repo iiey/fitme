@@ -2,9 +2,10 @@
 
 A self-hosted, single-user statistics dashboard for your training data - built
 with a **Python / FastAPI** backend and a **React / Next.js** frontend.
-Inspired by [statistics-for-strava](https://github.com/robiningelbrecht/statistics-for-strava),
-FitMe ingests your **Strava bulk export** (and Garmin bulk zips) and turns
-them into rich, interactive insights - no live API connection needed.
+Inspired by [statistics-for-strava][statistics-for-strava] (currently work only via
+Strava API)
+FitMe ingests your **Garmin bulk export** (and Strava bulk zips), or syncs
+continuously from **Intervals.icu**, turning them into rich, interactive insights.
 
 ## Features
 
@@ -14,9 +15,11 @@ them into rich, interactive insights - no live API connection needed.
 | **Fitness** | Training load analysis - CTL/ATL/TSB chart, form zones, acute:chronic ratio, monotony, strain & weekly TRIMP |
 | **Activities** | Searchable, sortable, paginated table of every activity + a detail view with route map and stream charts (elevation, HR, speed, power) |
 | **Calendar** | Interactive month calendar with per-day intensity and per-sport breakdowns |
+| **Goals** | Targets over flexible date ranges (distance, time, elevation, count or calories) with live progress tracking |
 | **Heatmap** | All routes drawn on a Leaflet map, coloured by sport, with filters |
 | **Milestones** | Grouped, filterable timeline of achievements with fun comparisons |
 | **Rewind** | Year-in-review with monthly totals, sport breakdown, start-time histogram, calories/carbon equivalents, biggest activity and more |
+| **FitBuddy** | Optional AI coach - a chat drawer that answers questions about your training data, grounded in the real numbers (see [AI Coach](#ai-coach-fitbuddy)) |
 
 ## Architecture
 
@@ -36,7 +39,7 @@ The frontend proxies `/api/*` to the backend, so the browser only talks to one o
 
 ## Quick start (local)
 
-The fastest path uses the bundled [`Makefile`](Makefile) (run `make help` for all targets):
+The fastest path uses the bundled [`Makefile`][makefile] (run `make help` for all targets):
 
 ```bash
 make install     # install backend (uv) + frontend (npm) dependencies
@@ -98,12 +101,36 @@ schedule without creating duplicates.
 The athlete's name and profile link (bottom-left of the sidebar) are read
 from `profile.csv` in the export, when present.
 
+### Continuous sync (Intervals.icu)
+
+Connect an [Intervals.icu][intervals-icu] API key on the **Settings**
+page to pull new activities automatically - incremental, and deduplicated
+against your bulk imports.
+
 ## Athlete configuration
 
 Some stats (training load, HR/power/pace zones, W/kg) need data that isn't in
 the export. Open the **Settings** page in the UI to set your birthday, sex,
 weight, FTP, max/resting heart rate, threshold pace, zone boundaries and unit
 system.
+
+## AI Coach (FitBuddy)
+
+FitBuddy is an optional, self-contained AI coaching assistant: a chat drawer that
+answers questions about *your* training data, grounded in the real numbers via
+tool calls rather than guesswork. It is a removable [plug-in module][plug-in-module] -
+disabled and invisible until you configure a provider (Ollama, OpenAI, or
+Anthropic) on the **Settings** page.
+
+Enable it by installing the optional extra, then configure a model in Settings:
+
+```bash
+cd backend
+uv sync --extra coach
+```
+
+See [doc/coach.md][plug-in-module] for the architecture, the separate `coach.db`
+data model, and an implementation overview.
 
 ## Running with Docker
 
@@ -137,3 +164,9 @@ uv run ruff check app && uv run pytest
 cd frontend
 npm run lint && npm run typecheck && npm run build
 ```
+
+<!-- Reference links -->
+[intervals-icu]: https://intervals.icu
+[makefile]: Makefile
+[plug-in-module]: doc/coach.md
+[statistics-for-strava]: https://github.com/robiningelbrecht/statistics-for-strava
