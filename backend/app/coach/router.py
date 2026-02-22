@@ -27,6 +27,7 @@ from app.coach.schemas import (
     CoachMessageResponse,
     CoachPlanRequest,
     CoachPlanResponse,
+    CoachSessionBatchDeleteRequest,
     CoachSessionRenameRequest,
     CoachSessionResponse,
     CoachSkillResponse,
@@ -245,6 +246,19 @@ def rename_session(
     if session is None:
         raise HTTPException(404, "Session not found.")
     return CoachSessionResponse.model_validate(session)
+
+
+@router.delete("/sessions", status_code=204)
+def delete_sessions(
+    payload: CoachSessionBatchDeleteRequest,
+    db: Session = Depends(get_coach_db),
+    athlete_id: str = Depends(get_required_athlete_id),
+) -> None:
+    """Batch-delete chats by id; ids not owned by the athlete are ignored.
+
+    Backs the chat list's multi-select delete and "Clear all" actions.
+    """
+    store.delete_sessions(db, payload.ids, athlete_id)
 
 
 @router.delete("/sessions/{session_id}", status_code=204)

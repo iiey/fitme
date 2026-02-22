@@ -89,6 +89,12 @@ class CoachSessionRenameRequest(BaseModel):
     title: str
 
 
+class CoachSessionBatchDeleteRequest(BaseModel):
+    """Ids of the chats to remove for the multi-select / clear-all action."""
+
+    ids: list[int]
+
+
 class CoachChatContext(BaseModel):
     """What the user is currently viewing, derived from the route by the UI."""
 

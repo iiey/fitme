@@ -163,6 +163,17 @@ export async function deleteSession(id: number, athleteId: string | null): Promi
     throw new ApiError(response.status, await readDetail(response, "Could not delete chat"))
 }
 
+/** Batch-delete chats by id; backs the multi-select delete and "Clear all". */
+export async function deleteSessions(ids: number[], athleteId: string | null): Promise<void> {
+  const response = await fetch(`/api/coach/sessions${athleteQuery(athleteId)}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  })
+  if (!response.ok)
+    throw new ApiError(response.status, await readDetail(response, "Could not delete chats"))
+}
+
 export async function fetchSessionMessages(
   id: number,
   athleteId: string | null,

@@ -59,6 +59,33 @@ def delete_session(db: Session, session_id: int, athlete_id: str) -> bool:
     return True
 
 
+def delete_sessions(db: Session, session_ids: list[int], athlete_id: str) -> int:
+    """Delete several sessions (and their messages) owned by the athlete.
+
+    Returns the number actually removed; ids that are missing or owned by a
+    different athlete are skipped, so the batch is best-effort. Backs the chat
+    list's multi-select delete and "Clear all" actions.
+    """
+    if not session_ids:
+        return 0
+    owned = list(
+        db.execute(
+            select(CoachSession.id)
+            .where(CoachSession.athlete_id == athlete_id)
+            .where(CoachSession.id.in_(session_ids))
+        )
+        .scalars()
+        .all()
+    )
+    if not owned:
+        return 0
+    # Remove messages first so no rows are orphaned regardless of cascade.
+    db.execute(delete(CoachMessage).where(CoachMessage.session_id.in_(owned)))
+    db.execute(delete(CoachSession).where(CoachSession.id.in_(owned)))
+    db.commit()
+    return len(owned)
+
+
 def list_messages(db: Session, session_id: int) -> list[CoachMessage]:
     stmt = (
         select(CoachMessage)

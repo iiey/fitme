@@ -239,6 +239,27 @@ def test_store_sessions_messages_and_memory(coach_factory):
         db.close()
 
 
+def test_delete_sessions_batch(coach_factory):
+    db = coach_factory()
+    try:
+        a = store.create_session(db, ATHLETE, "A")
+        b = store.create_session(db, ATHLETE, "B")
+        c = store.create_session(db, ATHLETE, "C")
+        store.add_message(db, a.id, "user", "hi")
+        other = store.create_session(db, "other", "Other")
+
+        # Ids that are unknown or owned by another athlete are skipped.
+        removed = store.delete_sessions(db, [a.id, b.id, other.id, 9999], ATHLETE)
+        assert removed == 2
+        assert {s.id for s in store.list_sessions(db, ATHLETE)} == {c.id}
+        assert store.list_messages(db, a.id) == []  # messages cascade
+        assert store.get_session(db, other.id, "other") is not None  # untouched
+
+        assert store.delete_sessions(db, [], ATHLETE) == 0  # empty is a no-op
+    finally:
+        db.close()
+
+
 # -- Config / verify / status endpoints -------------------------------------
 
 
@@ -349,6 +370,22 @@ def test_sessions_api(client):
 
     assert client.delete(f"/api/coach/sessions/{sid}").status_code == 204
     assert client.get(f"/api/coach/sessions/{sid}/messages").status_code == 404
+
+
+def test_sessions_batch_delete_api(client):
+    ids = [client.post("/api/coach/sessions").json()["id"] for _ in range(3)]
+    assert len(client.get("/api/coach/sessions").json()) == 3
+
+    # Multi-select delete: remove a subset by id.
+    assert client.request("DELETE", "/api/coach/sessions", json={"ids": ids[:2]}).status_code == 204
+    remaining = [s["id"] for s in client.get("/api/coach/sessions").json()]
+    assert remaining == [ids[2]]
+
+    # "Clear all": the frontend passes every listed id.
+    assert (
+        client.request("DELETE", "/api/coach/sessions", json={"ids": remaining}).status_code == 204
+    )
+    assert client.get("/api/coach/sessions").json() == []
 
 
 def test_reset_all_wipes_config_and_data(client, monkeypatch):

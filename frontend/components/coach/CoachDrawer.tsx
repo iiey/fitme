@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { useAthleteContext } from "@/lib/athlete-context"
 import {
   deleteSession,
+  deleteSessions,
   fetchCoachInsights,
   fetchSessionMessages,
   generatePlan,
@@ -305,6 +306,16 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     }
   }
 
+  async function handleDeleteMany(ids: number[]) {
+    try {
+      await deleteSessions(ids, athleteId)
+      if (activeSessionId !== null && ids.includes(activeSessionId)) newChat()
+      void mutateSessions()
+    } catch {
+      setError("Could not delete chats.")
+    }
+  }
+
   const quickPrompts =
     context.view === "activity"
       ? ["Analyze this activity", "How was my pacing?", "How does this compare to recent efforts?"]
@@ -391,6 +402,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
             onSelect={selectSession}
             onRename={handleRename}
             onDelete={handleDelete}
+            onDeleteMany={handleDeleteMany}
           />
         ) : (
           <>
