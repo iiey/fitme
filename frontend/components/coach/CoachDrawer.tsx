@@ -16,7 +16,7 @@ import {
   useCoachSkills,
 } from "@/lib/coach/api"
 import { contextLabel, useCoachContext } from "@/lib/coach/context"
-import type { CoachSession, CoachStatus, ThreadItem } from "@/lib/coach/types"
+import type { CoachInsights, CoachSession, CoachStatus, ThreadItem } from "@/lib/coach/types"
 
 import { InsightsCard } from "./InsightsCard"
 import { MemoryPanel } from "./MemoryPanel"
@@ -29,6 +29,11 @@ import { SessionMenu } from "./SessionMenu"
 type Panel = "sessions" | "memory" | "plan" | null
 
 const PINNED_KEY = "fitme-coach-pinned"
+
+// Sent to the model when the athlete taps "Today's insights": the deterministic
+// snapshot card is shown immediately, and this asks for an analysis below it.
+const INSIGHTS_PROMPT =
+  "Give me today's insights: briefly analyze my recent activities and current training load, and what they mean for my training today."
 
 interface CoachDrawerProps {
   open: boolean
@@ -206,22 +211,19 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     })
   }
 
-  async function handleSend(text: string, skillId: string | null = null) {
-    if (busy) return
+  // Append the caller's thread items plus an empty assistant bubble, then stream
+  // the model's reply into it. Shared by the composer and "Today's insights".
+  async function runStream(message: string, displayItems: ThreadItem[], skillId: string | null) {
     cancelPoll()
     setError(null)
     setPanel(null)
-    setItems((prev) => [
-      ...prev,
-      { kind: "msg", role: "user", content: text },
-      { kind: "msg", role: "assistant", content: "" },
-    ])
+    setItems((prev) => [...prev, ...displayItems, { kind: "msg", role: "assistant", content: "" }])
     setStreaming(true)
     const controller = new AbortController()
     abortRef.current = controller
     try {
       await streamChat(
-        { message: text, session_id: activeSessionId, context, skill: skillId, web: webActive },
+        { message, session_id: activeSessionId, context, skill: skillId, web: webActive },
         athleteId,
         {
           onSession: (id) => {
@@ -249,6 +251,11 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     }
   }
 
+  async function handleSend(text: string, skillId: string | null = null) {
+    if (busy) return
+    await runStream(text, [{ kind: "msg", role: "user", content: text }], skillId)
+  }
+
   async function handleGeneratePlan(goal: string, weeks: number) {
     if (busy) return
     setError(null)
@@ -268,21 +275,30 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     }
   }
 
-  // The "Today's insights" chip surfaces real computed metrics directly, with no
-  // model call: fetch the snapshot and drop it into the thread as a card.
+  // "Today's insights" shows the deterministic training-load snapshot as a card,
+  // then asks the model to analyze recent activities and readiness below it.
   async function handleInsights() {
     if (busy) return
     setError(null)
     setPanel(null)
     setInsightsBusy(true)
+    let insights: CoachInsights
     try {
-      const insights = await fetchCoachInsights(athleteId)
-      setItems((prev) => [...prev, { kind: "insights", insights }])
+      insights = await fetchCoachInsights(athleteId)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load insights")
-    } finally {
       setInsightsBusy(false)
+      return
     }
+    setInsightsBusy(false)
+    await runStream(
+      INSIGHTS_PROMPT,
+      [
+        { kind: "msg", role: "user", content: INSIGHTS_PROMPT },
+        { kind: "insights", insights },
+      ],
+      null,
+    )
   }
 
   async function handleRename(session: CoachSession) {
