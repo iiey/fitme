@@ -1,10 +1,38 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import type { ReactNode } from "react"
 import type { Components } from "react-markdown"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
 import type { ChatMessage } from "@/lib/coach/types"
+
+// Links to an in-app path (starting with "/") navigate client-side so the coach
+// can send the athlete straight to a page without a full reload; everything else
+// is treated as external and opens in a new tab.
+function ChatLink({ href, children }: { href?: string; children?: ReactNode }) {
+  const router = useRouter()
+  if (href && href.startsWith("/")) {
+    return (
+      <a
+        href={href}
+        onClick={(e) => {
+          e.preventDefault()
+          router.push(href)
+        }}
+        className="text-brand underline"
+      >
+        {children}
+      </a>
+    )
+  }
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className="text-brand underline">
+      {children}
+    </a>
+  )
+}
 
 // Tailwind's preflight strips default element styling, and the project has no
 // typography plugin, so map the markdown elements the coach emits to classed
@@ -19,11 +47,7 @@ const MARKDOWN_COMPONENTS: Components = {
   h1: ({ children }) => <h3 className="mb-1 mt-2 text-sm font-semibold first:mt-0">{children}</h3>,
   h2: ({ children }) => <h3 className="mb-1 mt-2 text-sm font-semibold first:mt-0">{children}</h3>,
   h3: ({ children }) => <h3 className="mb-1 mt-2 text-sm font-semibold first:mt-0">{children}</h3>,
-  a: ({ href, children }) => (
-    <a href={href} target="_blank" rel="noreferrer" className="text-brand underline">
-      {children}
-    </a>
-  ),
+  a: ChatLink,
   code: ({ children }) => (
     <code className="rounded bg-black/10 px-1 py-0.5 font-mono text-xs dark:bg-white/10">
       {children}
