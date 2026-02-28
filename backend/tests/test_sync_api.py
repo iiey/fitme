@@ -77,12 +77,13 @@ def _patch_client(monkeypatch, cls) -> None:
 class _InlineThread:
     """Runs the worker synchronously so the background sync is observable here."""
 
-    def __init__(self, target, args=(), daemon=False):
+    def __init__(self, target, args=(), kwargs=None, daemon=False):
         self._target = target
         self._args = args
+        self._kwargs = kwargs or {}
 
     def start(self):
-        self._target(*self._args)
+        self._target(*self._args, **self._kwargs)
 
 
 def _configure_sync(

@@ -126,12 +126,16 @@ def get_status(db: Session = Depends(get_db)) -> SyncStatusResponse:
     )
 
 
-def _run_sync_job(provider: str, full_resync: bool) -> None:
+def _run_sync_job(provider: str, full_resync: bool, *, stamp_auto_date: bool = False) -> None:
     """Execute a sync in the background, then release the shared lock.
 
     Uses its own session (``expire_on_commit=False`` so progressively committed
     ORM objects stay usable across the run's commits). The engine owns the
     config row's run lifecycle, marking it ``ok``/``error``.
+
+    When ``stamp_auto_date`` is set, the once-per-day marker is written only
+    after a successful run (``sync`` raises on failure), so a failed startup
+    sync retries on the next app start instead of being skipped until tomorrow.
     """
     db = SessionLocal()
     db.expire_on_commit = False
@@ -139,6 +143,10 @@ def _run_sync_job(provider: str, full_resync: bool) -> None:
         config = db.get(SyncConfig, provider)
         if config is not None:
             sync(db, config, full_resync=full_resync)
+            if stamp_auto_date:
+                config.last_auto_sync_on = datetime.utcnow().date()
+                db.add(config)
+                db.commit()
     except Exception:
         logger.exception("Background sync failed")
     finally:
@@ -187,11 +195,9 @@ def _start_daily_sync() -> None:
         # The lock is now ours; hand it to the worker thread, or release it if we
         # fail to do so. The worker (_run_sync_job) releases it when it finishes.
         try:
-            # Stamp the date and mark running before spawning the worker, so
-            # repeated restarts on the same day do not start a second run even if
-            # this one fails. Committed from this session before the worker
-            # writes, so the two never collide on SQLite's single writer.
-            config.last_auto_sync_on = today
+            # Mark running before spawning the worker so the status endpoint
+            # reflects it immediately. The daily marker is stamped by the worker
+            # only on success, so a failed run retries on the next app start.
             config.last_status = "running"
             config.last_run_at = datetime.utcnow()
             db.add(config)
@@ -199,6 +205,7 @@ def _start_daily_sync() -> None:
             threading.Thread(
                 target=_run_sync_job,
                 args=(config.provider, False),
+                kwargs={"stamp_auto_date": True},
                 daemon=True,
             ).start()
         except Exception:
