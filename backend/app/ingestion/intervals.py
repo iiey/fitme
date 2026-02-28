@@ -35,6 +35,9 @@ BASIC_AUTH_USER = "API_KEY"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_BACKOFF_BASE = 1.0
+# Upper bound on any single backoff wait, so a hostile or buggy Retry-After
+# header cannot stall ingestion (and hold the shared lock) for a long time.
+_MAX_BACKOFF_S = 60.0
 # Transient statuses worth retrying (rate limit + gateway/server errors).
 _RETRY_STATUS = {429, 500, 502, 503, 504}
 _AUTH_STATUS = {401, 403}
@@ -298,10 +301,10 @@ class IntervalsClient:
             retry_after = response.headers.get("Retry-After")
             if retry_after:
                 try:
-                    return float(retry_after)
+                    return min(float(retry_after), _MAX_BACKOFF_S)
                 except ValueError:
                     pass
-        return self._backoff_base * (2**attempt)
+        return min(self._backoff_base * (2**attempt), _MAX_BACKOFF_S)
 
     def _request(self, method: str, path: str, *, params: dict | None = None) -> httpx.Response:
         url = f"{self._api}{path}"
