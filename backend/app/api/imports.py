@@ -6,7 +6,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -298,7 +298,9 @@ def get_import_run(run_id: int, db: Session = Depends(get_db)) -> ImportRunStatu
 
 
 @router.get("/runs")
-def list_import_runs(db: Session = Depends(get_db), limit: int = 20) -> list[dict]:
+def list_import_runs(
+    db: Session = Depends(get_db), limit: int = Query(default=20, ge=1, le=1000)
+) -> list[dict]:
     stmt = select(ImportRun).order_by(ImportRun.started_at.desc()).limit(limit)
     runs = db.execute(stmt).scalars().all()
     return [
