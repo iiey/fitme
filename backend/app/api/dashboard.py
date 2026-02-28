@@ -199,9 +199,14 @@ def _training_load_analysis(activities, athlete, anchor: datetime) -> dict:
         activities, athlete, anchor.date(), display_days=TRAINING_LOAD_ANALYSIS_DAYS
     )
 
+    # Only days present in the series are ever attached, so serialize activities
+    # for those days alone rather than the entire history each request.
+    series_dates = {entry["date"] for entry in analysis["series"]}
     activities_by_day: dict[str, list[dict]] = defaultdict(list)
     for activity in activities:
         day = activity.start_date_time.date().isoformat()
+        if day not in series_dates:
+            continue
         summary = serialize_activity_summary(activity).model_dump()
         summary["load"] = round(activity_training_load(activity, athlete))
         summary["intensity"] = activity_intensity(activity, athlete)
