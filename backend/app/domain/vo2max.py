@@ -361,9 +361,15 @@ def vo2max_trend(
     days = sorted(daily_best)
     smoothed: float | None = None
     out: list[dict] = []
-    for day in days:
+    # Slide a forward-only lower bound over the sorted days instead of rescanning
+    # the whole history for each day (O(n) per day -> O(n) overall). The window is
+    # days[lo..i] - those within the trailing window_days of the current day.
+    lo = 0
+    for i, day in enumerate(days):
+        while (day - days[lo]).days >= window_days:
+            lo += 1
         window = sorted(
-            (daily_best[d] for d in days if 0 <= (day - d).days < window_days),
+            (daily_best[days[j]] for j in range(lo, i + 1)),
             reverse=True,
         )
         envelope = _robust_envelope(window)
