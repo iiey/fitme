@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
@@ -68,13 +67,8 @@ def _eddington_history(distances_per_day: dict[date, float], number: int) -> dic
     return dict(sorted(history.items()))
 
 
-def _cache_key(distances_per_day: dict[date, float]) -> str:
-    raw = "|".join(f"{d.isoformat()}:{v:.2f}" for d, v in sorted(distances_per_day.items()))
-    return hashlib.md5(raw.encode()).hexdigest()
-
-
 @lru_cache(maxsize=64)
-def _compute_cached(cache_key: str, distances_tuple: tuple, unit: str) -> EddingtonResult:
+def _compute_cached(distances_tuple: tuple, unit: str) -> EddingtonResult:
     distances_per_day = dict(distances_tuple)
     times_completed = _times_completed(distances_per_day)
     number = _eddington_number(times_completed)
@@ -99,6 +93,7 @@ def _compute_cached(cache_key: str, distances_tuple: tuple, unit: str) -> Edding
 def compute_eddington(distances_per_day: dict[date, float], unit: str = "km") -> EddingtonResult:
     if not distances_per_day:
         return EddingtonResult(unit=unit)
-    key = _cache_key(distances_per_day)
+    # The sorted-items tuple fully identifies the input, so it alone is a correct
+    # lru_cache key - no separate digest needed.
     as_tuple = tuple(sorted(distances_per_day.items()))
-    return _compute_cached(key, as_tuple, unit)
+    return _compute_cached(as_tuple, unit)
