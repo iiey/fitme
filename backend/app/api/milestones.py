@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import repository
@@ -11,7 +10,6 @@ from app.api.athletes import get_required_athlete_id as get_athlete_id
 from app.athlete import get_athlete_config
 from app.db import get_db
 from app.domain.milestones import MilestoneGroup, discover_milestones
-from app.models import BestEffort
 
 router = APIRouter(prefix="/api/milestones", tags=["milestones"])
 
@@ -23,16 +21,9 @@ def get_milestones(
 ) -> dict:
     athlete = get_athlete_config(db, athlete_id)
     activities = repository.all_activities(db, athlete_id)
-    activity_ids = [a.activity_id for a in activities]
-    best_efforts = (
-        list(
-            db.execute(select(BestEffort).where(BestEffort.activity_id.in_(activity_ids)))
-            .scalars()
-            .all()
-        )
-        if activity_ids
-        else []
-    )
+    # Join best efforts on athlete_id rather than an IN-list of activity ids,
+    # which overflows SQLite's bound-variable limit on large histories.
+    best_efforts = repository.best_efforts_for_athlete(db, athlete_id)
 
     milestones = discover_milestones(activities, best_efforts, athlete.unit_system)
 
