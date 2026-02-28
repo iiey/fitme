@@ -87,6 +87,15 @@ def test_activities_match_distanceless_matches_on_start():
     assert activities_match(_BASE, 0.0, _BASE, 0.0) is True
 
 
+def test_activities_match_distanceless_rejects_distinct_sessions():
+    # Two distinct distance-less sessions a couple of minutes apart must not be
+    # collapsed; only a near-identical start is treated as the same recording.
+    two_min_later = datetime(2024, 4, 1, 6, 2, 0)
+    assert activities_match(_BASE, 0.0, two_min_later, 0.0) is False
+    within_window = datetime(2024, 4, 1, 6, 0, 30)
+    assert activities_match(_BASE, 0.0, within_window, 0.0) is True
+
+
 def test_activities_match_requires_both_starts():
     assert activities_match(None, 100.0, _BASE, 100.0) is False
     assert activities_match(_BASE, 100.0, None, 100.0) is False

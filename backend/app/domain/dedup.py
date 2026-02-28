@@ -35,6 +35,11 @@ _DURATION_BUCKET_S = 30.0
 _START_TOLERANCE_S = 180.0
 _DISTANCE_ABS_TOL_M = 250.0
 _DISTANCE_REL_TOL = 0.05
+# Distance-less activities (strength, yoga, ...) have no distance to disambiguate
+# them, so start time is the only signal. A much tighter window avoids collapsing
+# two genuinely distinct back-to-back sessions while still matching the same
+# recording across providers, which shares a near-identical start instant.
+_DISTANCELESS_START_TOLERANCE_S = 60.0
 
 
 def compute_dedup_key(
@@ -74,14 +79,20 @@ def activities_match(
     ensure both activities already share the same broad ``activity_type``.
 
     Distance-less activities (e.g. strength training, where both distances are
-    ``0``) match on start time alone, which is correct: two same-sport sessions
-    cannot start within a few minutes of each other unless they are the same one.
+    ``0``) match on start time alone, but with a tighter window than distance-based
+    ones: without a distance to disambiguate them, only a near-identical start
+    should be treated as the same recording, so two distinct back-to-back sessions
+    are not collapsed.
     """
     if start_a is None or start_b is None:
         return False
-    if abs((start_a - start_b).total_seconds()) > _START_TOLERANCE_S:
-        return False
     da = distance_a or 0.0
     db = distance_b or 0.0
+    distanceless = da <= 0.0 and db <= 0.0
+    start_tolerance = _DISTANCELESS_START_TOLERANCE_S if distanceless else _START_TOLERANCE_S
+    if abs((start_a - start_b).total_seconds()) > start_tolerance:
+        return False
+    if distanceless:
+        return True
     tolerance = max(_DISTANCE_ABS_TOL_M, _DISTANCE_REL_TOL * max(da, db))
     return abs(da - db) <= tolerance
