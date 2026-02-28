@@ -47,7 +47,10 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
             and response.status_code == 200
             and request.url.path.startswith(_CACHEABLE_PREFIXES)
         ):
-            response.headers.setdefault("Cache-Control", f"public, max-age={_CACHE_MAX_AGE}")
+            # private: these responses are athlete-scoped, so only the browser
+            # may cache them - never a shared/proxy cache that could serve one
+            # athlete's data to another.
+            response.headers.setdefault("Cache-Control", f"private, max-age={_CACHE_MAX_AGE}")
         return response
 
 
