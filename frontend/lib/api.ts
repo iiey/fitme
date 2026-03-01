@@ -156,6 +156,14 @@ export interface ActivityFilters {
   end?: string
   distance_min?: number
   distance_max?: number
+  time_min?: number
+  time_max?: number
+  speed_min?: number
+  speed_max?: number
+  elevation_min?: number
+  elevation_max?: number
+  hr_min?: number
+  hr_max?: number
 }
 
 export function useActivities(athleteId: string | null, filters: ActivityFilters) {

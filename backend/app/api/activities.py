@@ -48,6 +48,14 @@ def list_activities(
     end: datetime | None = None,
     distance_min: float | None = Query(default=None, description="Min distance in km"),
     distance_max: float | None = Query(default=None, description="Max distance in km"),
+    time_min: float | None = Query(default=None, description="Min moving time in minutes"),
+    time_max: float | None = Query(default=None, description="Max moving time in minutes"),
+    speed_min: float | None = Query(default=None, description="Min average speed in km/h"),
+    speed_max: float | None = Query(default=None, description="Max average speed in km/h"),
+    elevation_min: float | None = Query(default=None, description="Min elevation gain in m"),
+    elevation_max: float | None = Query(default=None, description="Max elevation gain in m"),
+    hr_min: int | None = Query(default=None, description="Min average heart rate in bpm"),
+    hr_max: int | None = Query(default=None, description="Max average heart rate in bpm"),
     search: str | None = None,
     sort: str = "start_date_time",
     order: str = "desc",
@@ -74,6 +82,16 @@ def list_activities(
         "sport_or_name_terms": [(term.sport_types, term.token) for term in parsed.sport_terms],
         "distance_min_m": distance_min * 1000 if distance_min is not None else None,
         "distance_max_m": distance_max * 1000 if distance_max is not None else None,
+        "moving_time_min_s": time_min * 60 if time_min is not None else None,
+        "moving_time_max_s": time_max * 60 if time_max is not None else None,
+        # Speed is filtered in m/s; the API takes km/h (the frontend converts
+        # pace or speed inputs to a km/h range before sending).
+        "speed_min_ms": speed_min / 3.6 if speed_min is not None else None,
+        "speed_max_ms": speed_max / 3.6 if speed_max is not None else None,
+        "elevation_min_m": elevation_min,
+        "elevation_max_m": elevation_max,
+        "hr_min": hr_min,
+        "hr_max": hr_max,
     }
 
     total = repository.count_activities(db, athlete_id, **filters)

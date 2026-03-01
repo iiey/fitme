@@ -5,6 +5,8 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 
+import { PaceFilter } from "@/components/activities/PaceFilter"
+import { RangeFilter } from "@/components/activities/RangeFilter"
 import { type Column, DataTable } from "@/components/ui/DataTable"
 import { SportFilter } from "@/components/ui/SportFilter"
 import { ErrorState, Spinner } from "@/components/ui/States"
@@ -36,9 +38,6 @@ export default function ActivitiesPage() {
   const [showDateFilter, setShowDateFilter] = useState(
     () => !!(searchParams.get("from") || searchParams.get("to")),
   )
-  const [showDistanceFilter, setShowDistanceFilter] = useState(
-    () => !!(searchParams.get("dmin") || searchParams.get("dmax")),
-  )
 
   // Multi-select for bulk deletion. Selection is keyed by activity id so it
   // survives re-sorts and pagination, and is cleared on leaving select mode.
@@ -57,11 +56,28 @@ export default function ActivitiesPage() {
   const dateTo = get("to", "")
   const distMin = get("dmin", "")
   const distMax = get("dmax", "")
+  const timeMin = get("tmin", "")
+  const timeMax = get("tmax", "")
+  const spdMin = get("spdmin", "")
+  const spdMax = get("spdmax", "")
+  const elevMin = get("emin", "")
+  const elevMax = get("emax", "")
+  const hrMin = get("hrmin", "")
+  const hrMax = get("hrmax", "")
 
   const sportTypes =
     sportParam === "" ? defaultSports : sportParam === "all" ? [] : sportParam.split(",")
   const pageSize = Math.max(1, parseInt(pageSizeStr, 10) || parseInt(DEFAULT_PAGE_SIZE, 10))
   const page = Math.max(0, parseInt(pageStr, 10) || 0)
+
+  // Pace is shown as min/km only when every selected sport is a run/walk type
+  // (mirrors the backend's pace-unit rule); otherwise the filter shows speed.
+  const paceMode =
+    sportTypes.length > 0 &&
+    sportTypes.every((value) => {
+      const activityType = meta?.sport_types.find((option) => option.value === value)?.activity_type
+      return activityType === "Run" || activityType === "Walk"
+    })
 
   const { data, error, isLoading } = useActivities(athleteId, {
     search: debouncedSearch || undefined,
@@ -74,6 +90,14 @@ export default function ActivitiesPage() {
     end: dateTo || undefined,
     distance_min: distMin ? parseFloat(distMin) : undefined,
     distance_max: distMax ? parseFloat(distMax) : undefined,
+    time_min: timeMin ? parseFloat(timeMin) : undefined,
+    time_max: timeMax ? parseFloat(timeMax) : undefined,
+    speed_min: spdMin ? parseFloat(spdMin) : undefined,
+    speed_max: spdMax ? parseFloat(spdMax) : undefined,
+    elevation_min: elevMin ? parseFloat(elevMin) : undefined,
+    elevation_max: elevMax ? parseFloat(elevMax) : undefined,
+    hr_min: hrMin ? parseInt(hrMin, 10) : undefined,
+    hr_max: hrMax ? parseInt(hrMax, 10) : undefined,
   })
 
   const distanceUnit = meta?.distance_unit ?? "km"
@@ -116,11 +140,6 @@ export default function ActivitiesPage() {
   const clearDates = () => {
     set({ from: "", to: "", page: "" })
     setShowDateFilter(false)
-  }
-
-  const clearDistance = () => {
-    set({ dmin: "", dmax: "", page: "" })
-    setShowDistanceFilter(false)
   }
 
   const columns: Column<ActivitySummary>[] = [
@@ -188,7 +207,6 @@ export default function ActivitiesPage() {
   const total = data?.total ?? 0
   const totalPages = Math.ceil(total / pageSize)
   const hasDateFilter = dateFrom || dateTo
-  const hasDistanceFilter = distMin || distMax
 
   const rows = data?.items ?? []
   const selectedCount = selectedIds.size
@@ -293,8 +311,8 @@ export default function ActivitiesPage() {
       </div>
 
       {/* Filters */}
-      <div className="card space-y-3 p-4">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="card p-4">
+        <div className="flex flex-wrap items-start gap-3">
           {/* Sport type */}
           <SportFilter
             options={meta?.sport_types ?? []}
@@ -302,186 +320,161 @@ export default function ActivitiesPage() {
             onChange={(next) => set({ sport: next.length ? next.join(",") : "all", page: "" })}
           />
 
-          {/* Date filter toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              if (showDateFilter && hasDateFilter) {
-                clearDates()
-              } else {
-                setShowDateFilter(!showDateFilter)
-              }
-            }}
-            className={`inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
-              hasDateFilter
-                ? "border-brand bg-brand/10 text-brand"
-                : showDateFilter
-                  ? "border-gray-400 text-gray-700"
-                  : "border-gray-300 text-gray-600 hover:border-gray-400"
-            }`}
-          >
-            Date
-            {hasDateFilter && <X className="h-3.5 w-3.5" />}
-          </button>
+          {/* Date - kept page-managed (date pickers differ from numeric ranges) */}
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (showDateFilter && hasDateFilter) {
+                  clearDates()
+                } else {
+                  setShowDateFilter(!showDateFilter)
+                }
+              }}
+              className={`inline-flex items-center gap-1 self-start rounded-lg border px-3 py-2 text-sm transition-colors ${
+                hasDateFilter
+                  ? "border-brand bg-brand/10 text-brand"
+                  : showDateFilter
+                    ? "border-gray-400 text-gray-700 dark:text-gray-200"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+              }`}
+            >
+              Date
+              {hasDateFilter && <X className="h-3.5 w-3.5" />}
+            </button>
 
-          {/* Distance filter toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              if (showDistanceFilter && hasDistanceFilter) {
-                clearDistance()
-              } else {
-                setShowDistanceFilter(!showDistanceFilter)
-              }
-            }}
-            className={`inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm transition-colors ${
-              hasDistanceFilter
-                ? "border-brand bg-brand/10 text-brand"
-                : showDistanceFilter
-                  ? "border-gray-400 text-gray-700"
-                  : "border-gray-300 text-gray-600 hover:border-gray-400"
-            }`}
-          >
-            Distance
-            {hasDistanceFilter && <X className="h-3.5 w-3.5" />}
-          </button>
-
-          {/* Date inputs - shown when expanded */}
-          {showDateFilter && (
-            <>
-              <div className="flex items-center gap-1.5">
-                <label htmlFor="filter-date-from" className="text-xs text-gray-500">
-                  From
-                </label>
-                <input
-                  id="filter-date-from"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(event) => set({ from: event.target.value, page: "" })}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
-                />
+            {showDateFilter && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 p-2 dark:border-gray-700">
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="filter-date-from" className="text-xs text-gray-500">
+                    From
+                  </label>
+                  <input
+                    id="filter-date-from"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(event) => set({ from: event.target.value, page: "" })}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none dark:border-gray-700 dark:bg-surface"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="filter-date-to" className="text-xs text-gray-500">
+                    To
+                  </label>
+                  <input
+                    id="filter-date-to"
+                    type="date"
+                    value={dateTo}
+                    onChange={(event) => set({ to: event.target.value, page: "" })}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none dark:border-gray-700 dark:bg-surface"
+                  />
+                </div>
+                {[
+                  { key: "this-month", label: "This month" },
+                  { key: "last-month", label: "Last month" },
+                  { key: "last-30", label: "Last 30 days" },
+                  { key: "last-90", label: "Last 90 days" },
+                  { key: "this-year", label: "This year" },
+                ].map((p) => (
+                  <button
+                    type="button"
+                    key={p.key}
+                    onClick={() => setDatePreset(p.key)}
+                    className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 transition-colors hover:border-brand hover:text-brand"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+                {hasDateFilter && (
+                  <button
+                    type="button"
+                    onClick={clearDates}
+                    className="text-sm text-brand hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
+            )}
+          </div>
 
-              <div className="flex items-center gap-1.5">
-                <label htmlFor="filter-date-to" className="text-xs text-gray-500">
-                  To
-                </label>
-                <input
-                  id="filter-date-to"
-                  type="date"
-                  value={dateTo}
-                  onChange={(event) => set({ to: event.target.value, page: "" })}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
-                />
-              </div>
+          {/* Distance */}
+          <RangeFilter
+            label="Distance"
+            unit={distanceUnit}
+            min={distMin}
+            max={distMax}
+            presets={[
+              { label: "5+", min: "5" },
+              { label: "10+", min: "10" },
+              { label: "HM+", min: "21" },
+              { label: "M+", min: "42" },
+              { label: "<5", max: "5" },
+              { label: "5–10", min: "5", max: "10" },
+            ]}
+            onChange={(min, max) => set({ dmin: min, dmax: max, page: "" })}
+            onClear={() => set({ dmin: "", dmax: "", page: "" })}
+          />
 
-              {hasDateFilter && (
-                <button
-                  type="button"
-                  onClick={clearDates}
-                  className="text-sm text-brand hover:underline"
-                >
-                  Clear dates
-                </button>
-              )}
-            </>
-          )}
+          {/* Time (minutes) */}
+          <RangeFilter
+            label="Time"
+            unit="min"
+            step="1"
+            min={timeMin}
+            max={timeMax}
+            presets={[
+              { label: "<30", max: "30" },
+              { label: "30–60", min: "30", max: "60" },
+              { label: "1–2h", min: "60", max: "120" },
+              { label: "2h+", min: "120" },
+            ]}
+            onChange={(min, max) => set({ tmin: min, tmax: max, page: "" })}
+            onClear={() => set({ tmin: "", tmax: "", page: "" })}
+          />
 
-          {/* Distance inputs - shown when expanded */}
-          {showDistanceFilter && (
-            <>
-              <div className="flex items-center gap-1.5">
-                <label htmlFor="filter-dist-min" className="text-xs text-gray-500">
-                  Min
-                </label>
-                <input
-                  id="filter-dist-min"
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="0"
-                  value={distMin}
-                  onChange={(event) => set({ dmin: event.target.value, page: "" })}
-                  className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
-                />
-                <span className="text-xs text-gray-400">{distanceUnit}</span>
-              </div>
+          {/* Pace / Speed (sport-aware) */}
+          <PaceFilter
+            mode={paceMode ? "pace" : "speed"}
+            distanceUnit={distanceUnit}
+            speedMin={spdMin}
+            speedMax={spdMax}
+            onChange={(min, max) => set({ spdmin: min, spdmax: max, page: "" })}
+            onClear={() => set({ spdmin: "", spdmax: "", page: "" })}
+          />
 
-              <div className="flex items-center gap-1.5">
-                <label htmlFor="filter-dist-max" className="text-xs text-gray-500">
-                  Max
-                </label>
-                <input
-                  id="filter-dist-max"
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="∞"
-                  value={distMax}
-                  onChange={(event) => set({ dmax: event.target.value, page: "" })}
-                  className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
-                />
-                <span className="text-xs text-gray-400">{distanceUnit}</span>
-              </div>
+          {/* Elevation (m) */}
+          <RangeFilter
+            label="Elevation"
+            unit="m"
+            step="1"
+            min={elevMin}
+            max={elevMax}
+            presets={[
+              { label: "Flat <100", max: "100" },
+              { label: "500+", min: "500" },
+              { label: "1000+", min: "1000" },
+            ]}
+            onChange={(min, max) => set({ emin: min, emax: max, page: "" })}
+            onClear={() => set({ emin: "", emax: "", page: "" })}
+          />
 
-              {hasDistanceFilter && (
-                <button
-                  type="button"
-                  onClick={clearDistance}
-                  className="text-sm text-brand hover:underline"
-                >
-                  Clear
-                </button>
-              )}
-            </>
-          )}
+          {/* Heart rate (bpm) */}
+          <RangeFilter
+            label="HR"
+            unit="bpm"
+            step="1"
+            min={hrMin}
+            max={hrMax}
+            presets={[
+              { label: "<120", max: "120" },
+              { label: "120–150", min: "120", max: "150" },
+              { label: "150+", min: "150" },
+            ]}
+            onChange={(min, max) => set({ hrmin: min, hrmax: max, page: "" })}
+            onClear={() => set({ hrmin: "", hrmax: "", page: "" })}
+          />
         </div>
-
-        {/* Date presets - shown when expanded */}
-        {showDateFilter && (
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "this-month", label: "This month" },
-              { key: "last-month", label: "Last month" },
-              { key: "last-30", label: "Last 30 days" },
-              { key: "last-90", label: "Last 90 days" },
-              { key: "this-year", label: "This year" },
-            ].map((p) => (
-              <button
-                type="button"
-                key={p.key}
-                onClick={() => setDatePreset(p.key)}
-                className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:border-brand hover:text-brand transition-colors"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Distance presets - shown when expanded */}
-        {showDistanceFilter && (
-          <div className="flex flex-wrap gap-2">
-            {[
-              { min: "5", max: "", label: "5+ km" },
-              { min: "10", max: "", label: "10+ km" },
-              { min: "21", max: "", label: "Half marathon+" },
-              { min: "42", max: "", label: "Marathon+" },
-              { min: "", max: "5", label: "Under 5 km" },
-              { min: "5", max: "10", label: "5–10 km" },
-              { min: "10", max: "21", label: "10–21 km" },
-            ].map((p) => (
-              <button
-                type="button"
-                key={p.label}
-                onClick={() => set({ dmin: p.min, dmax: p.max, page: "" })}
-                className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:border-brand hover:text-brand transition-colors"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Table */}

@@ -21,6 +21,14 @@ def list_activities(
     sport_or_name_terms: list[tuple[list[str], str]] | None = None,
     distance_min_m: float | None = None,
     distance_max_m: float | None = None,
+    moving_time_min_s: float | None = None,
+    moving_time_max_s: float | None = None,
+    speed_min_ms: float | None = None,
+    speed_max_ms: float | None = None,
+    elevation_min_m: float | None = None,
+    elevation_max_m: float | None = None,
+    hr_min: int | None = None,
+    hr_max: int | None = None,
     order_by: str = "start_date_time",
     descending: bool = True,
     limit: int | None = None,
@@ -38,6 +46,14 @@ def list_activities(
         sport_or_name_terms=sport_or_name_terms,
         distance_min_m=distance_min_m,
         distance_max_m=distance_max_m,
+        moving_time_min_s=moving_time_min_s,
+        moving_time_max_s=moving_time_max_s,
+        speed_min_ms=speed_min_ms,
+        speed_max_ms=speed_max_ms,
+        elevation_min_m=elevation_min_m,
+        elevation_max_m=elevation_max_m,
+        hr_min=hr_min,
+        hr_max=hr_max,
     )
 
     sort_column = getattr(Activity, order_by, Activity.start_date_time)
@@ -68,6 +84,14 @@ def count_activities(
     sport_or_name_terms: list[tuple[list[str], str]] | None = None,
     distance_min_m: float | None = None,
     distance_max_m: float | None = None,
+    moving_time_min_s: float | None = None,
+    moving_time_max_s: float | None = None,
+    speed_min_ms: float | None = None,
+    speed_max_ms: float | None = None,
+    elevation_min_m: float | None = None,
+    elevation_max_m: float | None = None,
+    hr_min: int | None = None,
+    hr_max: int | None = None,
 ) -> int:
     stmt = select(func.count()).select_from(Activity).where(Activity.athlete_id == athlete_id)
     stmt = _apply_filters(
@@ -81,6 +105,14 @@ def count_activities(
         sport_or_name_terms=sport_or_name_terms,
         distance_min_m=distance_min_m,
         distance_max_m=distance_max_m,
+        moving_time_min_s=moving_time_min_s,
+        moving_time_max_s=moving_time_max_s,
+        speed_min_ms=speed_min_ms,
+        speed_max_ms=speed_max_ms,
+        elevation_min_m=elevation_min_m,
+        elevation_max_m=elevation_max_m,
+        hr_min=hr_min,
+        hr_max=hr_max,
     )
     return db.execute(stmt).scalar_one()
 
@@ -393,6 +425,14 @@ def _apply_filters(
     sport_or_name_terms=None,
     distance_min_m=None,
     distance_max_m=None,
+    moving_time_min_s=None,
+    moving_time_max_s=None,
+    speed_min_ms=None,
+    speed_max_ms=None,
+    elevation_min_m=None,
+    elevation_max_m=None,
+    hr_min=None,
+    hr_max=None,
 ):
     if sport_types:
         stmt = stmt.where(Activity.sport_type.in_(sport_types))
@@ -409,6 +449,22 @@ def _apply_filters(
         stmt = stmt.where(Activity.distance_m >= distance_min_m)
     if distance_max_m is not None:
         stmt = stmt.where(Activity.distance_m <= distance_max_m)
+    if moving_time_min_s is not None:
+        stmt = stmt.where(Activity.moving_time_s >= moving_time_min_s)
+    if moving_time_max_s is not None:
+        stmt = stmt.where(Activity.moving_time_s <= moving_time_max_s)
+    if speed_min_ms is not None:
+        stmt = stmt.where(Activity.average_speed_ms >= speed_min_ms)
+    if speed_max_ms is not None:
+        stmt = stmt.where(Activity.average_speed_ms <= speed_max_ms)
+    if elevation_min_m is not None:
+        stmt = stmt.where(Activity.elevation_m >= elevation_min_m)
+    if elevation_max_m is not None:
+        stmt = stmt.where(Activity.elevation_m <= elevation_max_m)
+    if hr_min is not None:
+        stmt = stmt.where(Activity.average_heart_rate >= hr_min)
+    if hr_max is not None:
+        stmt = stmt.where(Activity.average_heart_rate <= hr_max)
     if search:
         stmt = stmt.where(Activity.name.ilike(f"%{search}%"))
     for term in name_terms or []:
