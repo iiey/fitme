@@ -16,6 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+from app.timeutil import utcnow
 from app.types import CompressedJSON
 
 
@@ -88,10 +89,8 @@ class Activity(Base):
     # Fingerprint of the source row/file used for idempotent re-imports.
     source_hash: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_on: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
     __table_args__ = (
         Index("ix_activity_type_start", "activity_type", "start_date_time"),
@@ -118,7 +117,7 @@ class ActivityStream(Base):
     activity_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     stream_type: Mapped[str] = mapped_column(String, primary_key=True)
     data: Mapped[list] = mapped_column(CompressedJSON, default=list)
-    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class BestEffort(Base):
@@ -157,7 +156,7 @@ class ImportRun(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     athlete_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     source: Mapped[str] = mapped_column(String, default="")
     activities_added: Mapped[int] = mapped_column(Integer, default=0)
@@ -193,9 +192,7 @@ class AthleteProfile(Base):
     power_zones: Mapped[list | None] = mapped_column(JSON, nullable=True)
     pace_zones: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
-    updated_on: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class SourceIdentity(Base):
@@ -217,10 +214,8 @@ class SourceIdentity(Base):
     source_athlete_id: Mapped[str] = mapped_column(String, primary_key=True)
     # The canonical athlete these activities are stored under.
     athlete_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_on: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class Goal(Base):
@@ -235,10 +230,8 @@ class Goal(Base):
     metric: Mapped[str] = mapped_column(String, nullable=False)
     target_value: Mapped[float] = mapped_column(Float, nullable=False)
     note: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_on: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
     # Sports this goal counts toward. An empty collection means "all sports".
     # Loaded eagerly so ``sport_types`` is always available without an extra
@@ -307,7 +300,5 @@ class SyncConfig(Base):
     # startup. Gates the once-per-day startup sync so repeated restarts on the
     # same day do not start it again. Independent of manual triggers.
     last_auto_sync_on: Mapped[date | None] = mapped_column(Date, nullable=True)
-    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_on: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)

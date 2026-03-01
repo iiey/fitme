@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,7 @@ from app.domain import stats, training_load
 from app.domain.streams_analysis import time_in_hr_zones, time_in_pace_zones
 from app.enums import StreamType
 from app.models import Activity
+from app.timeutil import utcnow
 
 # This module is the ONLY place the coach reads core data. Tools call these
 # helpers, so a change to a core repository/domain signature is absorbed here
@@ -69,7 +70,7 @@ def activity_details(db: Session, athlete_id: str, activity_id: str) -> dict | N
 
 def training_load_summary(db: Session, athlete_id: str, athlete: AthleteConfig) -> dict:
     activities = repository.all_activities(db, athlete_id)
-    analysis = training_load.training_load_analysis(activities, athlete, datetime.utcnow().date())
+    analysis = training_load.training_load_analysis(activities, athlete, utcnow().date())
     keys = (
         "ctl",
         "atl",
@@ -220,7 +221,7 @@ def intensity_distribution(
     if not hr_bounds:
         return None
     days = max(1, min(days, _INTENSITY_WINDOW_MAX_DAYS))
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = utcnow() - timedelta(days=days)
     activities = [
         a
         for a in repository.all_activities(db, athlete_id)

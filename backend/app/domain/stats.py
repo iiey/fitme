@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from app.models import Activity
+from app.timeutil import utcnow
 
 WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -156,7 +157,7 @@ def current_daily_streak(
     active_days = {a.start_date_time.date() for a in activities}
     if not active_days:
         return None
-    today = reference or datetime.utcnow().date()
+    today = reference or utcnow().date()
     cursor = today if today in active_days else today - timedelta(days=1)
     if cursor not in active_days:
         return None

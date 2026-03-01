@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -18,6 +17,7 @@ from app.ingestion.garmin import GarminExportReader, is_garmin_export
 from app.ingestion.importer import import_export
 from app.models import AthleteProfile, ImportRun, SourceIdentity
 from app.schemas import ImportPreview, ImportRequest, ImportRunStatus
+from app.timeutil import utcnow
 
 logger = logging.getLogger("fitme.import")
 
@@ -173,7 +173,7 @@ def _store_upload(file: UploadFile) -> Path:
 
     uploads_dir = settings.storage_dir / "uploads"
     uploads_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    timestamp = utcnow().strftime("%Y%m%d-%H%M%S")
     target = uploads_dir / f"{timestamp}-{Path(filename).name}"
 
     size = 0

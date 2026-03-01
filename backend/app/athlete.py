@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from statistics import median
 
 from pydantic import BaseModel, Field
@@ -11,6 +11,7 @@ from app.domain.threshold import (
     MIN_THRESHOLD_PACE_S_KM,
     threshold_pace_from_best_efforts,
 )
+from app.timeutil import utcnow
 
 _DB_FIELDS = (
     "birthday",
@@ -51,7 +52,7 @@ class AthleteConfig(BaseModel):
     def age(self) -> int | None:
         if self.birthday is None:
             return None
-        today = datetime.utcnow().date()
+        today = utcnow().date()
         return (
             today.year
             - self.birthday.year

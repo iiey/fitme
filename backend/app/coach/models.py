@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.coach.config import CONFIG_ID
 from app.coach.db import CoachBase
+from app.timeutil import utcnow
 
 
 class CoachConfig(CoachBase):
@@ -30,9 +31,7 @@ class CoachConfig(CoachBase):
     # Result of the last verification ("ok" | "error" | None).
     last_status: Mapped[str | None] = mapped_column(String, nullable=True)
     last_message: Mapped[str | None] = mapped_column(String, nullable=True)
-    updated_on: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class CoachSession(CoachBase):
@@ -43,10 +42,8 @@ class CoachSession(CoachBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     athlete_id: Mapped[str] = mapped_column(String, index=True, nullable=False)
     title: Mapped[str] = mapped_column(String, default="New chat")
-    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_on: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class CoachMessage(CoachBase):
@@ -61,7 +58,7 @@ class CoachMessage(CoachBase):
     # "user" or "assistant".
     role: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(Text, default="")
-    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class CoachMemory(CoachBase):
@@ -74,4 +71,4 @@ class CoachMemory(CoachBase):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     # Provenance only (no FK, so deleting a session never removes memory).
     source_session_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_on: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_on: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

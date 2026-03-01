@@ -45,6 +45,7 @@ from app.ingestion.upsert import (
     upsert_activity,
 )
 from app.models import Activity, SourceIdentity, SyncConfig
+from app.timeutil import utcnow
 
 logger = logging.getLogger("fitme.sync")
 
@@ -103,7 +104,7 @@ def sync(
         client = IntervalsClient(config.api_key, config.icu_athlete_id)
     try:
         summary = _run_sync(db, config, client, full_resync=full_resync, since=since, until=until)
-        config.last_run_at = datetime.utcnow()
+        config.last_run_at = utcnow()
         config.last_status = "ok"
         config.last_message = json.dumps(summary.as_dict())
         db.add(config)
@@ -238,7 +239,7 @@ def _resolve_range(
     (the whole history) unless bounded by an explicit ``since``/``until``
     window; both are ignored for an incremental sync.
     """
-    now = datetime.utcnow()
+    now = utcnow()
     default_newest = (now + timedelta(days=1)).date()
     if full_resync:
         return since or FULL_RESYNC_EPOCH, until or default_newest
@@ -309,7 +310,7 @@ def _mark_failed(db: Session, config: SyncConfig, exc: Exception) -> None:
     try:
         db.rollback()
         config = db.get(SyncConfig, config.provider) or config
-        config.last_run_at = datetime.utcnow()
+        config.last_run_at = utcnow()
         config.last_status = "error"
         config.last_message = json.dumps({"error": str(exc)})
         db.add(config)

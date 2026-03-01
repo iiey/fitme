@@ -38,6 +38,7 @@ from app.ingestion.parsed import (
     summarize_streams,
 )
 from app.models import Activity, ActivityStream, BestEffort
+from app.timeutil import utcnow
 
 # Bound the number of stored stream samples and polyline points per activity.
 MAX_STREAM_SAMPLES = 2000
@@ -145,7 +146,7 @@ def canonical_metrics(row: CsvActivityRow, parsed: ParsedActivityFile | None) ->
         (parsed.start_time_local if parsed else None)
         or row.parsed_date()
         or (parsed.start_time if parsed else None)
-        or datetime.utcnow()
+        or utcnow()
     )
 
     # A stable UTC start drives cross-source de-duplication: a recorded file's

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import date, datetime
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -31,6 +31,7 @@ from app.schemas import (
     SyncStatusResponse,
     SyncTriggerRequest,
 )
+from app.timeutil import utcnow
 
 logger = logging.getLogger("fitme.sync")
 
@@ -151,7 +152,7 @@ def _run_sync_job(
         if config is not None:
             sync(db, config, full_resync=full_resync, since=since, until=until)
             if stamp_auto_date:
-                config.last_auto_sync_on = datetime.utcnow().date()
+                config.last_auto_sync_on = utcnow().date()
                 db.add(config)
                 db.commit()
     except Exception:
@@ -190,7 +191,7 @@ def _start_daily_sync() -> None:
             logger.info("Startup sync skipped: Intervals.icu sync is not configured.")
             return
 
-        today = datetime.utcnow().date()
+        today = utcnow().date()
         if config.last_auto_sync_on == today:
             logger.info("Startup sync skipped: already synced today.")
             return
@@ -206,7 +207,7 @@ def _start_daily_sync() -> None:
             # reflects it immediately. The daily marker is stamped by the worker
             # only on success, so a failed run retries on the next app start.
             config.last_status = "running"
-            config.last_run_at = datetime.utcnow()
+            config.last_run_at = utcnow()
             db.add(config)
             db.commit()
             threading.Thread(
@@ -250,7 +251,7 @@ def trigger_sync(
         full_resync = True
     # Mark running up-front so the status endpoint reflects it immediately.
     config.last_status = "running"
-    config.last_run_at = datetime.utcnow()
+    config.last_run_at = utcnow()
     db.add(config)
     db.commit()
 

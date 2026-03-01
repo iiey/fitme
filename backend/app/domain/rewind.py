@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import calendar as _calendar
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from app.domain.best_efforts import DISTANCE_LABELS
 from app.domain.stats import longest_daily_streak, totals_per_sport_type
 from app.domain.units import distance_for_unit, distance_unit_label
 from app.enums import ActivityType, SportType
 from app.models import Activity, BestEffort
+from app.timeutil import utcnow
 
 # Fun-equivalent constants.
 KCAL_PER_PIZZA_SLICE = 285
@@ -31,7 +32,7 @@ def _filter_year(activities: list[Activity], year: int | None) -> list[Activity]
 
 
 def _filter_days(activities: list[Activity], days: int) -> list[Activity]:
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = utcnow() - timedelta(days=days)
     return [a for a in activities if a.start_date_time >= cutoff]
 
 
@@ -227,7 +228,7 @@ def _active_vs_rest(
     elif year is None:
         total_days = (max(active_days) - min(active_days)).days + 1 if active_days else 0
     else:
-        today = datetime.utcnow().date()
+        today = utcnow().date()
         end = min(date(year, 12, 31), today) if year == today.year else date(year, 12, 31)
         total_days = (end - date(year, 1, 1)).days + 1
     return {

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.coach.models import CoachConfig, CoachMemory, CoachMessage, CoachSession
+from app.timeutil import utcnow
 
 # Titles are derived from the first user message, trimmed to this length.
 _TITLE_MAX_LEN = 48
@@ -101,7 +100,7 @@ def add_message(db: Session, session_id: int, role: str, content: str) -> CoachM
     # Bump the session so it sorts to the top of the recents list.
     session = db.get(CoachSession, session_id)
     if session is not None:
-        session.updated_on = datetime.utcnow()
+        session.updated_on = utcnow()
     db.commit()
     db.refresh(message)
     return message

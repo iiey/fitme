@@ -4,7 +4,6 @@ import json
 import logging
 from collections import defaultdict
 from dataclasses import asdict, dataclass
-from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import select
@@ -30,6 +29,7 @@ from app.models import (
     ImportRun,
     SourceIdentity,
 )
+from app.timeutil import utcnow
 
 logger = logging.getLogger("fitme.import")
 
@@ -209,7 +209,7 @@ def import_export(
                     db.commit()
 
             summary.gear_upserted = _upsert_gear(db, gear_accumulator)
-            run.finished_at = datetime.utcnow()
+            run.finished_at = utcnow()
             run.status = "ok"
             _update_run(run, summary, processed=total, total=total)
             db.commit()
@@ -254,7 +254,7 @@ def _mark_run_failed(db: Session, run: ImportRun, exc: Exception) -> None:
         if run.id is not None:
             run = db.get(ImportRun, run.id) or run
         run.status = "error"
-        run.finished_at = datetime.utcnow()
+        run.finished_at = utcnow()
         run.message = json.dumps({"error": str(exc)})
         db.add(run)
         db.commit()
