@@ -3,7 +3,7 @@
 import { X } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { type Column, DataTable } from "@/components/ui/DataTable"
 import { SportFilter } from "@/components/ui/SportFilter"
@@ -26,6 +26,13 @@ export default function ActivitiesPage() {
   const { defaultSports } = useDefaultSports()
 
   const [search, setSearch] = useState(searchParams.get("search") ?? "")
+  // Debounce the query that drives fetching so typing issues one request after
+  // the user pauses, not one per keystroke. The input stays bound to `search`.
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(id)
+  }, [search])
   const [showDateFilter, setShowDateFilter] = useState(
     () => !!(searchParams.get("from") || searchParams.get("to")),
   )
@@ -51,7 +58,7 @@ export default function ActivitiesPage() {
   const page = Math.max(0, parseInt(pageStr, 10) || 0)
 
   const { data, error, isLoading } = useActivities(athleteId, {
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     sport_type: sportTypes.length ? sportTypes : undefined,
     sort,
     order: order as "asc" | "desc",
