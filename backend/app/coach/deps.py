@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
@@ -29,6 +30,11 @@ class CoachDeps:
     athlete_id: str
     athlete: AthleteConfig
     view: CoachView
+    # Serializes DB access from the function tools. Pydantic AI runs sync tools
+    # in worker threads and may dispatch several from a single model turn
+    # concurrently; the two shared Sessions (and their SQLite connections) are
+    # not thread-safe, so tools hold this lock while touching the database.
+    db_lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
     memory: list[str] = field(default_factory=list)
     session_id: int | None = None
     # Resolved instructions for a skill picked from the chat "/" menu, injected

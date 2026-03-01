@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import functools
+from collections.abc import Callable
+from typing import TypeVar
+
 from pydantic_ai import RunContext
 
 from app.coach import data_access, store
@@ -9,6 +13,26 @@ from app.coach.deps import CoachDeps
 # to read one aspect of the athlete's real data. (These are not "skills" - skills
 # are rule/instruction sets defined in markdown.) Docstrings are sent to the model
 # as the tool description, so they are written for the model to read.
+
+T = TypeVar("T")
+
+
+def _serialized(tool: Callable[..., T]) -> Callable[..., T]:
+    """Hold the per-run DB lock while a tool runs.
+
+    Pydantic AI runs these sync tools in worker threads and may dispatch several
+    from one model turn concurrently. The Sessions in ``deps`` are not
+    thread-safe, so we serialize tool execution to avoid concurrent use of the
+    same SQLite connection. ``functools.wraps`` preserves the signature and
+    docstring Pydantic AI uses to describe the tool to the model.
+    """
+
+    @functools.wraps(tool)
+    def wrapper(ctx: RunContext[CoachDeps], *args: object, **kwargs: object) -> T:
+        with ctx.deps.db_lock:
+            return tool(ctx, *args, **kwargs)
+
+    return wrapper
 
 
 def get_recent_activities(ctx: RunContext[CoachDeps], limit: int = 10) -> list[dict]:
@@ -138,18 +162,22 @@ def remember(ctx: RunContext[CoachDeps], fact: str) -> str:
     return f"Saved to memory: {text}"
 
 
-# Registered on the agent in agent.py.
+# Registered on the agent in agent.py. Each is wrapped so its DB access is
+# serialized against concurrent tool calls in the same model turn.
 FUNCTION_TOOLS = [
-    get_recent_activities,
-    get_activity_details,
-    get_training_load,
-    get_period_totals,
-    get_athlete_profile,
-    get_hr_zones,
-    get_pace_zones,
-    get_activity_intensity_distribution,
-    get_intensity_distribution,
-    get_best_efforts,
-    get_goals,
-    remember,
+    _serialized(tool)
+    for tool in (
+        get_recent_activities,
+        get_activity_details,
+        get_training_load,
+        get_period_totals,
+        get_athlete_profile,
+        get_hr_zones,
+        get_pace_zones,
+        get_activity_intensity_distribution,
+        get_intensity_distribution,
+        get_best_efforts,
+        get_goals,
+        remember,
+    )
 ]
