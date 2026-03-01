@@ -314,6 +314,22 @@ def test_incremental_sync_fetches_from_watermark_overlap(db_session, config):
     assert client.last_oldest == date(2024, 11, 20) - timedelta(days=OVERLAP_DAYS)
 
 
+def test_full_resync_with_window_uses_given_range(db_session, config):
+    """An explicit window bounds the full resync instead of the whole history."""
+    client = FakeClient([])
+    sync(
+        db_session,
+        config,
+        client=client,
+        full_resync=True,
+        since=date(2015, 1, 1),
+        until=date(2016, 12, 31),
+    )
+
+    assert client.last_oldest == date(2015, 1, 1)
+    assert client.last_newest == date(2016, 12, 31)
+
+
 def test_original_file_is_parsed_when_available(db_session, config):
     gpx = b"""<?xml version="1.0"?>
 <gpx xmlns="http://www.topografix.com/GPX/1/1">

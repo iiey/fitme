@@ -327,11 +327,25 @@ export async function deleteSyncConfig(): Promise<void> {
   }
 }
 
-export async function triggerSync(fullResync = false): Promise<SyncRunResult> {
+/** A bounded full-resync window. `newest` omitted means "up to now". */
+export interface ResyncWindow {
+  oldest: string // YYYY-MM-DD
+  newest?: string // YYYY-MM-DD
+}
+
+export async function triggerSync(
+  fullResync = false,
+  resyncWindow?: ResyncWindow,
+): Promise<SyncRunResult> {
+  const body: Record<string, unknown> = { full_resync: fullResync }
+  if (resyncWindow) {
+    body.oldest = resyncWindow.oldest
+    if (resyncWindow.newest) body.newest = resyncWindow.newest
+  }
   const response = await fetch("/api/sync/trigger", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ full_resync: fullResync }),
+    body: JSON.stringify(body),
   })
   if (!response.ok) {
     throw new ApiError(response.status, await readErrorDetail(response, "Could not start sync"))

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -126,7 +126,14 @@ def get_status(db: Session = Depends(get_db)) -> SyncStatusResponse:
     )
 
 
-def _run_sync_job(provider: str, full_resync: bool, *, stamp_auto_date: bool = False) -> None:
+def _run_sync_job(
+    provider: str,
+    full_resync: bool,
+    *,
+    since: date | None = None,
+    until: date | None = None,
+    stamp_auto_date: bool = False,
+) -> None:
     """Execute a sync in the background, then release the shared lock.
 
     Uses its own session (``expire_on_commit=False`` so progressively committed
@@ -142,7 +149,7 @@ def _run_sync_job(provider: str, full_resync: bool, *, stamp_auto_date: bool = F
     try:
         config = db.get(SyncConfig, provider)
         if config is not None:
-            sync(db, config, full_resync=full_resync)
+            sync(db, config, full_resync=full_resync, since=since, until=until)
             if stamp_auto_date:
                 config.last_auto_sync_on = datetime.utcnow().date()
                 db.add(config)
@@ -235,6 +242,12 @@ def trigger_sync(
         raise HTTPException(409, "An import or sync is already running.")
 
     full_resync = bool(payload and payload.full_resync)
+    since = payload.oldest if payload else None
+    until = payload.newest if payload else None
+    # A bounded window is a full resync confined to that window: re-fetch (with
+    # the unchanged-skip off) everything inside it rather than just new rows.
+    if since is not None or until is not None:
+        full_resync = True
     # Mark running up-front so the status endpoint reflects it immediately.
     config.last_status = "running"
     config.last_run_at = datetime.utcnow()
@@ -245,6 +258,7 @@ def trigger_sync(
         threading.Thread(
             target=_run_sync_job,
             args=(config.provider, full_resync),
+            kwargs={"since": since, "until": until},
             daemon=True,
         ).start()
     except Exception as exc:

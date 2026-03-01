@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class ActivitySummary(BaseModel):
@@ -214,8 +214,18 @@ class SyncConfigRequest(BaseModel):
 
 
 class SyncTriggerRequest(BaseModel):
-    # Ignore the watermark and re-scan from the athlete's earliest anchor.
+    # Ignore the watermark and re-fetch the athlete's entire history. When
+    # ``oldest``/``newest`` are given, they bound a full resync to that window
+    # (e.g. from the settings timeline slider) instead of the whole history.
     full_resync: bool = False
+    oldest: date | None = None
+    newest: date | None = None
+
+    @model_validator(mode="after")
+    def _check_window(self) -> SyncTriggerRequest:
+        if self.oldest is not None and self.newest is not None and self.oldest > self.newest:
+            raise ValueError("oldest must be on or before newest")
+        return self
 
 
 class SyncRunResult(BaseModel):

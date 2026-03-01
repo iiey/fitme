@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -109,7 +109,7 @@ def _configure_sync(
 def _patch_background(monkeypatch, session_factory, calls: list) -> None:
     """Make the background sync run inline against the test DB and record runs."""
 
-    def fake_sync(db, config, *, full_resync=False):
+    def fake_sync(db, config, *, full_resync=False, since=None, until=None):
         calls.append(full_resync)
         config.last_status = "ok"
         db.add(config)
@@ -248,8 +248,10 @@ def test_trigger_runs_sync_in_background(client: TestClient, session_factory, mo
 
     calls: dict = {}
 
-    def fake_sync(db, config, *, full_resync=False):
+    def fake_sync(db, config, *, full_resync=False, since=None, until=None):
         calls["full_resync"] = full_resync
+        calls["since"] = since
+        calls["until"] = until
         config.last_status = "ok"
         db.add(config)
         db.commit()
@@ -262,9 +264,55 @@ def test_trigger_runs_sync_in_background(client: TestClient, session_factory, mo
     response = client.post("/api/sync/trigger", json={"full_resync": True})
     assert response.status_code == 200, response.text
     assert response.json()["status"] == "ok"
-    assert calls == {"full_resync": True}
+    assert calls == {"full_resync": True, "since": None, "until": None}
 
     # The lock must have been released by the job.
+    _assert_lock_free()
+
+
+def test_trigger_passes_resync_window(client: TestClient, session_factory, monkeypatch):
+    """A posted oldest/newest window is forwarded and implies a full resync."""
+    _patch_client(monkeypatch, _OkClient)
+    client.put("/api/sync/config", json={"athlete_id": ATHLETE_ID, "api_key": "secret"})
+
+    calls: dict = {}
+
+    def fake_sync(db, config, *, full_resync=False, since=None, until=None):
+        calls["full_resync"] = full_resync
+        calls["since"] = since
+        calls["until"] = until
+        config.last_status = "ok"
+        db.add(config)
+        db.commit()
+
+    monkeypatch.setattr("app.api.sync.sync", fake_sync)
+    monkeypatch.setattr("app.api.sync.SessionLocal", session_factory)
+    monkeypatch.setattr("app.api.sync.threading.Thread", _InlineThread)
+
+    response = client.post(
+        "/api/sync/trigger",
+        json={"oldest": "2015-01-01", "newest": "2016-12-31"},
+    )
+    assert response.status_code == 200, response.text
+    # Window forwarded as dates, and a bounded window forces a full resync.
+    assert calls == {
+        "full_resync": True,
+        "since": date(2015, 1, 1),
+        "until": date(2016, 12, 31),
+    }
+    _assert_lock_free()
+
+
+def test_trigger_rejects_inverted_window(client: TestClient, session_factory, monkeypatch):
+    """oldest after newest is a validation error, not a started run."""
+    _patch_client(monkeypatch, _OkClient)
+    client.put("/api/sync/config", json={"athlete_id": ATHLETE_ID, "api_key": "secret"})
+
+    response = client.post(
+        "/api/sync/trigger",
+        json={"oldest": "2020-01-01", "newest": "2015-01-01"},
+    )
+    assert response.status_code == 422
     _assert_lock_free()
 
 

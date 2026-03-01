@@ -86,19 +86,23 @@ def sync(
     *,
     client: IntervalsClient | None = None,
     full_resync: bool = False,
+    since: date | None = None,
+    until: date | None = None,
 ) -> SyncSummary:
     """Run one sync for ``config``, recording run state on the config row.
 
-    A ``full_resync`` ignores the watermark and re-fetches the athlete's entire
-    Intervals.icu history from :data:`FULL_RESYNC_EPOCH`, for occasional
-    backfills. The supplied ``client`` (or one built from the config when
-    omitted) is only read from.
+    A ``full_resync`` ignores the watermark and re-fetches history with the
+    unchanged-skip disabled. By default it covers everything from
+    :data:`FULL_RESYNC_EPOCH`; pass ``since``/``until`` to bound it to an
+    explicit window (e.g. the settings timeline slider). ``since``/``until`` are
+    ignored for an incremental sync. The supplied ``client`` (or one built from
+    the config when omitted) is only read from.
     """
     owns_client = client is None
     if client is None:
         client = IntervalsClient(config.api_key, config.icu_athlete_id)
     try:
-        summary = _run_sync(db, config, client, full_resync=full_resync)
+        summary = _run_sync(db, config, client, full_resync=full_resync, since=since, until=until)
         config.last_run_at = datetime.utcnow()
         config.last_status = "ok"
         config.last_message = json.dumps(summary.as_dict())
@@ -119,12 +123,14 @@ def _run_sync(
     client: IntervalsClient,
     *,
     full_resync: bool,
+    since: date | None = None,
+    until: date | None = None,
 ) -> SyncSummary:
     summary = SyncSummary()
     athlete_id = config.athlete_id
     _ensure_source_identity(db, config)
 
-    oldest, newest = _resolve_range(db, config, full_resync=full_resync)
+    oldest, newest = _resolve_range(db, config, full_resync=full_resync, since=since, until=until)
     activities = client.list_activities(oldest, newest)
     summary.listed = len(activities)
 
@@ -215,28 +221,34 @@ def _run_sync(
     return summary
 
 
-def _resolve_range(db: Session, config: SyncConfig, *, full_resync: bool) -> tuple[date, date]:
+def _resolve_range(
+    db: Session,
+    config: SyncConfig,
+    *,
+    full_resync: bool,
+    since: date | None = None,
+    until: date | None = None,
+) -> tuple[date, date]:
     """Resolve the inclusive ``(oldest, newest)`` local-date range to fetch.
 
     Returned as ``date`` values because the Intervals.icu endpoint expects ISO
-    dates; returning ``datetime`` made the client emit a full timestamp.
-    ``newest`` runs a day past now so activities recorded today are always in
-    range. A ``full_resync`` re-fetches the athlete's entire Intervals.icu
-    history, so it starts at :data:`FULL_RESYNC_EPOCH` instead of anchoring on
-    existing data.
+    dates; returning ``datetime`` made the client emit a full timestamp. The
+    default ``newest`` runs a day past now so activities recorded today are
+    always in range. A ``full_resync`` re-fetches from :data:`FULL_RESYNC_EPOCH`
+    (the whole history) unless bounded by an explicit ``since``/``until``
+    window; both are ignored for an incremental sync.
     """
     now = datetime.utcnow()
-    newest = (now + timedelta(days=1)).date()
+    default_newest = (now + timedelta(days=1)).date()
     if full_resync:
-        return FULL_RESYNC_EPOCH, newest
+        return since or FULL_RESYNC_EPOCH, until or default_newest
     if config.synced_through is not None:
         anchor = config.synced_through
     else:
         anchor = _newest_existing_start(db, config.athlete_id) or (
             now - timedelta(days=DEFAULT_LOOKBACK_DAYS)
         )
-    oldest = anchor - timedelta(days=OVERLAP_DAYS)
-    return oldest.date(), newest
+    return (anchor - timedelta(days=OVERLAP_DAYS)).date(), default_newest
 
 
 def _newest_existing_start(db: Session, athlete_id: str) -> datetime | None:

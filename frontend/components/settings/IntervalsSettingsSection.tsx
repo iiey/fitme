@@ -13,8 +13,14 @@ import {
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDateTime } from "@/lib/format"
 
+import { YearRangeSlider } from "./YearRangeSlider"
+
 const INPUT_CLASS =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+// Earliest selectable full-resync year: before the GPX/TCX/FIT formats existed,
+// so the default range covers any possible activity. Mirrors the backend floor.
+const MIN_RESYNC_YEAR = 2000
+const CURRENT_YEAR = new Date().getFullYear()
 
 export function IntervalsSettingsSection() {
   const { athleteId, athletes } = useAthleteContext()
@@ -27,6 +33,9 @@ export function IntervalsSettingsSection() {
   const [apiKey, setApiKey] = useState("")
   const [icuAthleteId, setIcuAthleteId] = useState("0")
   const [enabled, setEnabled] = useState(true)
+  // Inclusive year window bounding a Full resync; defaults to the whole history.
+  const [startYear, setStartYear] = useState(MIN_RESYNC_YEAR)
+  const [endYear, setEndYear] = useState(CURRENT_YEAR)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -98,8 +107,17 @@ export function IntervalsSettingsSection() {
     setError(null)
     setNotice(null)
     try {
-      await triggerSync(fullResync)
-      setNotice(fullResync ? "Full resync started." : "Sync started.")
+      // A full resync is bounded by the year slider; an open end year extends to
+      // now (newest omitted), so the default range covers the entire history.
+      const resyncWindow = fullResync
+        ? {
+            oldest: `${startYear}-01-01`,
+            newest: endYear < CURRENT_YEAR ? `${endYear}-12-31` : undefined,
+          }
+        : undefined
+      await triggerSync(fullResync, resyncWindow)
+      const endLabel = endYear >= CURRENT_YEAR ? "now" : String(endYear)
+      setNotice(fullResync ? `Full resync started (${startYear}-${endLabel}).` : "Sync started.")
       setPolling(true)
       void mutateStatus()
     } catch (err) {
@@ -228,6 +246,27 @@ export function IntervalsSettingsSection() {
         {error && <p className="text-sm text-red-600">{error}</p>}
         {notice && <p className="text-sm text-green-600">{notice}</p>}
 
+        {config && (
+          <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+            <span className="mb-3 block text-sm font-medium">Full resync range</span>
+            <YearRangeSlider
+              min={MIN_RESYNC_YEAR}
+              max={CURRENT_YEAR}
+              start={startYear}
+              end={endYear}
+              disabled={busy || running}
+              onChange={(start, end) => {
+                setStartYear(start)
+                setEndYear(end)
+              }}
+            />
+            <p className="mt-2 text-xs text-gray-400">
+              Bounds the <span className="font-medium">Full resync</span> below. The default{" "}
+              {MIN_RESYNC_YEAR}-now covers your entire history; narrow it to re-fetch faster.
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -251,7 +290,7 @@ export function IntervalsSettingsSection() {
             type="button"
             onClick={() => handleSync(true)}
             disabled={busy || running || !config}
-            title="Re-fetch your entire Intervals.icu history from scratch (slow)"
+            title="Re-fetch and re-process all activities in the selected year range (slow)"
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-gray-100 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
           >
             Full resync

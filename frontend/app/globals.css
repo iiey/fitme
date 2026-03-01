@@ -54,6 +54,56 @@ html.dark {
   filter: invert(1) hue-rotate(180deg) brightness(1.12) contrast(0.85) saturate(1.3);
 }
 
+/* Dual-thumb range slider (full-resync timeline). Two <input type="range"> are
+   overlaid on one track; only the thumbs receive pointer events so each stays
+   independently draggable while clicks on the bare track fall through. */
+.range-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  pointer-events: none;
+}
+.range-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background: #3b82f6;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.range-thumb::-moz-range-thumb {
+  pointer-events: auto;
+  height: 1rem;
+  width: 1rem;
+  border-radius: 9999px;
+  background: #3b82f6;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.range-thumb::-moz-range-track {
+  background: transparent;
+}
+.range-thumb:disabled::-webkit-slider-thumb {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+.range-thumb:disabled::-moz-range-thumb {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+.dark .range-thumb::-webkit-slider-thumb {
+  border-color: #1c1e24;
+}
+.dark .range-thumb::-moz-range-thumb {
+  border-color: #1c1e24;
+}
+
 @layer components {
   .card {
     @apply rounded-xl border border-gray-300 bg-surface shadow-sm dark:border-gray-700;
