@@ -51,3 +51,12 @@ ignore = ["E501", "B008"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# Silence warnings raised inside third-party code that we cannot fix here:
+#  - pydantic-ai's run_sync() calls asyncio.get_event_loop() internally.
+#  - SQLAlchemy's create_all() leaves a transient pooled SQLite connection
+#    that is finalized by the garbage collector after the fixture disposes
+#    the engine, surfacing an intermittent "unclosed database" warning.
+filterwarnings = [
+    "ignore:There is no current event loop:DeprecationWarning",
+    "ignore:unclosed database:ResourceWarning",
+]
