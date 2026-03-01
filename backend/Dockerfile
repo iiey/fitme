@@ -1,8 +1,8 @@
 # FitMe backend image (uv-native, reproducible from uv.lock).
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 # Bring in the uv binary.
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -18,7 +18,6 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
-COPY config ./config
 
 # Install the project itself against the locked dependencies.
 RUN uv sync --frozen --no-dev
