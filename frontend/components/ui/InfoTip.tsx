@@ -23,10 +23,10 @@ export function InfoTip({
     hor,
     width,
     "normal-case tracking-normal",
-    "rounded-lg bg-gray-900 px-3 py-2",
-    "text-xs font-normal leading-relaxed text-white",
+    "rounded-lg border border-gray-200 bg-white px-3 py-2",
+    "text-xs font-normal leading-relaxed text-gray-900",
     "opacity-0 shadow-lg transition-opacity",
-    "group-hover:opacity-100 dark:bg-gray-700",
+    "group-hover:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100",
   ].join(" ")
 
   return (

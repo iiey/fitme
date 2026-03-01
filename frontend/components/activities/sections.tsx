@@ -91,11 +91,11 @@ function HrCurveSection({ activity }: SectionProps) {
       <div className="w-full lg:w-1/3">
         <Card
           title={
-            <span className="inline-flex cursor-help items-center gap-1.5" title={HR_CURVE_HELP}>
+            <span className="inline-flex items-center">
               Heart Rate Curve
-              <span className="text-xs font-normal text-gray-400" aria-hidden>
-                ⓘ
-              </span>
+              <InfoTip width="w-72">
+                <span className="whitespace-pre-line">{HR_CURVE_HELP}</span>
+              </InfoTip>
             </span>
           }
         >
