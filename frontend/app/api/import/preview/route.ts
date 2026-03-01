@@ -21,6 +21,15 @@ export async function POST(req: NextRequest) {
     duplex: "half",
   })
 
-  const data = await backendRes.json()
-  return NextResponse.json(data, { status: backendRes.status })
+  // Forward the backend response, tolerating a non-JSON body (e.g. an upstream
+  // proxy error page) instead of throwing and masking it as an opaque 500.
+  const text = await backendRes.text()
+  try {
+    return NextResponse.json(text ? JSON.parse(text) : null, { status: backendRes.status })
+  } catch {
+    return new NextResponse(text, {
+      status: backendRes.status,
+      headers: { "content-type": backendRes.headers.get("content-type") || "text/plain" },
+    })
+  }
 }
