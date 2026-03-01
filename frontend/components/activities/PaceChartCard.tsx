@@ -8,6 +8,7 @@ import { InfoTip } from "@/components/ui/InfoTip"
 import { StatCard } from "@/components/ui/StatCard"
 import { formatActivityPace, formatPace, formatSpeed, KM_PER_MILE } from "@/lib/format"
 import type { ActivityDetail } from "@/lib/types"
+import { useIsDark } from "@/lib/use-is-dark"
 
 import { multiStreamChart, streamChart } from "./charts"
 
@@ -42,6 +43,7 @@ export function PaceChartCard({
   distanceStream: (number | null)[]
   distanceUnit: string
 }) {
+  const dark = useIsDark()
   const imperial = distanceUnit === "mi"
   const speedFactor = imperial ? MS_TO_MPH : MS_TO_KMH
   const speedUnit = imperial ? "mph" : "km/h"
@@ -139,8 +141,9 @@ export function PaceChartCard({
                 ],
                 speedUnit,
                 axis,
+                dark,
               )
-            : streamChart(axisStream, toSpeed(series, speedFactor), color, speedUnit, axis)
+            : streamChart(axisStream, toSpeed(series, speedFactor), color, speedUnit, axis, dark)
         }
         height={220}
       />

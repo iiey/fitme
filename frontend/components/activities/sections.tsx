@@ -10,6 +10,7 @@ import { StatCard } from "@/components/ui/StatCard"
 import type { ActivitySection } from "@/lib/activityProfiles"
 import { colorForActivityType, formatDate, formatDuration, formatNumber } from "@/lib/format"
 import type { ActivityDetail } from "@/lib/types"
+import { useIsDark } from "@/lib/use-is-dark"
 
 import { ActivityNote } from "./ActivityNote"
 import { BestEfforts } from "./BestEfforts"
@@ -78,6 +79,7 @@ function MapSection({ activity, athleteId, activityId }: SectionProps) {
 }
 
 function HrCurveSection({ activity }: SectionProps) {
+  const dark = useIsDark()
   if (!activity.hr_curve) return null
   return (
     <div className="flex justify-center">
@@ -92,7 +94,7 @@ function HrCurveSection({ activity }: SectionProps) {
             </span>
           }
         >
-          <EChart option={hrCurveChart(activity.hr_curve)} height={240} />
+          <EChart option={hrCurveChart(activity.hr_curve, dark)} height={240} />
         </Card>
       </div>
     </div>
@@ -100,6 +102,7 @@ function HrCurveSection({ activity }: SectionProps) {
 }
 
 function HeartRateSection({ activity, distanceStream }: SectionProps) {
+  const dark = useIsDark()
   if (activity.average_heart_rate == null) return null
   return (
     <Card title="Heart Rate">
@@ -115,7 +118,7 @@ function HeartRateSection({ activity, distanceStream }: SectionProps) {
           const { stream, axis } = streamAxis(activity, distanceStream, activity.streams.heartrate)
           return (
             <EChart
-              option={streamChart(stream, activity.streams.heartrate, "#dc2626", "bpm", axis)}
+              option={streamChart(stream, activity.streams.heartrate, "#dc2626", "bpm", axis, dark)}
               height={220}
             />
           )
@@ -175,6 +178,7 @@ function PaceZonesSection({ activity }: SectionProps) {
 }
 
 function ElevationSection({ activity, distanceStream }: SectionProps) {
+  const dark = useIsDark()
   const altitude = activity.streams.altitude
   if (!altitude) return null
   const present = altitude.filter((v): v is number => v != null)
@@ -188,12 +192,13 @@ function ElevationSection({ activity, distanceStream }: SectionProps) {
           value={`${formatNumber(Math.min(...present), 0)} – ${formatNumber(Math.max(...present), 0)} m`}
         />
       </div>
-      <EChart option={streamChart(stream, altitude, "#16a34a", "m", axis)} height={220} />
+      <EChart option={streamChart(stream, altitude, "#16a34a", "m", axis, dark)} height={220} />
     </Card>
   )
 }
 
 function PowerSection({ activity, distanceStream }: SectionProps) {
+  const dark = useIsDark()
   if (activity.average_power == null) return null
   return (
     <Card title="Power">
@@ -206,7 +211,7 @@ function PowerSection({ activity, distanceStream }: SectionProps) {
           const { stream, axis } = streamAxis(activity, distanceStream, activity.streams.watts)
           return (
             <EChart
-              option={streamChart(stream, activity.streams.watts, "#ca8a04", "W", axis)}
+              option={streamChart(stream, activity.streams.watts, "#ca8a04", "W", axis, dark)}
               height={220}
             />
           )

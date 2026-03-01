@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts"
 
+import { themeColors } from "@/components/charts/options"
 import { formatNumber } from "@/lib/format"
 import type { HrCurvePoint } from "@/lib/types"
 
@@ -24,7 +25,9 @@ export function streamChart(
   color: string,
   unit: string,
   axis: StreamAxis = "distance",
+  dark = false,
 ): EChartsOption {
+  const t = themeColors(dark)
   const data =
     axis === "distance"
       ? axisStream.map((d, index) => [d ? d / 1000 : 0, values[index]])
@@ -35,13 +38,13 @@ export function streamChart(
     grid: { left: 50, right: 20, top: 12, bottom: 36 },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "rgba(255,255,255,0.95)",
-      borderColor: "#e5e7eb",
-      textStyle: { color: "#374151", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.tooltipBorder,
+      textStyle: { color: t.tooltipText, fontSize: 12 },
       formatter: (params: unknown) => {
         const p = Array.isArray(params) ? params[0] : params
         const val = (p as { value: [number, number] }).value
-        return `<strong>${formatNumber(val[1], 1)} ${unit}</strong><br/><span style="color:#9ca3af">${formatX(val[0])}</span>`
+        return `<strong>${formatNumber(val[1], 1)} ${unit}</strong><br/><span style="color:${t.axis}">${formatX(val[0])}</span>`
       },
     },
     xAxis: {
@@ -49,22 +52,22 @@ export function streamChart(
       name: axis === "distance" ? "km" : "time",
       nameLocation: "middle",
       nameGap: 22,
-      nameTextStyle: { color: "#9ca3af", fontSize: 11 },
+      nameTextStyle: { color: t.axis, fontSize: 11 },
       axisLabel: {
         fontSize: 10,
-        color: "#9ca3af",
+        color: t.axis,
         ...(axis === "time" ? { formatter: (v: number) => formatWindowLabel(v) } : {}),
       },
-      axisLine: { lineStyle: { color: "#e5e7eb" } },
+      axisLine: { lineStyle: { color: t.splitLine } },
       splitLine: { show: false },
     },
     yAxis: {
       type: "value",
       name: unit,
-      nameTextStyle: { color: "#9ca3af", fontSize: 11 },
-      axisLabel: { fontSize: 10, color: "#9ca3af" },
+      nameTextStyle: { color: t.axis, fontSize: 11 },
+      axisLabel: { fontSize: 10, color: t.axis },
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: "#dadce0", type: "dashed" } },
+      splitLine: { lineStyle: { color: t.splitLine, type: "dashed" } },
     },
     series: [
       {
@@ -109,7 +112,9 @@ export function multiStreamChart(
   series: StreamSeries[],
   unit: string,
   axis: StreamAxis = "distance",
+  dark = false,
 ): EChartsOption {
+  const t = themeColors(dark)
   const formatX = (x: number) =>
     axis === "distance" ? `${formatNumber(x, 2)} km` : formatWindowLabel(x)
   const toPoint = (value: number | null, index: number): [number, number | null] =>
@@ -122,15 +127,15 @@ export function multiStreamChart(
       top: 0,
       right: 0,
       data: series.map((s) => s.name),
-      textStyle: { fontSize: 11, color: "#9ca3af" },
+      textStyle: { fontSize: 11, color: t.axis },
       itemWidth: 14,
       itemHeight: 8,
     },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "rgba(255,255,255,0.95)",
-      borderColor: "#e5e7eb",
-      textStyle: { color: "#374151", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.tooltipBorder,
+      textStyle: { color: t.tooltipText, fontSize: 12 },
       formatter: (params: unknown) => {
         const list = (Array.isArray(params) ? params : [params]) as {
           value: [number, number]
@@ -144,7 +149,7 @@ export function multiStreamChart(
               `${p.marker}${p.seriesName} <strong>${formatNumber(p.value[1], 1)} ${unit}</strong>`,
           )
           .join("<br/>")
-        return `${rows}<br/><span style="color:#9ca3af">${formatX(list[0].value[0])}</span>`
+        return `${rows}<br/><span style="color:${t.axis}">${formatX(list[0].value[0])}</span>`
       },
     },
     xAxis: {
@@ -152,22 +157,22 @@ export function multiStreamChart(
       name: axis === "distance" ? "km" : "time",
       nameLocation: "middle",
       nameGap: 22,
-      nameTextStyle: { color: "#9ca3af", fontSize: 11 },
+      nameTextStyle: { color: t.axis, fontSize: 11 },
       axisLabel: {
         fontSize: 10,
-        color: "#9ca3af",
+        color: t.axis,
         ...(axis === "time" ? { formatter: (v: number) => formatWindowLabel(v) } : {}),
       },
-      axisLine: { lineStyle: { color: "#e5e7eb" } },
+      axisLine: { lineStyle: { color: t.splitLine } },
       splitLine: { show: false },
     },
     yAxis: {
       type: "value",
       name: unit,
-      nameTextStyle: { color: "#9ca3af", fontSize: 11 },
-      axisLabel: { fontSize: 10, color: "#9ca3af" },
+      nameTextStyle: { color: t.axis, fontSize: 11 },
+      axisLabel: { fontSize: 10, color: t.axis },
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: "#dadce0", type: "dashed" } },
+      splitLine: { lineStyle: { color: t.splitLine, type: "dashed" } },
     },
     series: series.map((s) => ({
       name: s.name,
@@ -201,7 +206,8 @@ export const HR_CURVE_HELP =
 const HR_CURVE_TICKS = [1, 5, 15, 60, 120, 300, 600, 1200, 1800, 3600, 7200, 10800]
 
 /** Mean-maximal HR curve: best sustained average HR vs window duration (log x). */
-export function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
+export function hrCurveChart(curve: HrCurvePoint[], dark = false): EChartsOption {
+  const t = themeColors(dark)
   const color = "#dc2626"
   // Start the axis at the first window the curve actually has data for. Streams
   // are downsampled, so the backend drops sub-resolution windows (often the 1-2s
@@ -216,14 +222,14 @@ export function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
     grid: { left: 50, right: 20, top: 12, bottom: 36 },
     tooltip: {
       trigger: "axis",
-      backgroundColor: "rgba(255,255,255,0.95)",
-      borderColor: "#e5e7eb",
-      textStyle: { color: "#374151", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.tooltipBorder,
+      textStyle: { color: t.tooltipText, fontSize: 12 },
       formatter: (params: unknown) => {
         const p = Array.isArray(params) ? params[0] : params
         const val = (p as { value: [number, number] }).value
         const seconds = 10 ** val[0]
-        return `<strong>${Math.round(val[1])} bpm</strong><br/><span style="color:#9ca3af">best average over ${formatWindowLabel(seconds)}</span>`
+        return `<strong>${Math.round(val[1])} bpm</strong><br/><span style="color:${t.axis}">best average over ${formatWindowLabel(seconds)}</span>`
       },
     },
     xAxis: {
@@ -231,27 +237,27 @@ export function hrCurveChart(curve: HrCurvePoint[]): EChartsOption {
       name: "duration",
       nameLocation: "middle",
       nameGap: 22,
-      nameTextStyle: { color: "#9ca3af", fontSize: 11 },
+      nameTextStyle: { color: t.axis, fontSize: 11 },
       min: toLog(minDuration),
       max: toLog(ticks[ticks.length - 1] ?? maxDuration),
       axisLabel: {
         fontSize: 10,
-        color: "#9ca3af",
+        color: t.axis,
         customValues: ticks.map(toLog),
         formatter: (value: number) => formatWindowLabel(Math.round(10 ** value)),
       },
       axisTick: { show: true, customValues: ticks.map(toLog) },
-      axisLine: { lineStyle: { color: "#e5e7eb" } },
+      axisLine: { lineStyle: { color: t.splitLine } },
       splitLine: { show: false },
     },
     yAxis: {
       type: "value",
       name: "bpm",
       scale: true,
-      nameTextStyle: { color: "#9ca3af", fontSize: 11 },
-      axisLabel: { fontSize: 10, color: "#9ca3af" },
+      nameTextStyle: { color: t.axis, fontSize: 11 },
+      axisLabel: { fontSize: 10, color: t.axis },
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: "#dadce0", type: "dashed" } },
+      splitLine: { lineStyle: { color: t.splitLine, type: "dashed" } },
     },
     series: [
       {
