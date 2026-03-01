@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -13,6 +13,7 @@ from app.db import Base, get_db
 from app.ingestion.intervals import IntervalsAthlete, IntervalsAuthError
 from app.main import app
 from app.models import AthleteProfile, SyncConfig
+from app.timeutil import utcnow
 
 ATHLETE_ID = "42"
 
@@ -352,7 +353,7 @@ def test_startup_sync_runs_once_then_skips_same_day(session_factory, monkeypatch
     session = session_factory()
     try:
         config = session.get(SyncConfig, "intervals")
-        assert config.last_auto_sync_on == datetime.utcnow().date()
+        assert config.last_auto_sync_on == utcnow().date()
     finally:
         session.close()
 
@@ -362,7 +363,7 @@ def test_startup_sync_runs_once_then_skips_same_day(session_factory, monkeypatch
 
 
 def test_startup_sync_runs_again_on_a_new_day(session_factory, monkeypatch):
-    yesterday = datetime.utcnow().date() - timedelta(days=1)
+    yesterday = utcnow().date() - timedelta(days=1)
     _configure_sync(session_factory, last_auto_sync_on=yesterday)
     calls: list = []
     _patch_background(monkeypatch, session_factory, calls)

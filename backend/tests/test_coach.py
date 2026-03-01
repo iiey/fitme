@@ -9,7 +9,7 @@ dependencies with temporary databases.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -30,6 +30,7 @@ from app.coach.schemas import TrainingPlan
 from app.db import Base, get_db
 from app.main import app
 from app.models import Activity, AthleteProfile
+from app.timeutil import utcnow
 
 ATHLETE = "A1"
 
@@ -53,7 +54,7 @@ def core_factory(tmp_path):
                 ftp=250,
             )
         )
-        now = datetime.utcnow()
+        now = utcnow()
         for i in range(3):
             session.add(
                 Activity(
