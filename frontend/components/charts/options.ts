@@ -94,16 +94,83 @@ export function barChart(
   }
 }
 
+// Indices of "sharp" local extrema: points whose curve rises steeply into them
+// and falls steeply out (or vice versa). We score each interior extremum by the
+// smaller of its two adjoining slopes, so a point only qualifies when *both*
+// sides are steep. Mild/medium bumps score low and are skipped, which keeps the
+// number of labels on the curve sparse.
+function sharpPeakIndices(values: number[], threshold: number): number[] {
+  const finite = values.filter((v) => Number.isFinite(v))
+  if (finite.length < 3) return []
+  const range = Math.max(...finite) - Math.min(...finite)
+  if (range <= 0) return []
+
+  const peaks: number[] = []
+  for (let i = 1; i < values.length - 1; i++) {
+    const prev = values[i - 1]
+    const cur = values[i]
+    const next = values[i + 1]
+    if (![prev, cur, next].every(Number.isFinite)) continue
+
+    const slopeIn = cur - prev
+    const slopeOut = next - cur
+    // Local maximum or minimum only (direction reverses at this point).
+    if (slopeIn === 0 || slopeOut === 0 || Math.sign(slopeIn) === Math.sign(slopeOut)) continue
+
+    // Prominence = the gentler of the two slopes, normalized to the data range.
+    const prominence = Math.min(Math.abs(slopeIn), Math.abs(slopeOut)) / range
+    if (prominence >= threshold) peaks.push(i)
+  }
+  return peaks
+}
+
 export function lineChart(
   categories: string[],
   values: number[],
   color = "#3b82f6",
   dark = false,
   yRange?: { min?: number; max?: number },
+  opts: {
+    // ECharts smoothing factor. `true` ~= 0.5; lower is closer to straight
+    // segments. Defaults to a gentle 0.3 so curves read as trends, not blobs.
+    smooth?: number | boolean
+    // Mark sharp peaks/valleys with a small circle and a value label above.
+    markPeaks?: boolean
+    // Minimum normalized prominence (0-1) for a peak to be labelled.
+    peakThreshold?: number
+  } = {},
 ): EChartsOption {
   const t = themeColors(dark)
+  const { smooth = 0.3, markPeaks = false, peakThreshold = 0.25 } = opts
+
+  const peakSet = markPeaks ? new Set(sharpPeakIndices(values, peakThreshold)) : new Set<number>()
+  // Per-point overrides only when marking peaks: peaks get a circle plus an
+  // always-on label, every other point hides its symbol so the line stays
+  // clean. (Series-level `showSymbol: false` would also suppress the labels,
+  // so we keep symbols enabled and hide non-peak ones individually.)
+  const data = markPeaks
+    ? values.map((value, i) =>
+        peakSet.has(i)
+          ? {
+              value,
+              symbol: "circle",
+              symbolSize: 7,
+              itemStyle: { color, borderColor: t.surface, borderWidth: 2 },
+              label: {
+                show: true,
+                position: "top" as const,
+                fontSize: 10,
+                fontWeight: "bold" as const,
+                color: t.text,
+                formatter: () => String(value),
+              },
+            }
+          : { value, symbol: "none" as const },
+      )
+    : values
+
   return {
-    grid: { left: 45, right: 15, top: 15, bottom: 40 },
+    grid: { left: 45, right: 15, top: 20, bottom: 40 },
     tooltip: {
       trigger: "axis",
       backgroundColor: t.tooltipBg,
@@ -121,9 +188,11 @@ export function lineChart(
     series: [
       {
         type: "line",
-        data: values,
-        smooth: true,
-        showSymbol: false,
+        data,
+        smooth,
+        // When marking peaks, symbols are controlled per-point (and labels need
+        // symbols enabled to render); otherwise hide them all.
+        showSymbol: markPeaks,
         lineStyle: { color, width: 2 },
         areaStyle: { color, opacity: 0.12 },
       },

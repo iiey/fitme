@@ -333,6 +333,8 @@ export default function DashboardPage() {
                   : data.weekly_stats.map((w) => Math.round(w.distance * 10) / 10),
                 "#2563eb",
                 isDark,
+                undefined,
+                { markPeaks: true, smooth: 0.1, peakThreshold: 0.03 },
               )}
               height={260}
             />
@@ -433,6 +435,7 @@ export default function DashboardPage() {
                   "#8b5cf6",
                   isDark,
                   { min: 0, max: 100 },
+                  { smooth: true },
                 )}
                 height={220}
               />
