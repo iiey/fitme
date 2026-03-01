@@ -10,6 +10,20 @@ export interface Column<T> {
   render: (row: T) => React.ReactNode
 }
 
+/**
+ * Optional row-selection support. When provided, a leading checkbox column is
+ * reserved so that toggling ``enabled`` shows/hides the checkboxes without
+ * shifting the existing data columns.
+ */
+export interface TableSelection {
+  enabled: boolean
+  selectedKeys: Set<string>
+  onToggleRow: (key: string) => void
+  allSelected: boolean
+  someSelected: boolean
+  onToggleAll: () => void
+}
+
 export function DataTable<T>({
   columns,
   rows,
@@ -18,6 +32,7 @@ export function DataTable<T>({
   onSort,
   onRowClick,
   getRowKey,
+  selection,
 }: {
   columns: Column<T>[]
   rows: T[]
@@ -26,12 +41,33 @@ export function DataTable<T>({
   onSort?: (key: string) => void
   onRowClick?: (row: T) => void
   getRowKey: (row: T) => string
+  selection?: TableSelection
 }) {
+  // A fixed-width leading cell holds space for the checkbox so the layout stays
+  // stable whether or not selection mode is active.
+  const selectCellClass = "w-10 px-3 py-2 align-middle"
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-gray-300 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-gray-700">
+            {selection && (
+              <th className={selectCellClass}>
+                {selection.enabled && (
+                  <input
+                    type="checkbox"
+                    aria-label="Select all activities"
+                    checked={selection.allSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = selection.someSelected && !selection.allSelected
+                    }}
+                    onChange={selection.onToggleAll}
+                    className="h-4 w-4 cursor-pointer accent-brand"
+                  />
+                )}
+              </th>
+            )}
             {columns.map((column) => (
               <th
                 key={column.key}
@@ -52,29 +88,46 @@ export function DataTable<T>({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={getRowKey(row)}
-              className={clsx(
-                "border-b border-gray-300 transition-colors dark:border-gray-700",
-                onRowClick && "cursor-pointer hover:bg-surface-muted",
-              )}
-              onClick={() => onRowClick?.(row)}
-            >
-              {columns.map((column) => (
-                <td
-                  key={column.key}
-                  className={clsx(
-                    "px-3 py-2",
-                    column.align === "right" && "text-right",
-                    column.align === "center" && "text-center",
-                  )}
-                >
-                  {column.render(row)}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const key = getRowKey(row)
+            return (
+              <tr
+                key={key}
+                className={clsx(
+                  "border-b border-gray-300 transition-colors dark:border-gray-700",
+                  onRowClick && "cursor-pointer hover:bg-surface-muted",
+                )}
+                onClick={() => onRowClick?.(row)}
+              >
+                {selection && (
+                  <td className={selectCellClass}>
+                    {selection.enabled && (
+                      <input
+                        type="checkbox"
+                        aria-label="Select activity"
+                        checked={selection.selectedKeys.has(key)}
+                        onChange={() => selection.onToggleRow(key)}
+                        onClick={(event) => event.stopPropagation()}
+                        className="h-4 w-4 cursor-pointer accent-brand"
+                      />
+                    )}
+                  </td>
+                )}
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={clsx(
+                      "px-3 py-2",
+                      column.align === "right" && "text-right",
+                      column.align === "center" && "text-center",
+                    )}
+                  >
+                    {column.render(row)}
+                  </td>
+                ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
       {rows.length === 0 && (

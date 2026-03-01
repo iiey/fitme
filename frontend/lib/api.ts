@@ -357,6 +357,23 @@ export async function updateActivityNote(
   }
 }
 
+export async function deleteActivities(athleteId: string, activityIds: string[]): Promise<number> {
+  const query = buildQuery({ athlete: athleteId })
+  const response = await fetch(`/api/activities${query}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ activity_ids: activityIds }),
+  })
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      await readErrorDetail(response, "Could not delete activities"),
+    )
+  }
+  const result = (await response.json()) as { deleted: number }
+  return result.deleted
+}
+
 // -- Goals ------------------------------------------------------------------
 
 export function useGoalsProgress(athleteId: string | null, activeOn?: string) {

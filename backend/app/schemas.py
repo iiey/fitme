@@ -250,6 +250,14 @@ class ActivityNoteUpdate(BaseModel):
     note: str | None = None
 
 
+class ActivityDeleteRequest(BaseModel):
+    activity_ids: list[str]
+
+
+class ActivityDeleteResult(BaseModel):
+    deleted: int
+
+
 # -- Goals ------------------------------------------------------------------
 
 

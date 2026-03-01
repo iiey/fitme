@@ -1,6 +1,6 @@
 "use client"
 
-import { X } from "lucide-react"
+import { Trash2, X } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -8,7 +8,7 @@ import { useEffect, useState } from "react"
 import { type Column, DataTable } from "@/components/ui/DataTable"
 import { SportFilter } from "@/components/ui/SportFilter"
 import { ErrorState, Spinner } from "@/components/ui/States"
-import { useActivities, useMeta } from "@/lib/api"
+import { deleteActivities, revalidateAll, useActivities, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatActivityPace, formatDate, formatDuration, formatNumber } from "@/lib/format"
 import { useDefaultSports } from "@/lib/preferences"
@@ -39,6 +39,12 @@ export default function ActivitiesPage() {
   const [showDistanceFilter, setShowDistanceFilter] = useState(
     () => !!(searchParams.get("dmin") || searchParams.get("dmax")),
   )
+
+  // Multi-select for bulk deletion. Selection is keyed by activity id so it
+  // survives re-sorts and pagination, and is cleared on leaving select mode.
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // The ?sport= param holds a comma-separated list. Absent => follow the
   // configured default; "all" => an explicit All-sports choice (empty filter).
@@ -184,16 +190,92 @@ export default function ActivitiesPage() {
   const hasDateFilter = dateFrom || dateTo
   const hasDistanceFilter = distMin || distMax
 
+  const rows = data?.items ?? []
+  const selectedCount = selectedIds.size
+  const allSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.activity_id))
+  const someSelected = rows.some((row) => selectedIds.has(row.activity_id))
+
+  const toggleRow = (activityId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(activityId)) {
+        next.delete(activityId)
+      } else {
+        next.add(activityId)
+      }
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (rows.every((row) => next.has(row.activity_id))) {
+        for (const row of rows) next.delete(row.activity_id)
+      } else {
+        for (const row of rows) next.add(row.activity_id)
+      }
+      return next
+    })
+  }
+
+  const exitSelectMode = () => {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  const handleDelete = async () => {
+    if (!athleteId || selectedCount === 0) return
+    if (!confirm(`Delete ${selectedCount} activit${selectedCount === 1 ? "y" : "ies"}?`)) return
+    setIsDeleting(true)
+    try {
+      await deleteActivities(athleteId, [...selectedIds])
+      exitSelectMode()
+      revalidateAll()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not delete activities")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-bold">Activities</h1>
-        <p className="text-sm text-gray-500">
-          {formatNumber(total)} activities
-          {meta?.activity_count && total !== meta.activity_count
-            ? ` of ${formatNumber(meta.activity_count)} total`
-            : ""}
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Activities</h1>
+          <p className="text-sm text-gray-500">
+            {formatNumber(total)} activities
+            {meta?.activity_count && total !== meta.activity_count
+              ? ` of ${formatNumber(meta.activity_count)} total`
+              : ""}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {selectMode && selectedCount > 0 && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"
+            >
+              <Trash2 className="h-4 w-4" />
+              {isDeleting ? "Deleting…" : `Delete ${selectedCount}`}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+              selectMode
+                ? "border-brand bg-brand/10 text-brand"
+                : "border-gray-300 text-gray-600 hover:border-gray-400"
+            }`}
+          >
+            {selectMode ? "Cancel" : "Select"}
+          </button>
+        </div>
       </header>
 
       {/* Search */}
@@ -411,11 +493,19 @@ export default function ActivitiesPage() {
         ) : (
           <DataTable
             columns={columns}
-            rows={data?.items ?? []}
+            rows={rows}
             sort={sort}
             order={order as "asc" | "desc"}
             onSort={toggleSort}
             getRowKey={(row) => row.activity_id}
+            selection={{
+              enabled: selectMode,
+              selectedKeys: selectedIds,
+              onToggleRow: toggleRow,
+              allSelected,
+              someSelected,
+              onToggleAll: toggleAll,
+            }}
           />
         )}
       </div>

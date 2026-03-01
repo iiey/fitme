@@ -138,6 +138,28 @@ def test_activity_detail_roundtrip(client: TestClient):
     assert "streams" in detail
 
 
+def test_delete_activities_removes_activity_and_streams(client: TestClient):
+    activity_id = client.get("/api/activities").json()["items"][0]["activity_id"]
+    # The seeded GPX activity has streams; confirm they exist before deletion.
+    assert client.get(f"/api/activities/{activity_id}").json()["streams"]
+
+    response = client.request("DELETE", "/api/activities", json={"activity_ids": [activity_id]})
+    assert response.status_code == 200, response.text
+    assert response.json() == {"deleted": 1}
+
+    assert client.get("/api/activities").json()["total"] == 0
+    assert client.get(f"/api/activities/{activity_id}").status_code == 404
+
+
+def test_delete_activities_ignores_unknown_ids(client: TestClient):
+    response = client.request(
+        "DELETE", "/api/activities", json={"activity_ids": ["does-not-exist"]}
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == {"deleted": 0}
+    assert client.get("/api/activities").json()["total"] == 1
+
+
 def test_fuzzy_search_by_date_and_sport(client: TestClient):
     # The seeded activity is a Run on 2024-04-01.
     assert client.get("/api/activities", params={"search": "2024-04 run"}).json()["total"] == 1

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Activity, ActivityStream, BestEffort, Gear, Goal
@@ -253,6 +253,35 @@ def update_activity_note(
     db.commit()
     db.refresh(activity)
     return activity
+
+
+def delete_activities(db: Session, athlete_id: str, activity_ids: list[str]) -> int:
+    """Delete the given activities (and their streams/best efforts) for an athlete.
+
+    Only activities owned by ``athlete_id`` are removed; ids belonging to other
+    athletes or already gone are silently skipped. Returns the number deleted.
+    """
+    if not activity_ids:
+        return 0
+
+    owned = list(
+        db.execute(
+            select(Activity.activity_id).where(
+                Activity.athlete_id == athlete_id,
+                Activity.activity_id.in_(activity_ids),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not owned:
+        return 0
+
+    db.execute(delete(ActivityStream).where(ActivityStream.activity_id.in_(owned)))
+    db.execute(delete(BestEffort).where(BestEffort.activity_id.in_(owned)))
+    db.execute(delete(Activity).where(Activity.activity_id.in_(owned)))
+    db.commit()
+    return len(owned)
 
 
 # -- Goals ------------------------------------------------------------------

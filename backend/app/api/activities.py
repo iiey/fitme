@@ -16,7 +16,13 @@ from app.domain.best_efforts import (  # noqa: F401  (kept for label parity)
 )
 from app.domain.search import parse_activity_search
 from app.models import BestEffort
-from app.schemas import ActivityDetail, ActivityNoteUpdate, PaginatedActivities
+from app.schemas import (
+    ActivityDeleteRequest,
+    ActivityDeleteResult,
+    ActivityDetail,
+    ActivityNoteUpdate,
+    PaginatedActivities,
+)
 
 router = APIRouter(prefix="/api/activities", tags=["activities"])
 
@@ -86,6 +92,16 @@ def list_activities(
         offset=offset,
         items=[serialize_activity_summary(a) for a in activities],
     )
+
+
+@router.delete("", response_model=ActivityDeleteResult)
+def delete_activities(
+    body: ActivityDeleteRequest,
+    db: Session = Depends(get_db),
+    athlete_id: str = Depends(get_athlete_id),
+) -> ActivityDeleteResult:
+    deleted = repository.delete_activities(db, athlete_id, body.activity_ids)
+    return ActivityDeleteResult(deleted=deleted)
 
 
 @router.get("/{activity_id}", response_model=ActivityDetail)
