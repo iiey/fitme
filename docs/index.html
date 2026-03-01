@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FitMe - Self-hosted training analytics</title>
+<meta name="description" content="FitMe is a self-hosted, single-user statistics dashboard for your training data. Ingest Garmin and Strava bulk exports or sync from Intervals.icu into rich, interactive analytics." />
+<meta name="theme-color" content="#f6f8fc" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#080a0f" media="(prefers-color-scheme: dark)" />
+<meta property="og:title" content="FitMe - Self-hosted training analytics" />
+<meta property="og:description" content="Turn your Garmin and Strava exports into rich, interactive training analytics. Self-hosted, single-user, your data stays yours." />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234c82ff'/%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #080a0f;
+    --bg-soft: #0d1119;
+    --surface: #12151f;
+    --surface-2: #171b28;
+    --border: #232b3c;
+    --border-soft: #1a1f2c;
+    --text: #e9ecf3;
+    --muted: #98a1b3;
+    --faint: #828b9e;
+    --accent: #4c82ff;
+    --accent-dim: #6f9bff;
+    --accent-deep: #6a5cf0;
+    --blue: #6aa3ff;
+    --grad: linear-gradient(135deg, #5e9bff 0%, #4c6ef7 52%, #7a5cf0 100%);
+    --nav-bg: rgba(8, 10, 15, 0.72);
+    --maxw: 1140px;
+    --radius: 14px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    color-scheme: light dark;
+  }
+
+  /* Light theme - follows the operating system preference */
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f8fc;
+      --bg-soft: #eef2f9;
+      --surface: #ffffff;
+      --surface-2: #f2f6fd;
+      --border: #e1e7f1;
+      --border-soft: #eaeef6;
+      --text: #111824;
+      --muted: #515c70;
+      --faint: #5f6a7d;
+      --accent: #2f6bf0;
+      --accent-dim: #2a5fd6;
+      --accent-deep: #5b46e0;
+      --blue: #2f6bf0;
+      --grad: linear-gradient(135deg, #3b78ef 0%, #3f55e6 52%, #6a45df 100%);
+      --nav-bg: rgba(246, 248, 252, 0.8);
+    }
+    .bg-glow {
+      background:
+        radial-gradient(circle at 38% 36%, rgba(76, 130, 255, 0.10), transparent 60%),
+        radial-gradient(circle at 64% 46%, rgba(122, 92, 240, 0.07), transparent 62%);
+    }
+    .btn-primary { box-shadow: 0 8px 22px -12px rgba(63, 87, 230, 0.5); }
+    .btn-primary:hover { box-shadow: 0 14px 30px -12px rgba(63, 87, 230, 0.62); }
+    .terminal { box-shadow: 0 24px 50px -28px rgba(40, 60, 110, 0.35); }
+    .brand .mark { box-shadow: 0 4px 12px -4px rgba(63, 87, 230, 0.4); }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 88px; -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--accent); color: #fff; }
+
+  a { color: inherit; text-decoration: none; }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  .lnk {
+    color: var(--accent-dim);
+    border-bottom: 1px solid rgba(111, 155, 255, 0.4);
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .lnk:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  .term-note { margin-top: 16px; font-size: 0.88rem; color: var(--faint); }
+
+  /* Ambient background grid + glow */
+  .bg-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, var(--border-soft) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--border-soft) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 35%, transparent 78%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 35%, transparent 78%);
+    opacity: 0.5;
+  }
+  .bg-glow {
+    position: fixed;
+    top: -340px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 900px;
+    height: 700px;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 38% 36%, rgba(76, 130, 255, 0.16), transparent 60%),
+      radial-gradient(circle at 64% 46%, rgba(122, 92, 240, 0.12), transparent 62%);
+    filter: blur(22px);
+  }
+
+  .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Nav ---------- */
+  header.nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: var(--nav-bg);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s var(--ease), background 0.3s var(--ease);
+  }
+  header.nav.scrolled { border-bottom-color: var(--border); }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+  }
+  .brand .mark {
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    background: var(--grad);
+    border-radius: 8px;
+    color: #fff;
+    flex: none;
+    box-shadow: 0 4px 12px -4px rgba(76, 110, 247, 0.6);
+  }
+  .brand .mark svg { width: 17px; height: 17px; }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .nav-links a {
+    font-size: 0.875rem;
+    color: var(--muted);
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: color 0.2s, background 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); background: var(--surface); }
+  .nav-cta {
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--text);
+    color: var(--bg) !important;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 9px 15px !important;
+    border-radius: 9px;
+    transition: transform 0.18s var(--ease), background 0.2s !important;
+  }
+  .nav-cta:hover { background: var(--grad) !important; color: #fff !important; transform: translateY(-1px); }
+  .nav-cta svg { width: 15px; height: 15px; }
+  .menu-btn {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 40px; height: 40px;
+    color: var(--text);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+  }
+  .menu-btn svg { width: 20px; height: 20px; }
+
+  /* ---------- Shared section styling ---------- */
+  section { position: relative; padding: 96px 0; }
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 18px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 26px; height: 1px;
+    background: var(--accent-dim);
+    opacity: 0.7;
+  }
+  h2.section-title {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    font-size: clamp(1.7rem, 3.6vw, 2.6rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    max-width: 18ch;
+  }
+  .section-lead {
+    color: var(--muted);
+    font-size: 1.05rem;
+    max-width: 60ch;
+    margin-top: 16px;
+  }
+  .section-head { margin-bottom: 52px; }
+
+  /* ---------- Hero ---------- */
+  .hero { padding: clamp(72px, 12vw, 132px) 0 84px; }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 6px 13px;
+    border-radius: 100px;
+    margin-bottom: 30px;
+  }
+  .hero-badge b { color: var(--text); font-weight: 600; }
+  .hero-badge .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(76,130,255,0.22);
+  }
+  .hero h1 {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 700;
+    font-size: clamp(2rem, 4.8vw, 3.3rem);
+    line-height: 1.07;
+    letter-spacing: -0.025em;
+    max-width: 32ch;
+    text-wrap: balance;
+  }
+  .hero h1 .hl {
+    display: block;
+    margin-top: 0.12em;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    width: fit-content;
+    text-wrap: balance;
+  }
+  .hero p.sub {
+    margin-top: 26px;
+    font-size: clamp(1.05rem, 2vw, 1.28rem);
+    color: var(--muted);
+    max-width: 56ch;
+    line-height: 1.55;
+  }
+  .hero p.sub b { color: var(--text); font-weight: 600; }
+  .hero-actions {
+    margin-top: 38px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 13px 22px;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.18s var(--ease), background 0.2s, border-color 0.2s;
+  }
+  .btn svg { width: 18px; height: 18px; }
+  .btn-primary {
+    background: var(--grad);
+    color: #fff;
+    box-shadow: 0 8px 24px -10px rgba(76,110,247,0.7);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 32px -10px rgba(76,110,247,0.85); }
+  .btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+  .btn-ghost:hover { border-color: var(--faint); background: var(--surface); }
+
+  /* Terminal card */
+  .terminal {
+    margin-top: 56px;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-soft) 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.7);
+    max-width: 720px;
+  }
+  .terminal-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-soft);
+  }
+  .terminal-bar .tdot { width: 11px; height: 11px; border-radius: 50%; background: #2c313a; }
+  .terminal-bar .tname {
+    margin-left: 10px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.78rem;
+    color: var(--faint);
+  }
+  .terminal pre {
+    padding: 20px 22px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.86rem;
+    line-height: 1.85;
+    overflow-x: auto;
+    color: var(--text);
+  }
+  .terminal .c { color: var(--faint); }
+  .terminal .p { color: var(--accent); }
+  .terminal .o { color: var(--muted); }
+  .terminal .u { color: var(--blue); text-decoration: none; border-bottom: 1px dotted var(--border); }
+
+  /* ---------- Feature grid ---------- */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .feature {
+    background: var(--surface);
+    padding: 28px 26px 30px;
+    transition: background 0.25s var(--ease);
+    position: relative;
+  }
+  .feature::after {
+    content: "";
+    position: absolute;
+    left: 0; top: 0;
+    height: 2px; width: 0;
+    background: var(--accent);
+    transition: width 0.35s var(--ease);
+  }
+  .feature:hover { background: var(--surface-2); }
+  .feature:hover::after { width: 100%; }
+  .feature .idx {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--faint);
+    letter-spacing: 0.05em;
+  }
+  .feature h3 {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    font-size: 1.18rem;
+    letter-spacing: -0.01em;
+    margin: 14px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .feature h3 .ic {
+    color: var(--accent);
+    display: inline-flex;
+    flex: none;
+  }
+  .feature h3 .ic svg { width: 19px; height: 19px; }
+  .feature p { color: var(--muted); font-size: 0.92rem; line-height: 1.6; }
+  .feature .tag {
+    display: inline-block;
+    margin-top: 16px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 9px;
+    background: var(--bg-soft);
+  }
+
+  /* ---------- Architecture ---------- */
+  .arch-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface);
+    margin-bottom: 44px;
+  }
+  .arch-node {
+    flex: 1 1 0;
+    min-width: 150px;
+    padding: 26px 24px;
+    border-right: 1px solid var(--border);
+    position: relative;
+  }
+  .arch-node:last-child { border-right: none; }
+  .arch-node .layer {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+  }
+  .arch-node .name {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    margin: 10px 0 7px;
+  }
+  .arch-node .port { font-family: "JetBrains Mono", monospace; font-size: 0.8rem; color: var(--muted); }
+  .arch-node .note { color: var(--faint); font-size: 0.82rem; margin-top: 9px; }
+  .arch-node .arrow {
+    position: absolute;
+    right: -11px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 22px; height: 22px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--accent);
+  }
+  .arch-node .arrow svg { width: 12px; height: 12px; }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+  }
+  .panel h3 {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    font-size: 1.15rem;
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .panel h3 .ic { color: var(--accent); display: inline-flex; }
+  .panel h3 .ic svg { width: 18px; height: 18px; }
+
+  .stack-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 0.9rem;
+  }
+  .stack-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .stack-row .k { color: var(--text); font-weight: 600; white-space: nowrap; }
+  .stack-row .v { color: var(--muted); text-align: right; font-size: 0.86rem; }
+
+  ul.ticks { list-style: none; }
+  ul.ticks li {
+    position: relative;
+    padding-left: 26px;
+    margin-bottom: 15px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+  ul.ticks li:last-child { margin-bottom: 0; }
+  ul.ticks li b { color: var(--text); font-weight: 600; }
+  ul.ticks li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 9px;
+    width: 7px; height: 7px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+
+  /* ---------- Perf table ---------- */
+  .perf-table {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .perf-row {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    transition: background 0.2s;
+  }
+  .perf-row:last-child { border-bottom: none; }
+  .perf-row:hover { background: var(--surface-2); }
+  .perf-row .pk {
+    padding: 20px 24px;
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    font-size: 0.98rem;
+    border-right: 1px solid var(--border);
+    display: flex; align-items: center; gap: 11px;
+  }
+  .perf-row .pk .ic { color: var(--accent); display:inline-flex; flex:none; }
+  .perf-row .pk .ic svg { width: 17px; height: 17px; }
+  .perf-row .pv { padding: 20px 24px; color: var(--muted); font-size: 0.92rem; }
+  .perf-row .pv code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.84em;
+    color: var(--accent-dim);
+    background: var(--bg-soft);
+    padding: 1px 6px;
+    border-radius: 5px;
+  }
+
+  /* ---------- Coach / CTA band ---------- */
+  .coach {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--bg-soft) 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: clamp(32px, 5vw, 56px);
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 44px;
+    align-items: center;
+  }
+  .coach .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--accent-dim);
+    border: 1px solid var(--border); border-radius: 100px;
+    padding: 5px 13px; margin-bottom: 20px;
+  }
+  .coach h2 {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600; font-size: clamp(1.5rem, 3vw, 2.1rem);
+    letter-spacing: -0.02em; line-height: 1.1;
+  }
+  .coach p { color: var(--muted); margin-top: 16px; font-size: 1rem; max-width: 46ch; }
+  .coach .providers { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 9px; }
+  .coach .providers span {
+    font-size: 0.82rem; color: var(--text);
+    border: 1px solid var(--border); background: var(--bg-soft);
+    border-radius: 8px; padding: 7px 13px;
+  }
+  .chat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .bubble { font-size: 0.88rem; line-height: 1.5; padding: 12px 15px; border-radius: 12px; max-width: 92%; }
+  .bubble.user { align-self: flex-end; background: var(--surface-2); border: 1px solid var(--border); border-bottom-right-radius: 4px; }
+  .bubble.bot { align-self: flex-start; background: rgba(76,130,255,0.10); border: 1px solid rgba(76,130,255,0.30); border-bottom-left-radius: 4px; }
+  .bubble.bot b { color: var(--accent); }
+  .chat .typing { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; color: var(--faint); }
+
+  /* ---------- Final CTA ---------- */
+  .final {
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: clamp(48px, 8vw, 90px) 24px;
+    background:
+      radial-gradient(ellipse 70% 130% at 50% 0%, rgba(76,130,255,0.12), transparent 70%),
+      var(--surface);
+  }
+  .final h2 {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 700; font-size: clamp(1.9rem, 5vw, 3.1rem);
+    letter-spacing: -0.03em; line-height: 1.02;
+    max-width: 16ch; margin: 0 auto;
+  }
+  .final p { color: var(--muted); margin: 20px auto 0; max-width: 50ch; font-size: 1.05rem; }
+  .final .hero-actions { justify-content: center; }
+
+  /* ---------- Footer ---------- */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 44px 0 56px;
+    margin-top: 40px;
+  }
+  .foot-inner { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .foot-inner .muted { color: var(--faint); font-size: 0.85rem; }
+  .foot-links { display: flex; gap: 22px; }
+  .foot-links a { color: var(--muted); font-size: 0.88rem; transition: color 0.2s; }
+  .foot-links a:hover { color: var(--accent); }
+
+  /* ---------- Reveal animation ---------- */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 900px) {
+    .feature-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .coach { grid-template-columns: 1fr; gap: 32px; }
+    .arch-node { flex-basis: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+    .arch-node:last-child { border-bottom: none; }
+    .arch-node .arrow { right: 50%; top: auto; bottom: -11px; transform: translateX(50%) rotate(90deg); }
+  }
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .menu-btn { display: inline-flex; }
+    .nav-links.open {
+      display: flex; flex-direction: column;
+      position: absolute; top: 64px; left: 0; right: 0;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      padding: 14px 24px 22px; gap: 4px;
+      align-items: stretch;
+    }
+    .nav-links.open a { padding: 12px 14px; }
+    .nav-links.open .nav-cta { margin: 8px 0 0; justify-content: center; }
+    section { padding: 72px 0; }
+    .perf-row { grid-template-columns: 1fr; }
+    .perf-row .pk { border-right: none; border-bottom: 1px solid var(--border-soft); }
+  }
+  @media (max-width: 480px) {
+    .feature-grid { grid-template-columns: 1fr; }
+    .wrap { padding: 0 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-layer"></div>
+<div class="bg-glow"></div>
+
+<!-- ===== Nav ===== -->
+<header class="nav" id="nav">
+  <div class="wrap nav-inner">
+    <a href="#top" class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </span>
+      FitMe
+    </a>
+    <nav class="nav-links" id="navlinks">
+      <a href="#features">Features</a>
+      <a href="#architecture">Private</a>
+      <a href="#data">Import</a>
+      <a href="#performance">Fast</a>
+      <a href="#coach">FitBuddy</a>
+      <a class="nav-cta" href="https://github.com/iiey/fitme" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.5 2.87 8.32 6.84 9.67.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05A9.36 9.36 0 0 1 12 6.85c.85 0 1.71.12 2.51.34 1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.6.69.49A10.02 10.02 0 0 0 22 12.26C22 6.58 17.52 2 12 2z"/></svg>
+        GitHub
+      </a>
+    </nav>
+    <button class="menu-btn" id="menubtn" aria-label="Toggle menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+  <!-- ===== Hero ===== -->
+  <section class="hero">
+    <div class="wrap">
+      <span class="hero-badge reveal"><span class="dot"></span> Runs on your computer · <b>your data stays yours</b></span>
+      <h1 class="reveal">Analytic insight into training data,<span class="hl">running on computer locally.</span></h1>
+      <p class="sub reveal">FitMe turns your <b>Garmin</b>, <b>Strava</b> and <b>Intervals.icu</b> history into a beautiful, private dashboard - every ride, run and swim, in one place, on a computer you own.</p>
+      <div class="hero-actions reveal">
+        <a class="btn btn-primary" href="#features">
+          See what you get
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="#architecture">How it works</a>
+      </div>
+
+      <div class="terminal reveal">
+        <div class="terminal-bar">
+          <span class="tdot"></span><span class="tdot"></span><span class="tdot"></span>
+          <span class="tname">setting up FitMe</span>
+        </div>
+        <pre><span class="c"># One command starts everything.</span>
+<span class="p">$</span> docker compose up --build
+
+<span class="o">Your dashboard is ready at →</span> <span class="u">http://localhost:3000</span>
+
+<span class="c"># Then just drop in your export from inside the app.</span>
+<span class="c"># No coding, no cloud, no account.</span>
+<span class="c"># For more details, see README.md.</span></pre>
+      </div>
+      <p class="term-note reveal">New to this? <a class="lnk" href="https://docs.docker.com/get-docker/" target="_blank" rel="noopener">Get Docker</a> - a free, one-time install, then the command above is all you need.</p>
+
+    </div>
+  </section>
+
+  <!-- ===== Features ===== -->
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">What you get</span>
+        <h2 class="section-title">Eight ways to see your training</h2>
+        <p class="section-lead">Every view adapts to the sport - a yoga session won't show a running pace, a swim won't show power. You only ever see the numbers that make sense.</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature reveal">
+          <div class="idx">01</div>
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span>Dashboard</h3>
+          <p>The big picture at a glance: your totals and streaks, a calendar that lights up on every active day, trends over weeks and months, and where your time and effort really go.</p>
+          <span class="tag">Totals · Streaks · Trends</span>
+        </article>
+
+        <article class="feature reveal">
+          <div class="idx">02</div>
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-16 2 8 2-4h4"/></svg></span>Fitness</h3>
+          <p>Watch your fitness, fatigue and form rise and fall over time - so you know when you're building, when you're worn down, and when you're primed to perform.</p>
+          <span class="tag">Fitness · Fatigue · Form</span>
+        </article>
+
+        <article class="feature reveal">
+          <div class="idx">03</div>
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"/></svg></span>Activities</h3>
+          <p>Every workout in one searchable list. Open any one to see its route on a map and how your pace, heart rate, power and elevation changed along the way.</p>
+          <span class="tag">Maps · Detail view</span>
+        </article>
+
+        <article class="feature reveal">
+          <div class="idx">04</div>
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span>Calendar</h3>
+          <p>A month at a glance - each day coloured by how hard you trained and which sport you did, so a whole training block reads in a second.</p>
+          <span class="tag">Month view</span>
+        </article>
+
+        <article class="feature reveal">
+          <div class="idx">05</div>
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></span>Goals</h3>
+          <p>Set a target - distance, time, climbing, calories or a simple count - over any stretch of time, and watch your progress fill in as you go.</p>
+          <span class="tag">Live progress</span>
+        </article>
+
+        <article class="feature reveal">
+          <div class="idx">06</div>
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>Heatmap</h3>
+          <p>Every route you've ever recorded, drawn on one map and coloured by sport. See the shape of where you train - and how far you've roamed.</p>
+          <span class="tag">Every route</span>
+        </article>
+
+        <article class="feature reveal">
+          <div class="idx">07</div>
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V8a4 4 0 0 1 8 0v13"/><path d="M5 21h14"/><circle cx="12" cy="4" r="2"/></svg></span>Milestones</h3>
+          <p>A timeline of everything you've achieved, with fun, real-world comparisons that put your biggest numbers into perspective.</p>
+          <span class="tag">Achievements</span>
+        </article>
+
+        <article class="feature reveal">
+          <div class="idx">08</div>
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg></span>Rewind</h3>
+          <p>Your year in review: monthly totals, your favourite sports, when you love to train, calories burned, your single biggest day - and more.</p>
+          <span class="tag">Year in review</span>
+        </article>
+
+        <article class="feature reveal">
+          <div class="idx">09</div>
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>FitBuddy <span style="font-size:0.62rem;color:var(--faint);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;border:1px solid var(--border);padding:1px 6px;border-radius:5px;">OPTIONAL</span></h3>
+          <p>An optional AI coach you can chat with about your training. It answers from your real numbers - never guesswork - and only if you choose to turn it on.</p>
+          <span class="tag">Optional</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Architecture ===== -->
+  <section id="architecture">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Private by design</span>
+        <h2 class="section-title">It lives on your computer, not in the cloud</h2>
+        <p class="section-lead">No sign-up, no subscription, no company sitting between you and your history. You start FitMe once, point it at your export, and everything stays with you.</p>
+      </div>
+
+      <div class="arch-flow reveal">
+        <div class="arch-node">
+          <div class="layer">Step 1</div>
+          <div class="name">Your exports</div>
+          <div class="port">Garmin · Strava</div>
+          <div class="note">Files you already have</div>
+          <span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+        <div class="arch-node">
+          <div class="layer">Step 2</div>
+          <div class="name">One command</div>
+          <div class="port">docker compose up</div>
+          <div class="note">Runs on your own machine</div>
+          <span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+        <div class="arch-node">
+          <div class="layer">Step 3</div>
+          <div class="name">Your dashboard</div>
+          <div class="port">localhost:3000</div>
+          <div class="note">Private, just for you</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="panel reveal">
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>Why host it yourself</h3>
+          <ul class="ticks">
+            <li><b>Your data is yours.</b> It never leaves your computer unless you decide to connect something.</li>
+            <li><b>No account, no fees.</b> FitMe is free and open-source - nothing to subscribe to.</li>
+            <li><b>It keeps working.</b> No service to shut down, no API limits, no surprises.</li>
+          </ul>
+        </div>
+        <div class="panel reveal">
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>Smart with your history</h3>
+          <ul class="ticks">
+            <li><b>Knows your export.</b> Drop in Garmin or Strava - FitMe figures out which is which.</li>
+            <li><b>No double-counting.</b> The same workout from two apps is recognised and counted once.</li>
+            <li><b>Every sport, done right.</b> Each activity shows only the stats that actually apply to it.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Data & sync ===== -->
+  <section id="data">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Getting your data in</span>
+        <h2 class="section-title">Bring years of history in minutes</h2>
+        <p class="section-lead">Download your export from Garmin or Strava, drop it into FitMe, and you're done. Want it kept up to date automatically? Connect <a class="lnk" href="https://intervals.icu" target="_blank" rel="noopener">Intervals.icu</a> and new workouts arrive on their own.</p>
+      </div>
+
+      <div class="two-col">
+        <div class="panel reveal">
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg></span>Drop in your export</h3>
+          <ul class="ticks">
+            <li>Drag in your <b>Garmin or Strava</b> export and FitMe sorts out the rest - no setup, no command line.</li>
+            <li><b>Re-import anytime.</b> An updated export simply adds what's new and never creates duplicates.</li>
+            <li>Your <b>routes, heart rate, power</b> and more are read straight from the files you already have.</li>
+            <li>Big imports run <b>in the background</b>, so you can start exploring right away.</li>
+          </ul>
+        </div>
+        <div class="panel reveal">
+          <h3><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-7.5-4"/><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 7.5 4"/><path d="M21 3v5h-5M3 21v-5h5"/></svg></span>Or keep it in sync</h3>
+          <ul class="ticks">
+            <li><b>Connect once</b> with Intervals.icu and new workouts show up on their own.</li>
+            <li>It only fetches <b>what's new</b>, so staying current is quick and quiet.</li>
+            <li>Activities you've already imported are <b>recognised</b> - never counted twice.</li>
+            <li>Runs <b>automatically</b> in the background, about once a day.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Performance ===== -->
+  <section id="performance">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <span class="eyebrow">Made to feel instant</span>
+        <h2 class="section-title">Fast, even after years of training</h2>
+        <p class="section-lead">A long history shouldn't mean a slow app. FitMe is careful about what it loads and when, so pages open quickly and charts and maps stay smooth - whether you have one season or ten.</p>
+      </div>
+
+      <div class="perf-table reveal">
+        <div class="perf-row">
+          <div class="pk"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg></span>Opens quickly</div>
+          <div class="pv">FitMe only works out the numbers a page actually shows, so even a deep archive loads fast.</div>
+        </div>
+        <div class="perf-row">
+          <div class="pk"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>Loads as you scroll</div>
+          <div class="pv">Sections appear right when you reach them, so the page is ready the moment it opens.</div>
+        </div>
+        <div class="perf-row">
+          <div class="pk"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>Smooth maps</div>
+          <div class="pv">Routes are simplified just enough to keep their true shape, so panning and zooming stay fluid.</div>
+        </div>
+        <div class="perf-row">
+          <div class="pk"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8M3 8l9-5 9 5-9 5z"/></svg></span>Light on space</div>
+          <div class="pv">Detailed workout data is stored compactly, keeping your whole history small on disk.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FitBuddy ===== -->
+  <section id="coach">
+    <div class="wrap">
+      <div class="coach reveal">
+        <div>
+          <span class="chip"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z"/></svg> Optional · bring your own AI</span>
+          <h2>Chat with your training data.</h2>
+          <p>FitBuddy is an optional AI coach. Ask about your form, your trends or your biggest week, and it answers from <b>your real numbers</b> - not generic advice.</p>
+          <p>It brings the conversation; you bring the AI. Run a model privately on your own machine, or connect an OpenAI or Anthropic account. Either way, <b>your data stays yours</b> - nothing goes online unless you choose to.</p>
+          <div class="providers">
+            <span><a class="lnk" href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> - private, on your machine</span>
+            <span>OpenAI - your account</span>
+            <span>Anthropic - your account</span>
+          </div>
+        </div>
+        <div class="chat" aria-hidden="true">
+          <div class="bubble user">How's my form this month?</div>
+          <div class="bubble bot">You're <b>fresher</b> than two weeks ago - your fatigue has eased while your fitness held steady. A good window to race.</div>
+          <div class="bubble user">What was my biggest ride this year?</div>
+          <div class="bubble bot">A <b>142 km</b> ride in April with 1,980 m of climbing - your longest yet.</div>
+          <div class="typing">› answers from your own data</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Final CTA ===== -->
+  <section style="padding-top:40px;">
+    <div class="wrap">
+      <div class="final reveal">
+        <h2>Bring your training home.</h2>
+        <p>Run FitMe on your own computer, import your history, and finally own every number - no account, no subscription, no one else holding your data.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="https://github.com/iiey/fitme" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.5 2.87 8.32 6.84 9.67.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.56 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05A9.36 9.36 0 0 1 12 6.85c.85 0 1.71.12 2.51.34 1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.81-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.6.69.49A10.02 10.02 0 0 0 22 12.26C22 6.58 17.52 2 12 2z"/></svg>
+            View on GitHub
+          </a>
+          <a class="btn btn-ghost" href="#top">Back to top</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div>
+      <div class="brand" style="font-size:1rem;">
+        <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+        FitMe
+      </div>
+      <div class="muted" style="margin-top:10px;">Your training, in one private place.</div>
+    </div>
+    <nav class="foot-links">
+      <a href="#features">Features</a>
+      <a href="#architecture">Private</a>
+      <a href="#data">Import</a>
+      <a href="#coach">FitBuddy</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  // Nav: shadow on scroll
+  const nav = document.getElementById("nav");
+  const onScroll = () => nav.classList.toggle("scrolled", window.scrollY > 8);
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  // Mobile menu
+  const menuBtn = document.getElementById("menubtn");
+  const navLinks = document.getElementById("navlinks");
+  menuBtn.addEventListener("click", () => {
+    const open = navLinks.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  navLinks.querySelectorAll("a").forEach((a) =>
+    a.addEventListener("click", () => {
+      navLinks.classList.remove("open");
+      menuBtn.setAttribute("aria-expanded", "false");
+    })
+  );
+
+  // Reveal on scroll
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add("in");
+          io.unobserve(e.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+  );
+  document.querySelectorAll(".reveal").forEach((el, i) => {
+    el.style.transitionDelay = Math.min(i % 6, 5) * 45 + "ms";
+    io.observe(el);
+  });
+</script>
+</body>
+</html>
