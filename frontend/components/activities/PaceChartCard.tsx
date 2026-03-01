@@ -47,7 +47,10 @@ export function PaceChartCard({
   const imperial = distanceUnit === "mi"
   const speedFactor = imperial ? MS_TO_MPH : MS_TO_KMH
   const speedUnit = imperial ? "mph" : "km/h"
-  const rawVelocity = activity.streams.velocity_smooth ?? []
+  const rawVelocity = useMemo(
+    () => activity.streams.velocity_smooth ?? [],
+    [activity.streams.velocity_smooth],
+  )
   const gapVelocity = activity.streams.grade_adjusted_velocity
   const hasGap = Array.isArray(gapVelocity) && gapVelocity.length > 0
   const [mode, setMode] = useState<SpeedMode>("pace")
@@ -86,6 +89,34 @@ export function PaceChartCard({
     : formatActivityPace(activity, distanceUnit)
   const maxSpeedKmh = showGap ? gapStats.maxSpeedKmh : activity.max_speed_kmh
   const maxSpeedValue = formatSpeed(maxSpeedKmh, distanceUnit)
+
+  const chartOption = useMemo(
+    () =>
+      showBoth
+        ? multiStreamChart(
+            axisStream,
+            [
+              { name: "Pace", values: toSpeed(rawVelocity, speedFactor), color: PACE_COLOR },
+              { name: "GAP", values: toSpeed(gapVelocity ?? [], speedFactor), color: GAP_COLOR },
+            ],
+            speedUnit,
+            axis,
+            dark,
+          )
+        : streamChart(axisStream, toSpeed(series, speedFactor), color, speedUnit, axis, dark),
+    [
+      showBoth,
+      axisStream,
+      rawVelocity,
+      gapVelocity,
+      series,
+      color,
+      speedFactor,
+      speedUnit,
+      axis,
+      dark,
+    ],
+  )
 
   const toggle = hasGap ? (
     <div className="flex items-center">
@@ -126,27 +157,7 @@ export function PaceChartCard({
         <StatCard label="Average" value={averageValue} />
         <StatCard label="Max Speed" value={maxSpeedValue} />
       </div>
-      <EChart
-        option={
-          showBoth
-            ? multiStreamChart(
-                axisStream,
-                [
-                  { name: "Pace", values: toSpeed(rawVelocity, speedFactor), color: PACE_COLOR },
-                  {
-                    name: "GAP",
-                    values: toSpeed(gapVelocity ?? [], speedFactor),
-                    color: GAP_COLOR,
-                  },
-                ],
-                speedUnit,
-                axis,
-                dark,
-              )
-            : streamChart(axisStream, toSpeed(series, speedFactor), color, speedUnit, axis, dark)
-        }
-        height={220}
-      />
+      <EChart option={chartOption} height={220} />
     </Card>
   )
 }

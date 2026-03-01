@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import type React from "react"
+import { useMemo } from "react"
 
 import { EChart } from "@/components/charts/EChart"
 import { Card } from "@/components/ui/Card"
@@ -80,7 +81,11 @@ function MapSection({ activity, athleteId, activityId }: SectionProps) {
 
 function HrCurveSection({ activity }: SectionProps) {
   const dark = useIsDark()
-  if (!activity.hr_curve) return null
+  const option = useMemo(
+    () => (activity.hr_curve ? hrCurveChart(activity.hr_curve, dark) : null),
+    [activity.hr_curve, dark],
+  )
+  if (!option) return null
   return (
     <div className="flex justify-center">
       <div className="w-full lg:w-1/3">
@@ -94,7 +99,7 @@ function HrCurveSection({ activity }: SectionProps) {
             </span>
           }
         >
-          <EChart option={hrCurveChart(activity.hr_curve, dark)} height={240} />
+          <EChart option={option} height={240} />
         </Card>
       </div>
     </div>
@@ -103,6 +108,12 @@ function HrCurveSection({ activity }: SectionProps) {
 
 function HeartRateSection({ activity, distanceStream }: SectionProps) {
   const dark = useIsDark()
+  const heartrate = activity.streams.heartrate
+  const option = useMemo(() => {
+    if (!heartrate) return null
+    const { stream, axis } = streamAxis(activity, distanceStream, heartrate)
+    return streamChart(stream, heartrate, "#dc2626", "bpm", axis, dark)
+  }, [activity, distanceStream, heartrate, dark])
   if (activity.average_heart_rate == null) return null
   return (
     <Card title="Heart Rate">
@@ -113,16 +124,7 @@ function HeartRateSection({ activity, distanceStream }: SectionProps) {
           value={activity.max_heart_rate ? `${activity.max_heart_rate} bpm` : "-"}
         />
       </div>
-      {activity.streams.heartrate &&
-        (() => {
-          const { stream, axis } = streamAxis(activity, distanceStream, activity.streams.heartrate)
-          return (
-            <EChart
-              option={streamChart(stream, activity.streams.heartrate, "#dc2626", "bpm", axis, dark)}
-              height={220}
-            />
-          )
-        })()}
+      {option && <EChart option={option} height={220} />}
     </Card>
   )
 }
@@ -180,9 +182,13 @@ function PaceZonesSection({ activity }: SectionProps) {
 function ElevationSection({ activity, distanceStream }: SectionProps) {
   const dark = useIsDark()
   const altitude = activity.streams.altitude
+  const option = useMemo(() => {
+    if (!altitude) return null
+    const { stream, axis } = streamAxis(activity, distanceStream, altitude)
+    return streamChart(stream, altitude, "#16a34a", "m", axis, dark)
+  }, [activity, distanceStream, altitude, dark])
   if (!altitude) return null
   const present = altitude.filter((v): v is number => v != null)
-  const { stream, axis } = streamAxis(activity, distanceStream, altitude)
   return (
     <Card title="Elevation">
       <div className="mb-4 grid grid-cols-2 gap-3">
@@ -192,13 +198,19 @@ function ElevationSection({ activity, distanceStream }: SectionProps) {
           value={`${formatNumber(Math.min(...present), 0)} – ${formatNumber(Math.max(...present), 0)} m`}
         />
       </div>
-      <EChart option={streamChart(stream, altitude, "#16a34a", "m", axis, dark)} height={220} />
+      {option && <EChart option={option} height={220} />}
     </Card>
   )
 }
 
 function PowerSection({ activity, distanceStream }: SectionProps) {
   const dark = useIsDark()
+  const watts = activity.streams.watts
+  const option = useMemo(() => {
+    if (!watts) return null
+    const { stream, axis } = streamAxis(activity, distanceStream, watts)
+    return streamChart(stream, watts, "#ca8a04", "W", axis, dark)
+  }, [activity, distanceStream, watts, dark])
   if (activity.average_power == null) return null
   return (
     <Card title="Power">
@@ -206,16 +218,7 @@ function PowerSection({ activity, distanceStream }: SectionProps) {
         <StatCard label="Average" value={`${activity.average_power} W`} />
         <StatCard label="Max" value={activity.max_power ? `${activity.max_power} W` : "-"} />
       </div>
-      {activity.streams.watts &&
-        (() => {
-          const { stream, axis } = streamAxis(activity, distanceStream, activity.streams.watts)
-          return (
-            <EChart
-              option={streamChart(stream, activity.streams.watts, "#ca8a04", "W", axis, dark)}
-              height={220}
-            />
-          )
-        })()}
+      {option && <EChart option={option} height={220} />}
     </Card>
   )
 }

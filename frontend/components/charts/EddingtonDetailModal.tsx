@@ -1,7 +1,7 @@
 "use client"
 
 import type { EChartsOption } from "echarts"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 import { EChart } from "@/components/charts/EChart"
 import { themeColors } from "@/components/charts/options"
@@ -28,6 +28,15 @@ export function EddingtonDetailModal({
     data && data.results.length > 0
       ? data.results[Math.min(activeTab, data.results.length - 1)]
       : null
+
+  const distributionOption = useMemo(
+    () => (active && data ? eddingtonChartOption(active, data.unit, isDark) : null),
+    [active, data, isDark],
+  )
+  const progressionOption = useMemo(
+    () => (active && active.history.length > 0 ? historyChartOption(active, isDark) : null),
+    [active, isDark],
+  )
 
   return (
     <div
@@ -93,13 +102,15 @@ export function EddingtonDetailModal({
                 <StatCard label="Next milestone" value={nextMilestoneLabel(active)} />
               </div>
 
-              <Card title="Distance distribution">
-                <EChart option={eddingtonChartOption(active, data.unit, isDark)} height={420} />
-              </Card>
+              {distributionOption && (
+                <Card title="Distance distribution">
+                  <EChart option={distributionOption} height={420} />
+                </Card>
+              )}
 
-              {active.history.length > 0 && (
+              {progressionOption && (
                 <Card title="Eddington progression">
-                  <EChart option={historyChartOption(active, isDark)} height={280} />
+                  <EChart option={progressionOption} height={280} />
                 </Card>
               )}
             </div>
