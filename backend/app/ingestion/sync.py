@@ -54,6 +54,10 @@ PROVIDER = "intervals"
 OVERLAP_DAYS = 7
 # Window used on the very first sync when the athlete has no activities yet.
 DEFAULT_LOOKBACK_DAYS = 90
+# Lower bound for a full resync: a date before the GPX/TCX/FIT formats existed,
+# so the athlete's entire Intervals.icu history is re-fetched, not just recent
+# data. Widening it further is pointless - no activity can predate the formats.
+FULL_RESYNC_EPOCH = date(2000, 1, 1)
 # Commit progress periodically so a long first sync appears incrementally and a
 # crash leaves committed activities behind (the un-advanced watermark re-scans).
 _COMMIT_EVERY = 25
@@ -85,9 +89,10 @@ def sync(
 ) -> SyncSummary:
     """Run one sync for ``config``, recording run state on the config row.
 
-    A ``full_resync`` ignores the watermark and re-scans from the athlete's
-    earliest anchor, for occasional backfills. The supplied ``client`` (or one
-    built from the config when omitted) is only read from.
+    A ``full_resync`` ignores the watermark and re-fetches the athlete's entire
+    Intervals.icu history from :data:`FULL_RESYNC_EPOCH`, for occasional
+    backfills. The supplied ``client`` (or one built from the config when
+    omitted) is only read from.
     """
     owns_client = client is None
     if client is None:
@@ -216,18 +221,22 @@ def _resolve_range(db: Session, config: SyncConfig, *, full_resync: bool) -> tup
     Returned as ``date`` values because the Intervals.icu endpoint expects ISO
     dates; returning ``datetime`` made the client emit a full timestamp.
     ``newest`` runs a day past now so activities recorded today are always in
-    range.
+    range. A ``full_resync`` re-fetches the athlete's entire Intervals.icu
+    history, so it starts at :data:`FULL_RESYNC_EPOCH` instead of anchoring on
+    existing data.
     """
     now = datetime.utcnow()
-    newest = now + timedelta(days=1)
-    if not full_resync and config.synced_through is not None:
+    newest = (now + timedelta(days=1)).date()
+    if full_resync:
+        return FULL_RESYNC_EPOCH, newest
+    if config.synced_through is not None:
         anchor = config.synced_through
     else:
         anchor = _newest_existing_start(db, config.athlete_id) or (
             now - timedelta(days=DEFAULT_LOOKBACK_DAYS)
         )
     oldest = anchor - timedelta(days=OVERLAP_DAYS)
-    return oldest.date(), newest.date()
+    return oldest.date(), newest
 
 
 def _newest_existing_start(db: Session, athlete_id: str) -> datetime | None:

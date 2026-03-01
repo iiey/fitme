@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 
 from app.ingestion.intervals import SyncedActivity, summary_to_row
 from app.ingestion.parsed import ParsedActivityFile
-from app.ingestion.sync import PROVIDER, sync
+from app.ingestion.sync import FULL_RESYNC_EPOCH, OVERLAP_DAYS, PROVIDER, sync
 from app.models import Activity, AthleteProfile, SourceIdentity, SyncConfig
 
 ATHLETE_ID = "42"
@@ -62,11 +62,15 @@ class FakeClient:
         self._files = files or {}
         self._streams = streams or {}
         self.list_calls = 0
+        self.last_oldest = None
+        self.last_newest = None
         self.stream_calls: list[str] = []
         self.closed = False
 
     def list_activities(self, oldest, newest):  # noqa: ANN001 - test double
         self.list_calls += 1
+        self.last_oldest = oldest
+        self.last_newest = newest
         return list(self._activities)
 
     def download_original(self, activity_id: str, file_type: str | None):
@@ -284,6 +288,30 @@ def test_full_resync_updates_unchanged_activity(db_session, config):
     summary = sync(db_session, config, client=FakeClient([activity]), full_resync=True)
     assert summary.skipped == 0
     assert summary.updated == 1
+
+
+def test_full_resync_fetches_entire_history_from_epoch(db_session, config):
+    """A full resync re-fetches from the epoch, not the recent watermark window."""
+    config.synced_through = datetime(2024, 11, 20, 7, 35, 18)
+    db_session.add(config)
+    db_session.commit()
+
+    client = FakeClient([])
+    sync(db_session, config, client=client, full_resync=True)
+
+    assert client.last_oldest == FULL_RESYNC_EPOCH
+
+
+def test_incremental_sync_fetches_from_watermark_overlap(db_session, config):
+    """An incremental sync only re-scans back to the watermark minus the overlap."""
+    config.synced_through = datetime(2024, 11, 20, 7, 35, 18)
+    db_session.add(config)
+    db_session.commit()
+
+    client = FakeClient([])
+    sync(db_session, config, client=client)
+
+    assert client.last_oldest == date(2024, 11, 20) - timedelta(days=OVERLAP_DAYS)
 
 
 def test_original_file_is_parsed_when_available(db_session, config):
