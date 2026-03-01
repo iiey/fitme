@@ -155,7 +155,7 @@ export function lineChart(
               value,
               symbol: "circle",
               symbolSize: 7,
-              itemStyle: { color, borderColor: t.surface, borderWidth: 2 },
+              itemStyle: { color: t.surface, borderColor: color, borderWidth: 2 },
               label: {
                 show: true,
                 position: "top" as const,
@@ -790,18 +790,18 @@ const MONTH_LABELS = [
 ]
 
 export function yearlyStatsChart(
-  monthlyStats: { period: string; distance: number }[],
+  monthlyStats: { period: string; distance: number; count: number }[],
   unit: string,
   dark = false,
 ): EChartsOption {
   const t = themeColors(dark)
 
-  const byYear = new Map<number, { month: number; distance: number }[]>()
+  const byYear = new Map<number, { month: number; distance: number; count: number }[]>()
   for (const m of monthlyStats) {
     const year = parseInt(m.period.slice(0, 4), 10)
     const month = parseInt(m.period.slice(5, 7), 10)
     if (!byYear.has(year)) byYear.set(year, [])
-    byYear.get(year)!.push({ month, distance: m.distance })
+    byYear.get(year)!.push({ month, distance: m.distance, count: m.count })
   }
 
   const years = Array.from(byYear.keys()).sort((a, b) => b - a)
@@ -812,31 +812,60 @@ export function yearlyStatsChart(
     selected[String(years[i])] = i < 5
   }
 
+  // Per-year, per-month activity counts so the tooltip can report how many
+  // activities produced each month's cumulative distance. Keyed by the series
+  // name (the year) to match what the axis-trigger tooltip hands back.
+  const countsByYear: Record<string, (number | null)[]> = {}
+
   const series: EChartsOption["series"] = years.map((year, i) => {
     const months = byYear.get(year)!.sort((a, b) => a.month - b.month)
     const cumulative = new Array(12).fill(null) as (number | null)[]
+    const counts = new Array(12).fill(null) as (number | null)[]
+    // Months with real activity data get an always-on km label; forward-filled
+    // months stay unlabelled so flat stretches don't repeat the same number.
+    const hasData = new Array(12).fill(false) as boolean[]
     let sum = 0
     for (const m of months) {
       sum += m.distance
       cumulative[m.month - 1] = Math.round(sum)
+      counts[m.month - 1] = m.count
+      hasData[m.month - 1] = true
     }
     // Fill forward nulls within the range
     const lastMonth = months[months.length - 1]?.month ?? 0
     for (let j = 0; j < lastMonth; j++) {
       if (cumulative[j] === null && j > 0) {
         cumulative[j] = cumulative[j - 1]
+        counts[j] = 0
       }
     }
+    countsByYear[String(year)] = counts
 
     const color = YEAR_PALETTE[i % YEAR_PALETTE.length]
     return {
       name: String(year),
       type: "line" as const,
-      data: cumulative,
+      // Real-data months show a circle + always-on km label; forward-filled
+      // months hide both so flat stretches stay clean. Symbols must stay
+      // enabled at the series level or the labels won't render either.
+      data: cumulative.map((value, idx) =>
+        hasData[idx]
+          ? { value, itemStyle: { color: t.surface, borderColor: color, borderWidth: 2 } }
+          : { value, symbol: "none" as const, label: { show: false } },
+      ),
       smooth: 0.4,
-      showSymbol: false,
+      showSymbol: true,
       symbol: "circle",
       symbolSize: 6,
+      label: {
+        show: true,
+        position: "top" as const,
+        fontSize: 10,
+        color: t.text,
+        // Only real-data points keep their label (see per-item show below), so
+        // the value is always numeric here; {c} renders the cumulative km.
+        formatter: "{c}",
+      },
       emphasis: { focus: "series" as const, itemStyle: { borderWidth: 2 } },
       lineStyle: { color, width: 2.5 },
       itemStyle: { color },
@@ -862,10 +891,13 @@ export function yearlyStatsChart(
         let html = `<div style="font-weight:600;margin-bottom:4px">${month}</div>`
         for (const item of list) {
           if (item.value == null) continue
+          // The cumulative km is already labelled on the curve; the tooltip
+          // instead reports how many activities that month contributed.
+          const count = countsByYear[item.seriesName]?.[item.dataIndex] ?? 0
           html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0">`
           html += `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${item.color}"></span>`
           html += `<span>${item.seriesName}</span>`
-          html += `<span style="margin-left:auto;font-weight:600">${item.value.toLocaleString()} ${unit}</span>`
+          html += `<span style="margin-left:auto;font-weight:600">${count} ${count === 1 ? "activity" : "activities"}</span>`
           html += `</div>`
         }
         return html
