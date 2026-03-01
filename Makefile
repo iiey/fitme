@@ -97,7 +97,7 @@ run: ## Run backend and frontend together (Ctrl-C stops both).
 
 .PHONY: test
 test: ## Run backend tests.
-	cd $(BACKEND) && uv run pytest
+	cd $(BACKEND) && uv run pytest -v
 
 .PHONY: lint
 lint: ## Lint backend (ruff) and frontend (biome + tsc).
