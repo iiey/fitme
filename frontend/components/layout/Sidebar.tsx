@@ -226,7 +226,7 @@ export function Sidebar() {
   // Close mobile nav on route change
   useEffect(() => {
     setMobileOpen(false)
-  }, [pathname])
+  }, [])
 
   // Rendered for both the mobile slide-out (always expanded) and the desktop
   // rail (collapsible). `rail` drives the icon-only, label-free layout.
@@ -321,6 +321,7 @@ export function Sidebar() {
           </span>
         </div>
         <button
+          type="button"
           onClick={() => setMobileOpen(true)}
           className="rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
           aria-label="Open menu"
@@ -331,6 +332,8 @@ export function Sidebar() {
 
       {/* Mobile overlay */}
       {mobileOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: mobile nav backdrop; the menu has keyboard-accessible controls and closes on navigation
+        // biome-ignore lint/a11y/useKeyWithClickEvents: mobile nav backdrop; the menu has keyboard-accessible controls and closes on navigation
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setMobileOpen(false)}
@@ -446,6 +449,7 @@ function AthleteSwitcher({
   return (
     <div ref={ref} className="relative">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         title={collapsed ? (active?.name ?? "Menu") : undefined}
         className={clsx(
@@ -491,12 +495,14 @@ function AthleteSwitcher({
                     <span className="text-xs text-red-600">Delete all data?</span>
                     <div className="flex gap-1">
                       <button
+                        type="button"
                         onClick={() => handleDelete(athlete.athlete_id)}
                         className="rounded bg-red-600 px-2 py-0.5 text-xs text-white hover:bg-red-700"
                       >
                         Yes
                       </button>
                       <button
+                        type="button"
                         onClick={() => setDeleting(null)}
                         className="rounded border border-gray-300 px-2 py-0.5 text-xs hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
                       >
@@ -507,6 +513,7 @@ function AthleteSwitcher({
                 ) : (
                   <>
                     <button
+                      type="button"
                       onClick={() => {
                         onSwitch(athlete.athlete_id)
                         setOpen(false)
@@ -526,6 +533,7 @@ function AthleteSwitcher({
                       </span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setDeleting(athlete.athlete_id)}
                       className="hidden rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 group-hover:block dark:hover:bg-red-900/20"
                       title="Delete athlete"
@@ -601,6 +609,7 @@ function AthleteSwitcher({
               <RefreshCw className={clsx("h-4 w-4 shrink-0", syncing && "animate-spin")} />
               {syncing ? "Syncing…" : "Sync"}
             </button>
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: hover only reveals the menu; the toggle button inside is the keyboard-accessible control */}
             <div
               className="relative"
               onMouseEnter={() => setAppearanceOpen(true)}

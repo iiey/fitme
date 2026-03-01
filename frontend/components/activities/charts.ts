@@ -84,8 +84,8 @@ export function streamChart(
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: color + "40" },
-              { offset: 1, color: color + "05" },
+              { offset: 0, color: `${color}40` },
+              { offset: 1, color: `${color}05` },
             ],
           } as unknown as string,
         },
@@ -274,8 +274,8 @@ export function hrCurveChart(curve: HrCurvePoint[], dark = false): EChartsOption
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: color + "40" },
-              { offset: 1, color: color + "05" },
+              { offset: 0, color: `${color}40` },
+              { offset: 1, color: `${color}05` },
             ],
           } as unknown as string,
         },

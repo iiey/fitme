@@ -22,11 +22,11 @@ export function PlanCard({ plan }: { plan: TrainingPlan }) {
               Week {week.week} — {week.focus}
             </p>
             <ul className="mt-1 space-y-1">
-              {week.sessions.map((session, index) => {
+              {week.sessions.map((session) => {
                 const meta = sessionMeta(session)
                 return (
                   <li
-                    key={index}
+                    key={`${session.day}-${session.sport}-${session.workout_type}`}
                     className="rounded-md bg-white px-2 py-1 text-xs dark:bg-gray-900"
                   >
                     <span className="font-medium">

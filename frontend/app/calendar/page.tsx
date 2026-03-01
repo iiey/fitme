@@ -265,8 +265,8 @@ function CalendarGrid({
         ))}
       </div>
       <div className="space-y-1">
-        {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-[80px_repeat(7,1fr)] gap-1">
+        {weeks.map((week) => (
+          <div key={week.weekNum} className="grid grid-cols-[80px_repeat(7,1fr)] gap-1">
             <div
               className="flex flex-col items-center justify-center rounded-lg bg-gray-50 py-1 text-gray-400 dark:bg-gray-800/50"
               title={
@@ -295,7 +295,8 @@ function CalendarGrid({
               )}
             </div>
             {week.cells.map((day, di) => {
-              if (!day) return <div key={`blank-${wi}-${di}`} />
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed positional placeholder in a 7-column week grid; blanks never reorder
+              if (!day) return <div key={`blank-${week.weekNum}-${di}`} />
               const dayActs = activitiesByDate.get(day.date) ?? []
               return (
                 <div

@@ -90,6 +90,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     return () => window.removeEventListener("keydown", onKey)
   }, [open, pinned, onClose])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: auto-scroll to the latest message when items change
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [items])
@@ -147,7 +148,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
       for (let attempt = 0; attempt < 40; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 1500))
         if (pollTokenRef.current !== token) return
-        let messages
+        let messages: Awaited<ReturnType<typeof fetchSessionMessages>>
         try {
           messages = await fetchSessionMessages(sessionId, athleteId)
         } catch {
@@ -197,7 +198,7 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
   function appendDelta(text: string) {
     setItems((prev) => {
       const last = prev[prev.length - 1]
-      if (!last || last.kind !== "msg" || last.role !== "assistant") return prev
+      if (last?.kind !== "msg" || last.role !== "assistant") return prev
       return [...prev.slice(0, -1), { ...last, content: last.content + text }]
     })
   }
@@ -263,9 +264,11 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
     try {
       const result = await generatePlan({ goal, weeks, context }, athleteId)
       if (result.plan) {
-        setItems((prev) => [...prev, { kind: "plan", plan: result.plan! }])
+        const plan = result.plan
+        setItems((prev) => [...prev, { kind: "plan", plan }])
       } else if (result.message) {
-        setItems((prev) => [...prev, { kind: "msg", role: "assistant", content: result.message! }])
+        const message = result.message
+        setItems((prev) => [...prev, { kind: "msg", role: "assistant", content: message }])
       }
       setPanel(null)
     } catch (err) {
@@ -354,11 +357,9 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only resize handle; the panel is fully usable at its default width */}
         <div
           onMouseDown={startResize}
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize panel"
           className="absolute inset-y-0 left-0 z-10 w-1.5 cursor-ew-resize transition-colors hover:bg-brand/40"
         />
         <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
@@ -463,14 +464,12 @@ export function CoachDrawer({ open, onClose, status }: CoachDrawerProps) {
                 </div>
               ) : (
                 items.map((item, index) => {
-                  if (item.kind === "plan") return <PlanCard key={index} plan={item.plan} />
+                  const key = item.kind === "msg" && item.id != null ? item.id : index
+                  if (item.kind === "plan") return <PlanCard key={key} plan={item.plan} />
                   if (item.kind === "insights")
-                    return <InsightsCard key={index} insights={item.insights} />
+                    return <InsightsCard key={key} insights={item.insights} />
                   return (
-                    <MessageBubble
-                      key={index}
-                      message={{ role: item.role, content: item.content }}
-                    />
+                    <MessageBubble key={key} message={{ role: item.role, content: item.content }} />
                   )
                 })
               )}

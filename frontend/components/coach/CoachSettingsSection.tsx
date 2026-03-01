@@ -288,6 +288,7 @@ export function CoachSettingsSection() {
 
       <div className="flex flex-wrap items-center gap-2">
         <button
+          type="button"
           onClick={handleVerify}
           disabled={busy || !canSubmit}
           title="Test these settings now without saving them. Nothing is stored and the coach stays hidden — use this to try a model or base URL."
@@ -296,6 +297,7 @@ export function CoachSettingsSection() {
           {busy ? "Working…" : "Verify"}
         </button>
         <button
+          type="button"
           onClick={handleSave}
           disabled={busy || !canSubmit}
           title="Verify these settings and save them only if the check passes. On success the configuration is stored and the coach icon appears."
@@ -305,6 +307,7 @@ export function CoachSettingsSection() {
         </button>
         {config && (
           <button
+            type="button"
             onClick={handleClearConfig}
             disabled={busy}
             title="Remove the provider configuration only; chats and memory are kept"
@@ -314,6 +317,7 @@ export function CoachSettingsSection() {
           </button>
         )}
         <button
+          type="button"
           onClick={handleResetAll}
           disabled={busy}
           title="Permanently delete the configuration and all chats, messages, and memory"

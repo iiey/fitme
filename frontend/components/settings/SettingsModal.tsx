@@ -37,6 +37,8 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const activeLabel = sections.find((s) => s.id === activeSection)?.label ?? ""
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-dismiss is a mouse convenience; the dialog closes via Escape and a close button
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-dismiss is a mouse convenience; the dialog closes via Escape and a close button
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => {

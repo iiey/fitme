@@ -57,6 +57,8 @@ export function NoteField({
       </button>
 
       {open && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-dismiss is a mouse convenience; the dialog closes via Escape and a close button
+        // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-dismiss is a mouse convenience; the dialog closes via Escape and a close button
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           onClick={(e) => {
@@ -70,6 +72,7 @@ export function NoteField({
                 type="button"
                 onClick={() => setOpen(false)}
                 className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
+                aria-label="Close"
               >
                 <svg
                   className="h-5 w-5"
@@ -77,6 +80,7 @@ export function NoteField({
                   stroke="currentColor"
                   strokeWidth={2}
                   viewBox="0 0 24 24"
+                  aria-hidden="true"
                 >
                   <path d="M6 18L18 6M6 6l12 12" />
                 </svg>

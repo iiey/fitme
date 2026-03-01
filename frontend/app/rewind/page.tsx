@@ -93,12 +93,14 @@ export default function RewindPage() {
           action={
             <div className="flex gap-1 rounded-lg bg-surface-muted p-0.5 text-xs">
               <button
+                type="button"
                 onClick={() => setSportMetric("distance")}
                 className={metricTabClass(sportMetric === "distance")}
               >
                 {distanceUnit}
               </button>
               <button
+                type="button"
                 onClick={() => setSportMetric("hours")}
                 className={metricTabClass(sportMetric === "hours")}
               >

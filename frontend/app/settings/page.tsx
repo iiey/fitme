@@ -66,7 +66,7 @@ function AthleteConfigSection({ athleteId }: { athleteId: string }) {
 
   function numOrNull(v: string): number | null {
     const n = parseFloat(v)
-    return isNaN(n) ? null : n
+    return Number.isNaN(n) ? null : n
   }
 
   async function handleSave() {
@@ -209,6 +209,7 @@ function AthleteConfigSection({ athleteId }: { athleteId: string }) {
 
         <div className="flex justify-end">
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving || !dirty}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-dark disabled:opacity-50"

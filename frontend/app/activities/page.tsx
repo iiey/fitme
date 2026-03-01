@@ -222,6 +222,7 @@ export default function ActivitiesPage() {
 
           {/* Date filter toggle */}
           <button
+            type="button"
             onClick={() => {
               if (showDateFilter && hasDateFilter) {
                 clearDates()
@@ -243,6 +244,7 @@ export default function ActivitiesPage() {
 
           {/* Distance filter toggle */}
           <button
+            type="button"
             onClick={() => {
               if (showDistanceFilter && hasDistanceFilter) {
                 clearDistance()
@@ -266,8 +268,11 @@ export default function ActivitiesPage() {
           {showDateFilter && (
             <>
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-gray-500">From</label>
+                <label htmlFor="filter-date-from" className="text-xs text-gray-500">
+                  From
+                </label>
                 <input
+                  id="filter-date-from"
                   type="date"
                   value={dateFrom}
                   onChange={(event) => set({ from: event.target.value, page: "" })}
@@ -276,8 +281,11 @@ export default function ActivitiesPage() {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-gray-500">To</label>
+                <label htmlFor="filter-date-to" className="text-xs text-gray-500">
+                  To
+                </label>
                 <input
+                  id="filter-date-to"
                   type="date"
                   value={dateTo}
                   onChange={(event) => set({ to: event.target.value, page: "" })}
@@ -286,7 +294,11 @@ export default function ActivitiesPage() {
               </div>
 
               {hasDateFilter && (
-                <button onClick={clearDates} className="text-sm text-brand hover:underline">
+                <button
+                  type="button"
+                  onClick={clearDates}
+                  className="text-sm text-brand hover:underline"
+                >
                   Clear dates
                 </button>
               )}
@@ -297,8 +309,11 @@ export default function ActivitiesPage() {
           {showDistanceFilter && (
             <>
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-gray-500">Min</label>
+                <label htmlFor="filter-dist-min" className="text-xs text-gray-500">
+                  Min
+                </label>
                 <input
+                  id="filter-dist-min"
                   type="number"
                   step="any"
                   min="0"
@@ -311,8 +326,11 @@ export default function ActivitiesPage() {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-gray-500">Max</label>
+                <label htmlFor="filter-dist-max" className="text-xs text-gray-500">
+                  Max
+                </label>
                 <input
+                  id="filter-dist-max"
                   type="number"
                   step="any"
                   min="0"
@@ -325,7 +343,11 @@ export default function ActivitiesPage() {
               </div>
 
               {hasDistanceFilter && (
-                <button onClick={clearDistance} className="text-sm text-brand hover:underline">
+                <button
+                  type="button"
+                  onClick={clearDistance}
+                  className="text-sm text-brand hover:underline"
+                >
                   Clear
                 </button>
               )}
@@ -344,6 +366,7 @@ export default function ActivitiesPage() {
               { key: "this-year", label: "This year" },
             ].map((p) => (
               <button
+                type="button"
                 key={p.key}
                 onClick={() => setDatePreset(p.key)}
                 className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:border-brand hover:text-brand transition-colors"
@@ -367,6 +390,7 @@ export default function ActivitiesPage() {
               { min: "10", max: "21", label: "10–21 km" },
             ].map((p) => (
               <button
+                type="button"
                 key={p.label}
                 onClick={() => set({ dmin: p.min, dmax: p.max, page: "" })}
                 className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:border-brand hover:text-brand transition-colors"
@@ -400,6 +424,7 @@ export default function ActivitiesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <div className="flex items-center gap-2">
           <button
+            type="button"
             className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40"
             disabled={page === 0}
             onClick={() => set({ page: String(Math.max(0, page - 1)) || "" })}
@@ -412,6 +437,7 @@ export default function ActivitiesPage() {
             </span>
           )}
           <button
+            type="button"
             className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40"
             disabled={page >= totalPages - 1}
             onClick={() => set({ page: String(page + 1) })}
@@ -421,8 +447,11 @@ export default function ActivitiesPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">Per page</label>
+          <label htmlFor="filter-page-size" className="text-xs text-gray-500">
+            Per page
+          </label>
           <select
+            id="filter-page-size"
             value={pageSize}
             onChange={(event) => set({ size: event.target.value, page: "" })}
             className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-brand focus:outline-none"

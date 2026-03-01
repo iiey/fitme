@@ -19,11 +19,13 @@ export function PaceZones({ zones }: { zones: PaceZoneItem[] }) {
             <div className="text-sm font-semibold">
               Zone {z.zone}
               <span className="ml-1.5 font-normal text-gray-400 text-xs">
-                {z.fast_pace == null
-                  ? `< ${formatZonePace(z.slow_pace!)} /km`
-                  : z.slow_pace == null
+                {z.fast_pace != null && z.slow_pace != null
+                  ? `${formatZonePace(z.fast_pace)}–${formatZonePace(z.slow_pace)} /km`
+                  : z.fast_pace != null
                     ? `> ${formatZonePace(z.fast_pace)} /km`
-                    : `${formatZonePace(z.fast_pace)}–${formatZonePace(z.slow_pace)} /km`}
+                    : z.slow_pace != null
+                      ? `< ${formatZonePace(z.slow_pace)} /km`
+                      : ""}
               </span>
             </div>
             <div className="text-xs text-gray-400">{z.label}</div>

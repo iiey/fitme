@@ -85,6 +85,7 @@ export default function GoalsPage() {
           <p className="text-sm text-gray-500">Set targets and track your progress.</p>
         </div>
         <button
+          type="button"
           onClick={() => setShowForm((v) => !v)}
           className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark transition-colors"
         >
@@ -285,11 +286,11 @@ function GoalCard({
     }
   }
 
-  if (editing) {
+  if (editing && athleteId) {
     return (
       <EditGoalForm
         goal={goal}
-        athleteId={athleteId!}
+        athleteId={athleteId}
         sportTypes={sportTypes}
         onSaved={() => {
           setEditing(false)
@@ -306,6 +307,7 @@ function GoalCard({
         selected ? "ring-2 ring-brand" : "hover:border-gray-300 dark:hover:border-gray-600"
       }`}
     >
+      {/* biome-ignore lint/a11y/useSemanticElements: the card wraps nested interactive controls (edit/delete) so it cannot be a <button>; role="button" with keyboard handlers is used instead */}
       <div
         role="button"
         tabIndex={0}
@@ -368,6 +370,7 @@ function GoalCard({
         <div className="flex justify-end gap-3">
           {athleteId && (
             <button
+              type="button"
               onClick={() => setEditing(true)}
               className="text-sm text-gray-400 hover:text-brand transition-colors"
             >
@@ -378,6 +381,7 @@ function GoalCard({
             <span className="flex items-center gap-2 text-sm">
               <span className="text-red-500">Delete this goal?</span>
               <button
+                type="button"
                 onClick={handleDelete}
                 disabled={busy}
                 className="font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
@@ -385,6 +389,7 @@ function GoalCard({
                 Yes
               </button>
               <button
+                type="button"
                 onClick={() => setConfirmDelete(false)}
                 disabled={busy}
                 className="text-gray-400 hover:text-gray-600"
@@ -394,6 +399,7 @@ function GoalCard({
             </span>
           ) : (
             <button
+              type="button"
               onClick={() => setConfirmDelete(true)}
               className="text-sm text-gray-400 hover:text-red-500 transition-colors"
             >
@@ -474,7 +480,7 @@ function EditGoalForm({
     e.preventDefault()
     setError(null)
     const raw = parseFloat(targetValue)
-    if (isNaN(raw) || raw <= 0) {
+    if (Number.isNaN(raw) || raw <= 0) {
       setError("Target must be a positive number.")
       return
     }
@@ -621,7 +627,7 @@ function NewGoalForm({
 
   const targetForApi = useCallback((): number => {
     const raw = parseFloat(targetValue)
-    if (isNaN(raw) || raw <= 0) return 0
+    if (Number.isNaN(raw) || raw <= 0) return 0
     if (metric === "distance_m") return raw * 1000
     return raw
   }, [targetValue, metric])

@@ -27,8 +27,11 @@ export function PlanForm({ busy, onGenerate }: PlanFormProps) {
         className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
       />
       <div className="flex items-center gap-2">
-        <label className="text-xs text-gray-500">Weeks</label>
+        <label htmlFor="plan-weeks" className="text-xs text-gray-500">
+          Weeks
+        </label>
         <select
+          id="plan-weeks"
           value={weeks}
           onChange={(e) => setWeeks(Number(e.target.value))}
           disabled={busy}

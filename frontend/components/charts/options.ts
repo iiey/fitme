@@ -761,7 +761,7 @@ export function hrZoneBarChart(zones: number[], unit = "h", dark = false): EChar
               x2: 0,
               y2: 0,
               colorStops: [
-                { offset: 0, color: HR_ZONE_COLORS[i] + "88" },
+                { offset: 0, color: `${HR_ZONE_COLORS[i]}88` },
                 { offset: 1, color: HR_ZONE_COLORS[i] },
               ],
             },
@@ -801,7 +801,7 @@ export function yearlyStatsChart(
     const year = parseInt(m.period.slice(0, 4), 10)
     const month = parseInt(m.period.slice(5, 7), 10)
     if (!byYear.has(year)) byYear.set(year, [])
-    byYear.get(year)!.push({ month, distance: m.distance, count: m.count })
+    byYear.get(year)?.push({ month, distance: m.distance, count: m.count })
   }
 
   const years = Array.from(byYear.keys()).sort((a, b) => b - a)
@@ -818,7 +818,7 @@ export function yearlyStatsChart(
   const countsByYear: Record<string, (number | null)[]> = {}
 
   const series: EChartsOption["series"] = years.map((year, i) => {
-    const months = byYear.get(year)!.sort((a, b) => a.month - b.month)
+    const months = (byYear.get(year) ?? []).sort((a, b) => a.month - b.month)
     const cumulative = new Array(12).fill(null) as (number | null)[]
     const counts = new Array(12).fill(null) as (number | null)[]
     // Months with real activity data get an always-on km label; forward-filled

@@ -84,7 +84,9 @@ function buildQuery(params: Record<string, unknown>): string {
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === "") continue
     if (Array.isArray(value)) {
-      value.forEach((entry) => search.append(key, String(entry)))
+      value.forEach((entry) => {
+        search.append(key, String(entry))
+      })
     } else {
       search.append(key, String(value))
     }

@@ -39,6 +39,8 @@ export function EddingtonDetailModal({
   )
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-dismiss is a mouse convenience; the dialog has a keyboard-accessible close button
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-dismiss is a mouse convenience; the dialog has a keyboard-accessible close button
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => {
@@ -49,8 +51,10 @@ export function EddingtonDetailModal({
         <header className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
           <h2 className="text-lg font-semibold">Eddington</h2>
           <button
+            type="button"
             onClick={onClose}
             className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
+            aria-label="Close"
           >
             <svg
               className="h-5 w-5"
@@ -58,6 +62,7 @@ export function EddingtonDetailModal({
               stroke="currentColor"
               strokeWidth={2}
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -80,6 +85,7 @@ export function EddingtonDetailModal({
               <div className="flex flex-wrap gap-2">
                 {data.results.map((result, index) => (
                   <button
+                    type="button"
                     key={result.activity_type}
                     onClick={() => setActiveTab(index)}
                     className={

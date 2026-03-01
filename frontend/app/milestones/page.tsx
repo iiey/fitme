@@ -92,8 +92,11 @@ export default function MilestonesPage() {
           <div key={yearGroup.year}>
             <h2 className="mb-3 text-lg font-bold text-gray-700">{yearGroup.year}</h2>
             <div className="space-y-3 border-l-2 border-gray-200 pl-5">
-              {yearGroup.milestones.map((milestone, index) => (
-                <Card key={index} className="relative">
+              {yearGroup.milestones.map((milestone) => (
+                <Card
+                  key={`${milestone.group}-${milestone.achieved_on}-${milestone.title}`}
+                  className="relative"
+                >
                   <span className="absolute -left-[27px] top-5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-brand ring-2 ring-brand dark:bg-gray-900">
                     <GroupIcon group={milestone.group} className="h-3 w-3" />
                   </span>

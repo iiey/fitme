@@ -20,7 +20,7 @@ import { DeferredSection } from "@/components/ui/DeferredSection"
 import { hasActivitiesButNoLoad, LoadConfigHint } from "@/components/ui/LoadConfigHint"
 import { SportFilter } from "@/components/ui/SportFilter"
 import { StatCard } from "@/components/ui/StatCard"
-import { EmptyState, ErrorState, Spinner } from "@/components/ui/States"
+import { EmptyState, Spinner } from "@/components/ui/States"
 import { isTransientError, useDashboard, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDate, formatHours, formatNumber } from "@/lib/format"
@@ -98,6 +98,7 @@ export default function DashboardPage() {
           message="No activities yet. Import your data to get started."
           action={
             <button
+              type="button"
               onClick={() => setImportOpen(true)}
               className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
             >
@@ -171,6 +172,7 @@ export default function DashboardPage() {
             message="Could not load dashboard data. Try importing your data."
             action={
               <button
+                type="button"
                 onClick={() => setImportOpen(true)}
                 className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
               >
@@ -243,6 +245,7 @@ export default function DashboardPage() {
             action={
               data.eddington.length > 0 ? (
                 <button
+                  type="button"
                   onClick={() => setEddingtonOpen(true)}
                   className="text-sm font-medium text-brand hover:underline"
                 >
@@ -311,12 +314,14 @@ export default function DashboardPage() {
             action={
               <div className="flex rounded-md border border-gray-300 text-xs dark:border-gray-600">
                 <button
+                  type="button"
                   onClick={() => setWeeklyMetric("hours")}
                   className={`rounded-l-md px-2.5 py-1 ${weeklyMetric === "hours" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
                 >
                   Hours
                 </button>
                 <button
+                  type="button"
                   onClick={() => setWeeklyMetric("km")}
                   className={`rounded-r-md px-2.5 py-1 ${weeklyMetric === "km" ? "bg-brand text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
                 >
@@ -504,8 +509,11 @@ export default function DashboardPage() {
           </Card>
           <Card title="Recent milestones">
             <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-              {data.recent_milestones.map((milestone, index) => (
-                <li key={index} className="py-2">
+              {data.recent_milestones.map((milestone) => (
+                <li
+                  key={`${milestone.group}-${milestone.achieved_on}-${milestone.title}`}
+                  className="py-2"
+                >
                   <p className="text-sm font-medium">{milestone.title}</p>
                   <p className="text-xs text-gray-400">{formatDate(milestone.achieved_on)}</p>
                 </li>

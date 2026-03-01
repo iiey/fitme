@@ -13,7 +13,7 @@ import type { ChatMessage } from "@/lib/coach/types"
 // is treated as external and opens in a new tab.
 function ChatLink({ href, children }: { href?: string; children?: ReactNode }) {
   const router = useRouter()
-  if (href && href.startsWith("/")) {
+  if (href?.startsWith("/")) {
     return (
       <a
         href={href}
@@ -73,7 +73,7 @@ const MARKDOWN_COMPONENTS: Components = {
 // animation-delays start each dot mid-bounce to make a left-to-right wave.
 function TypingDots() {
   return (
-    <span className="flex items-center gap-1 py-1" aria-label="FitBuddy is thinking">
+    <span className="flex items-center gap-1 py-1" role="status" aria-label="FitBuddy is thinking">
       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]" />
       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.15s]" />
       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400" />

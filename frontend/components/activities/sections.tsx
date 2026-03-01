@@ -45,7 +45,7 @@ function streamAxis(
   const hasDistance = activity.is_distance_based && distanceStream.some((d) => d != null && d > 0)
   if (hasDistance) return { stream: distanceStream, axis: "distance" }
   const time = activity.streams.time
-  if (time && time.some((t) => t != null)) return { stream: time, axis: "time" }
+  if (time?.some((t) => t != null)) return { stream: time, axis: "time" }
   return { stream: valueStream.map((_, i) => i), axis: "time" }
 }
 

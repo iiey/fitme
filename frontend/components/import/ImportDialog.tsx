@@ -53,7 +53,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   // app's data so newly imported activities appear gradually, and stops once
   // the import finishes or fails.
   useEffect(() => {
-    if (!status || status.status !== "running") return
+    if (status?.status !== "running") return
     const runId = status.id
     const timer = setInterval(async () => {
       try {
@@ -132,20 +132,20 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const running = status?.status === "running"
   const done = status?.status === "ok"
   const failed = status?.status === "error"
-  const percent =
-    status && status.total
-      ? Math.min(100, Math.round((status.processed / status.total) * 100))
-      : null
+  const percent = status?.total
+    ? Math.min(100, Math.round((status.processed / status.total) * 100))
+    : null
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-dismiss is a mouse convenience; the dialog has a keyboard-accessible close button
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-dismiss is a mouse convenience; the dialog has a keyboard-accessible close button
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={handleClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose()
+      }}
     >
-      <div
-        className="w-full max-w-lg rounded-xl bg-surface p-6 text-foreground shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div className="w-full max-w-lg rounded-xl bg-surface p-6 text-foreground shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">Import activity data</h2>
           <button
@@ -161,15 +161,24 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         {phase === "select" && (
           <>
             <div className="mb-4 flex gap-1 rounded-lg bg-surface-muted p-1 text-sm">
-              <button onClick={() => setMode("upload")} className={tabClass(mode === "upload")}>
+              <button
+                type="button"
+                onClick={() => setMode("upload")}
+                className={tabClass(mode === "upload")}
+              >
                 Upload .zip
               </button>
-              <button onClick={() => setMode("path")} className={tabClass(mode === "path")}>
+              <button
+                type="button"
+                onClick={() => setMode("path")}
+                className={tabClass(mode === "path")}
+              >
                 Server path
               </button>
             </div>
 
             {mode === "upload" ? (
+              // biome-ignore lint/a11y/useSemanticElements: keyboard-operable dropzone wrapping a hidden file input and drag-and-drop; it cannot be a native <button>
               <div
                 onDragOver={(event) => {
                   event.preventDefault()
@@ -178,6 +187,14 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
                 onDragLeave={() => setDragOver(false)}
                 onDrop={onDrop}
                 onClick={() => inputRef.current?.click()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    inputRef.current?.click()
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
                   dragOver
                     ? "border-brand bg-brand/5"
@@ -201,10 +218,14 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               </div>
             ) : (
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-600 dark:text-gray-300">
+                <label
+                  htmlFor="import-path"
+                  className="mb-1 block text-sm font-medium text-gray-600 dark:text-gray-300"
+                >
                   Path to export (.zip or folder) on the server
                 </label>
                 <input
+                  id="import-path"
                   type="text"
                   value={path}
                   onChange={(event) => setPath(event.target.value)}
@@ -336,7 +357,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               />
             </div>
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              {status && status.total
+              {status?.total
                 ? `${status.processed} of ${status.total} activities · ${status.files_parsed} files parsed`
                 : "Reading your export…"}
             </p>
@@ -369,6 +390,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
         <div className="mt-6 flex justify-end gap-2">
           {phase === "confirm" ? (
             <button
+              type="button"
               onClick={() => {
                 setPhase("select")
                 setPreview(null)
@@ -380,6 +402,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleClose}
               className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
             >
@@ -389,6 +412,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
           {phase === "select" && (
             <button
+              type="button"
               onClick={continueToPreview}
               disabled={!canContinue || busy}
               className="flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50"
@@ -402,6 +426,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
 
           {phase === "confirm" && (
             <button
+              type="button"
               onClick={runImport}
               disabled={busy || (mergeChoice === "merge" && !targetAthleteId)}
               className="flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50"

@@ -65,7 +65,7 @@ export function PaceChartCard({
   const timeStream = activity.streams.time
   const { axisStream, axis } = hasDistance
     ? { axisStream: distanceStream, axis: "distance" as const }
-    : timeStream && timeStream.some((t) => t != null)
+    : timeStream?.some((t) => t != null)
       ? { axisStream: timeStream, axis: "time" as const }
       : { axisStream: series.map((_, i) => i), axis: "time" as const }
 

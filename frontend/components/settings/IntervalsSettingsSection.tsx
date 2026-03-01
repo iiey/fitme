@@ -230,6 +230,7 @@ export function IntervalsSettingsSection() {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            type="button"
             onClick={handleSave}
             disabled={busy || !canSave}
             title="Save your credentials and verify the API key works with Intervals.icu"
@@ -238,6 +239,7 @@ export function IntervalsSettingsSection() {
             {config ? "Save & verify" : "Connect"}
           </button>
           <button
+            type="button"
             onClick={() => handleSync(false)}
             disabled={busy || running || !config}
             title="Fetch only new activities added since the last sync (quick)"
@@ -246,6 +248,7 @@ export function IntervalsSettingsSection() {
             {running ? "Syncing…" : "Sync now"}
           </button>
           <button
+            type="button"
             onClick={() => handleSync(true)}
             disabled={busy || running || !config}
             title="Re-fetch your entire Intervals.icu history from scratch (slow)"
@@ -255,6 +258,7 @@ export function IntervalsSettingsSection() {
           </button>
           {config && (
             <button
+              type="button"
               onClick={handleDelete}
               disabled={busy || running}
               title="Remove the sync config and stop all future syncing"

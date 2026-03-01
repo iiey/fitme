@@ -54,6 +54,7 @@ export function MessageInput({
   const showMenu = menuOpen && isSlash && filtered.length > 0
 
   // Keep the highlight in range as the filtered list changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset highlight whenever the filtered query changes
   useEffect(() => setHighlight(0), [query, isSlash])
 
   // Close the menu when clicking outside the composer (mirrors SportFilter).

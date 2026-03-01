@@ -74,7 +74,7 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
 
   const [yearView, setYearView] = useState("rolling")
 
-  const { cells, maxLoad, monthHeaders, dateRange } = useMemo(() => {
+  const { cells, maxLoad, monthHeaders } = useMemo(() => {
     const byDate = new Map(points.map((p) => [p.date, p]))
     const max = points.reduce((acc, p) => Math.max(acc, p.training_load), 1)
 
@@ -245,23 +245,27 @@ export function ActivityHeatmap({ points }: { points: CalendarPoint[] }) {
                 flex: 1,
               }}
             >
-              {cells.map((cell) => (
-                <div
-                  key={cell.date}
-                  title={`${cell.date}: ${cell.load > 0 ? `Load ${cell.load}` : "No activity"} (${cell.count} activit${cell.count === 1 ? "y" : "ies"})`}
-                  className={`rounded-[2px] ${cell.count > 0 ? "cursor-pointer ring-brand/50 transition-shadow hover:ring-2" : ""}`}
-                  style={{
-                    width: cellWidth,
-                    height: cellHeight,
-                    backgroundColor: colorForLoad(cell.load, maxLoad, isDark),
-                  }}
-                  onClick={
-                    cell.count > 0
-                      ? () => router.push(`/activities?from=${cell.date}&to=${cell.date}`)
-                      : undefined
-                  }
-                />
-              ))}
+              {cells.map((cell) => {
+                const tooltip = `${cell.date}: ${cell.load > 0 ? `Load ${cell.load}` : "No activity"} (${cell.count} activit${cell.count === 1 ? "y" : "ies"})`
+                const dims = {
+                  width: cellWidth,
+                  height: cellHeight,
+                  backgroundColor: colorForLoad(cell.load, maxLoad, isDark),
+                }
+                return cell.count > 0 ? (
+                  <button
+                    key={cell.date}
+                    type="button"
+                    title={tooltip}
+                    aria-label={tooltip}
+                    className="cursor-pointer rounded-[2px] ring-brand/50 transition-shadow hover:ring-2"
+                    style={{ ...dims, padding: 0, border: "none" }}
+                    onClick={() => router.push(`/activities?from=${cell.date}&to=${cell.date}`)}
+                  />
+                ) : (
+                  <div key={cell.date} title={tooltip} className="rounded-[2px]" style={dims} />
+                )
+              })}
             </div>
           </div>
         </div>
