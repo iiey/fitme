@@ -1,7 +1,14 @@
 "use client"
 
 import clsx from "clsx"
-import { type LucideIcon, MessagesSquare, RefreshCw, SlidersHorizontal, X } from "lucide-react"
+import {
+  ExternalLink,
+  type LucideIcon,
+  MessagesSquare,
+  RefreshCw,
+  SlidersHorizontal,
+  X,
+} from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { CoachSettingsSection } from "@/components/coach/CoachSettingsSection"
@@ -88,6 +95,18 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             {activeSection === "fitbuddy" && <CoachSettingsSection />}
           </div>
         </div>
+
+        <footer className="flex items-center justify-end border-t border-gray-200 px-5 py-3 dark:border-gray-700">
+          <a
+            href="https://github.com/iiey/fitme"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-brand"
+          >
+            <ExternalLink className="h-4 w-4 shrink-0" />
+            <span>FitMe on GitHub</span>
+          </a>
+        </footer>
       </div>
     </div>
   )
