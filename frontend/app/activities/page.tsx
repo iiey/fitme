@@ -161,7 +161,7 @@ export default function ActivitiesPage() {
       header: "Pace",
       sortable: true,
       align: "right",
-      render: (row) => formatActivityPace(row),
+      render: (row) => formatActivityPace(row, distanceUnit),
     },
     {
       key: "elevation_m",

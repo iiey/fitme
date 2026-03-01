@@ -6,7 +6,7 @@ import { EChart } from "@/components/charts/EChart"
 import { Card } from "@/components/ui/Card"
 import { InfoTip } from "@/components/ui/InfoTip"
 import { StatCard } from "@/components/ui/StatCard"
-import { formatActivityPace, formatNumber, formatPace } from "@/lib/format"
+import { formatActivityPace, formatPace, formatSpeed, KM_PER_MILE } from "@/lib/format"
 import type { ActivityDetail } from "@/lib/types"
 
 import { multiStreamChart, streamChart } from "./charts"
@@ -15,6 +15,8 @@ type SpeedMode = "pace" | "gap" | "both"
 
 const PACE_COLOR = "#2563eb"
 const GAP_COLOR = "#7c3aed"
+const MS_TO_KMH = 3.6
+const MS_TO_MPH = MS_TO_KMH / KM_PER_MILE
 
 const SPEED_MODES: { key: SpeedMode; label: string }[] = [
   { key: "pace", label: "Pace" },
@@ -22,9 +24,9 @@ const SPEED_MODES: { key: SpeedMode; label: string }[] = [
   { key: "both", label: "Both" },
 ]
 
-/** Convert a m/s velocity stream to km/h, preserving null gaps. */
-const toKmh = (stream: (number | null)[]): (number | null)[] =>
-  stream.map((v) => (v ? v * 3.6 : null))
+/** Convert a m/s velocity stream to the display speed unit, preserving null gaps. */
+const toSpeed = (stream: (number | null)[], factor: number): (number | null)[] =>
+  stream.map((v) => (v ? v * factor : null))
 
 /**
  * Speed chart for running activities with a Pace / GAP / Both toggle (top-right).
@@ -34,10 +36,15 @@ const toKmh = (stream: (number | null)[]): (number | null)[] =>
 export function PaceChartCard({
   activity,
   distanceStream,
+  distanceUnit,
 }: {
   activity: ActivityDetail
   distanceStream: (number | null)[]
+  distanceUnit: string
 }) {
+  const imperial = distanceUnit === "mi"
+  const speedFactor = imperial ? MS_TO_MPH : MS_TO_KMH
+  const speedUnit = imperial ? "mph" : "km/h"
   const rawVelocity = activity.streams.velocity_smooth ?? []
   const gapVelocity = activity.streams.grade_adjusted_velocity
   const hasGap = Array.isArray(gapVelocity) && gapVelocity.length > 0
@@ -68,10 +75,15 @@ export function PaceChartCard({
   }, [gapVelocity])
 
   const averageValue = showGap
-    ? formatPace(gapStats.avgPaceSPerKm, "/km")
-    : formatActivityPace(activity)
+    ? formatPace(
+        gapStats.avgPaceSPerKm == null
+          ? null
+          : gapStats.avgPaceSPerKm * (imperial ? KM_PER_MILE : 1),
+        imperial ? "/mi" : "/km",
+      )
+    : formatActivityPace(activity, distanceUnit)
   const maxSpeedKmh = showGap ? gapStats.maxSpeedKmh : activity.max_speed_kmh
-  const maxSpeedValue = maxSpeedKmh ? `${formatNumber(maxSpeedKmh, 1)} km/h` : "-"
+  const maxSpeedValue = formatSpeed(maxSpeedKmh, distanceUnit)
 
   const toggle = hasGap ? (
     <div className="flex items-center">
@@ -118,13 +130,17 @@ export function PaceChartCard({
             ? multiStreamChart(
                 axisStream,
                 [
-                  { name: "Pace", values: toKmh(rawVelocity), color: PACE_COLOR },
-                  { name: "GAP", values: toKmh(gapVelocity ?? []), color: GAP_COLOR },
+                  { name: "Pace", values: toSpeed(rawVelocity, speedFactor), color: PACE_COLOR },
+                  {
+                    name: "GAP",
+                    values: toSpeed(gapVelocity ?? [], speedFactor),
+                    color: GAP_COLOR,
+                  },
                 ],
-                "km/h",
+                speedUnit,
                 axis,
               )
-            : streamChart(axisStream, toKmh(series), color, "km/h", axis)
+            : streamChart(axisStream, toSpeed(series, speedFactor), color, speedUnit, axis)
         }
         height={220}
       />

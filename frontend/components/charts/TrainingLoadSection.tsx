@@ -107,7 +107,7 @@ function ActivityRow({
         <span className="font-semibold text-gray-700 dark:text-gray-200">Load {activity.load}</span>
         {activity.intensity > 0 && <span>{activity.intensity}%</span>}
         {activity.average_heart_rate != null && <span>{activity.average_heart_rate} bpm</span>}
-        <span>{formatActivityPace(activity)}</span>
+        <span>{formatActivityPace(activity, distanceUnit)}</span>
       </span>
     </Link>
   )

@@ -24,7 +24,7 @@ function statFor(key: PrimaryStatKey, a: ActivityDetail, distanceUnit: string): 
     case "movingTime":
       return { label: "Moving Time", value: formatDuration(a.moving_time_s) }
     case "paceSpeed":
-      return { label: paceLabel(a.pace_unit), value: formatActivityPace(a) }
+      return { label: paceLabel(a.pace_unit), value: formatActivityPace(a, distanceUnit) }
     case "elevation":
       return { label: "Elevation", value: `${formatNumber(a.elevation_m, 0)} m` }
     case "avgHr":

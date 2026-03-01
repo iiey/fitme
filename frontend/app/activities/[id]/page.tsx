@@ -35,6 +35,7 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
         athleteId={athleteId}
         activityId={id}
         distanceStream={distanceStream}
+        distanceUnit={distanceUnit}
       />
     </div>
   )

@@ -18,6 +18,8 @@ export function formatHours(seconds: number | null | undefined): string {
   return hours >= 10 ? `${Math.round(hours)}h` : `${hours.toFixed(1)}h`
 }
 
+export const KM_PER_MILE = 1.609344
+
 export function formatPace(secondsPerKm: number | null | undefined, unit: string): string {
   if (!secondsPerKm || secondsPerKm <= 0) return "-"
   const minutes = Math.floor(secondsPerKm / 60)
@@ -25,21 +27,35 @@ export function formatPace(secondsPerKm: number | null | undefined, unit: string
   return `${minutes}:${String(seconds).padStart(2, "0")} ${unit}`
 }
 
+/** Format a km/h speed as km/h (metric) or mph (imperial). */
+export function formatSpeed(kmh: number | null | undefined, distanceUnit: string): string {
+  if (!kmh) return "-"
+  return distanceUnit === "mi" ? `${(kmh / KM_PER_MILE).toFixed(1)} mph` : `${kmh.toFixed(1)} km/h`
+}
+
 /**
- * Format an activity's pace/speed for display, respecting its sport preference:
- * running/walking show min/km, swimming min/100m, everything else km/h.
+ * Format an activity's pace/speed for display, respecting both its sport
+ * preference and the unit system: running/walking show min/km (or min/mi),
+ * swimming min/100m (pools stay metric), everything else km/h (or mph).
  */
-export function formatActivityPace(activity: {
-  pace_unit: string
-  average_pace_s_per_km: number | null
-  average_speed_kmh: number | null
-}): string {
+export function formatActivityPace(
+  activity: {
+    pace_unit: string
+    average_pace_s_per_km: number | null
+    average_speed_kmh: number | null
+  },
+  distanceUnit: string = "km",
+): string {
   if (activity.pace_unit === "km/h") {
-    return activity.average_speed_kmh ? `${activity.average_speed_kmh.toFixed(1)} km/h` : "-"
+    return formatSpeed(activity.average_speed_kmh, distanceUnit)
   }
   if (activity.pace_unit === "/100m") {
-    // Convert per-km pace to per-100m.
+    // Convert per-km pace to per-100m; pool distances stay metric.
     return formatPace((activity.average_pace_s_per_km ?? 0) / 10, "/100m")
+  }
+  if (distanceUnit === "mi") {
+    const perKm = activity.average_pace_s_per_km
+    return formatPace(perKm == null ? null : perKm * KM_PER_MILE, "/mi")
   }
   return formatPace(activity.average_pace_s_per_km, "/km")
 }

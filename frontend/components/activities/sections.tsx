@@ -26,6 +26,7 @@ export interface SectionProps {
   distanceStream: (number | null)[]
   athleteId: string | null
   activityId: string
+  distanceUnit: string
 }
 
 /**
@@ -132,9 +133,15 @@ function HrZonesSection({ activity }: SectionProps) {
   )
 }
 
-function PaceSection({ activity, distanceStream }: SectionProps) {
+function PaceSection({ activity, distanceStream, distanceUnit }: SectionProps) {
   if (!activity.streams.velocity_smooth) return null
-  return <PaceChartCard activity={activity} distanceStream={distanceStream} />
+  return (
+    <PaceChartCard
+      activity={activity}
+      distanceStream={distanceStream}
+      distanceUnit={distanceUnit}
+    />
+  )
 }
 
 function PaceZonesSection({ activity }: SectionProps) {
