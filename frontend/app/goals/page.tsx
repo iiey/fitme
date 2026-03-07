@@ -399,6 +399,108 @@ function activityContribution(metric: string, a: ActivitySummary): number {
   }
 }
 
+interface SeriesPoint {
+  /** Whole days from the goal's start date. */
+  day: number
+  /** Cumulative metric value up to and including this point. */
+  value: number
+}
+
+/**
+ * Cumulative goal metric over time as (day-from-start, value) points.
+ * Activities may arrive in any order and are sorted ascending by date. A
+ * leading ``(0, 0)`` and a trailing point at "today" bracket the series so the
+ * line spans the whole elapsed window. Returns ``[]`` for a zero-length window.
+ */
+function buildCumulativeSeries(
+  goal: GoalProgressResponse,
+  activities: ActivitySummary[],
+): SeriesPoint[] {
+  const totalDays = daysBetween(goal.start_date, goal.end_date)
+  if (totalDays <= 0) return []
+
+  const clampDay = (d: number): number => Math.min(Math.max(d, 0), totalDays)
+  const ordered = [...activities].sort((a, b) => a.start_date_time.localeCompare(b.start_date_time))
+
+  const points: SeriesPoint[] = [{ day: 0, value: 0 }]
+  let cumulative = 0
+  for (const a of ordered) {
+    cumulative += activityContribution(goal.metric, a)
+    points.push({
+      day: clampDay(daysBetween(goal.start_date, a.start_date_time.slice(0, 10))),
+      value: cumulative,
+    })
+  }
+  points.push({ day: clampDay(daysBetween(goal.start_date, todayISO())), value: cumulative })
+  return points
+}
+
+/**
+ * Inline sparkline of cumulative progress over the goal window, with a dashed
+ * "ideal pace" reference line from the start to the target at the end date.
+ * Renders nothing when there is too little data to draw a line.
+ */
+function GoalProgressChart({
+  goal,
+  activities,
+}: {
+  goal: GoalProgressResponse
+  activities: ActivitySummary[]
+}) {
+  const series = buildCumulativeSeries(goal, activities)
+  if (series.length < 2) return null
+
+  const totalDays = daysBetween(goal.start_date, goal.end_date)
+  const width = 300
+  const height = 64
+  const pad = 4
+  const innerW = width - pad * 2
+  const innerH = height - pad * 2
+  const yMax = Math.max(goal.target_value, series[series.length - 1].value, 1)
+
+  const x = (day: number): number => pad + (day / totalDays) * innerW
+  const y = (value: number): number => pad + innerH - (value / yMax) * innerH
+
+  const line = series.map((p) => `${x(p.day).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ")
+  const lastDay = series[series.length - 1].day
+  const area = `${x(0).toFixed(1)},${y(0).toFixed(1)} ${line} ${x(lastDay).toFixed(1)},${y(0).toFixed(1)}`
+
+  return (
+    <div className="mb-4">
+      <div className="mb-1 flex items-center justify-between text-xs text-gray-400">
+        <span>Progress over time</span>
+        <span>{formatMetricValue(goal.metric, goal.target_value)} target</span>
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-16 w-full"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="Cumulative progress over time"
+      >
+        <line
+          x1={x(0)}
+          y1={y(0)}
+          x2={x(totalDays)}
+          y2={y(goal.target_value)}
+          className="stroke-gray-300 dark:stroke-gray-600"
+          strokeWidth={1}
+          strokeDasharray="4 3"
+          vectorEffect="non-scaling-stroke"
+        />
+        <polygon points={area} className="fill-brand/10" />
+        <polyline
+          points={line}
+          className="fill-none stroke-brand"
+          strokeWidth={2}
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    </div>
+  )
+}
+
 function GoalActivitiesPanel({
   goal,
   athleteId,
@@ -434,26 +536,29 @@ function GoalActivitiesPanel({
       ) : activities.length === 0 ? (
         <EmptyState message="No activities contribute to this goal yet." />
       ) : (
-        <ul className="-mx-1 max-h-[70vh] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
-          {activities.map((a) => (
-            <li key={a.activity_id}>
-              <Link
-                href={`/activities/${a.activity_id}`}
-                className="flex items-center justify-between gap-3 rounded-lg px-1 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{a.name}</p>
-                  <p className="text-xs text-gray-400">
-                    {formatDate(a.start_date_time, "MMM d, yyyy")} · {a.sport_label}
-                  </p>
-                </div>
-                <span className="shrink-0 text-sm font-medium tabular-nums text-gray-600 dark:text-gray-300">
-                  {formatMetricValue(goal.metric, activityContribution(goal.metric, a))}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <GoalProgressChart goal={goal} activities={activities} />
+          <ul className="-mx-1 max-h-[70vh] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
+            {activities.map((a) => (
+              <li key={a.activity_id}>
+                <Link
+                  href={`/activities/${a.activity_id}`}
+                  className="flex items-center justify-between gap-3 rounded-lg px-1 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{a.name}</p>
+                    <p className="text-xs text-gray-400">
+                      {formatDate(a.start_date_time, "MMM d, yyyy")} · {a.sport_label}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-medium tabular-nums text-gray-600 dark:text-gray-300">
+                    {formatMetricValue(goal.metric, activityContribution(goal.metric, a))}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </Card>
   )
