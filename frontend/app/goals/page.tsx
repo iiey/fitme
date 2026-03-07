@@ -61,6 +61,55 @@ function endOfYearISO(): string {
   return `${new Date().getFullYear()}-12-31`
 }
 
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t
+}
+
+function clamp255(n: number): number {
+  return Math.min(255, Math.max(0, Math.round(n)))
+}
+
+const GOAL_ORANGE = [252, 76, 2] // first third (Strava-like)
+const GOAL_BLUE = [59, 130, 246] // middle third
+const GOAL_GREEN = [34, 197, 94] // final third
+
+// Progress is split into three equal phases at these boundaries. The blend
+// between phases is kept narrow (half-width each side) so each phase reads as
+// its own solid color instead of a long muddy in-between.
+const PHASE_ONE = 1 / 3
+const PHASE_TWO = 2 / 3
+const BLEND_HALF_WIDTH = 0.04
+
+/** Phase color at progress ``t`` (0-1): orange, blue, or green with a narrow blend. */
+function phaseColor(t: number): number[] {
+  if (t <= PHASE_ONE - BLEND_HALF_WIDTH) return GOAL_ORANGE
+  if (t < PHASE_ONE + BLEND_HALF_WIDTH) {
+    const u = (t - (PHASE_ONE - BLEND_HALF_WIDTH)) / (2 * BLEND_HALF_WIDTH)
+    return GOAL_ORANGE.map((c, i) => lerp(c, GOAL_BLUE[i], u))
+  }
+  if (t <= PHASE_TWO - BLEND_HALF_WIDTH) return GOAL_BLUE
+  if (t < PHASE_TWO + BLEND_HALF_WIDTH) {
+    const u = (t - (PHASE_TWO - BLEND_HALF_WIDTH)) / (2 * BLEND_HALF_WIDTH)
+    return GOAL_BLUE.map((c, i) => lerp(c, GOAL_GREEN[i], u))
+  }
+  return GOAL_GREEN
+}
+
+/**
+ * Fill color for a progress bar. Progress is divided into three equal phases -
+ * orange (first third), blue (middle third), green (final third) - with only a
+ * narrow blend between them, so each phase shows its own solid color rather than
+ * a long muddy transition. Shaded light-to-dark for a graded look. Returns a CSS
+ * ``linear-gradient`` for ``backgroundImage``.
+ */
+function progressGradient(pct: number): string {
+  const t = Math.min(Math.max(pct, 0), 100) / 100
+  const [r, g, b] = phaseColor(t)
+  const shade = (f: number): string =>
+    `rgb(${clamp255(r * f)}, ${clamp255(g * f)}, ${clamp255(b * f)})`
+  return `linear-gradient(90deg, ${shade(1.15)}, ${shade(0.85)})`
+}
+
 export default function GoalsPage() {
   const { athleteId } = useAthleteContext()
   const { data: meta } = useMeta(athleteId)
@@ -271,7 +320,6 @@ function GoalCard({
 
   const pct = Math.min(goal.percentage, 100)
   const isComplete = pct >= 100
-  const barColor = isComplete ? "bg-green-500" : "bg-brand"
   const daysLeft = daysLeftLabel(goal.end_date)
 
   async function handleDelete() {
@@ -358,8 +406,8 @@ function GoalCard({
         <div className="flex items-center gap-3">
           <div className="flex-1 h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-              style={{ width: `${Math.max(pct, 1)}%` }}
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.max(pct, 1)}%`, backgroundImage: progressGradient(pct) }}
             />
           </div>
           <span className="w-12 text-right text-sm font-medium tabular-nums">
