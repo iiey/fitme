@@ -184,6 +184,9 @@ const GOAL_ORANGE = [252, 76, 2] // first third (Strava-like)
 const GOAL_BLUE = [59, 130, 246] // middle third
 const GOAL_GREEN = [34, 197, 94] // final third
 
+// Percentages at which a tick mark is drawn on the progress track.
+const PROGRESS_MILESTONES = [25, 50, 75]
+
 // At or above this percent (but not yet complete) the bar gets an emphasis glow.
 const ALMOST_THERE_PCT = 90
 // Green glow drawn on the track wrapper (its parent does not clip the shadow).
@@ -674,12 +677,20 @@ function GoalCard({
         {/* Progress bar */}
         <div className="flex items-center gap-3">
           <div
-            className={`flex-1 h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden ${almostThere ? ALMOST_THERE_GLOW : ""}`}
+            className={`relative flex-1 h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden ${almostThere ? ALMOST_THERE_GLOW : ""}`}
           >
             <div
               className={`h-full rounded-full transition-all duration-500 ${almostThere ? "animate-pulse" : ""}`}
               style={{ width: `${Math.max(pct, 1)}%`, backgroundImage: progressGradient(pct) }}
             />
+            {PROGRESS_MILESTONES.map((m) => (
+              <span
+                key={m}
+                aria-hidden
+                className="absolute inset-y-0 w-px bg-white/50 dark:bg-white/25"
+                style={{ left: `${m}%` }}
+              />
+            ))}
           </div>
           <span className="w-12 text-right text-sm font-medium tabular-nums">
             {formatNumber(pct, 0)}%
