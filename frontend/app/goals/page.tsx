@@ -43,15 +43,22 @@ function sportSummary(values: string[], options: { value: string; label: string 
   return values.map((v) => options.find((o) => o.value === v)?.label ?? v).join(", ")
 }
 
+const MS_PER_DAY = 86_400_000
+
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+/** Whole days from one ISO date (``YYYY-MM-DD``) to another; negative if ``toISO`` is earlier. */
+function daysBetween(fromISO: string, toISO: string): number {
+  const from = new Date(`${fromISO}T00:00:00`)
+  const to = new Date(`${toISO}T00:00:00`)
+  return Math.round((to.getTime() - from.getTime()) / MS_PER_DAY)
+}
+
 /** Whole days from today until a goal's end date; ``null`` once it has passed. */
 function daysLeftLabel(endDateISO: string): string | null {
-  const end = new Date(`${endDateISO}T00:00:00`)
-  const today = new Date(`${todayISO()}T00:00:00`)
-  const days = Math.round((end.getTime() - today.getTime()) / 86_400_000)
+  const days = daysBetween(todayISO(), endDateISO)
   if (days < 0) return null
   if (days === 0) return "Last day"
   return `${days} ${days === 1 ? "day" : "days"} left`
@@ -59,6 +66,63 @@ function daysLeftLabel(endDateISO: string): string | null {
 
 function endOfYearISO(): string {
   return `${new Date().getFullYear()}-12-31`
+}
+
+// A goal counts as "on track" when actual progress is within this many
+// percentage points of the progress expected from elapsed time.
+const ON_TRACK_TOLERANCE_PCT = 5
+
+type PaceStatus = "ahead" | "on_track" | "behind"
+
+interface GoalPacing {
+  status: PaceStatus
+  label: string
+  /** Remaining rate needed to still finish by the end date, or ``null`` if none is needed. */
+  detail: string | null
+}
+
+/**
+ * Compare a goal's actual progress against the progress expected from how much
+ * of its time window has elapsed, and the rate still needed to finish on time.
+ * Returns ``null`` for a zero-length window.
+ */
+function goalPacing(goal: GoalProgressResponse): GoalPacing | null {
+  const totalDays = daysBetween(goal.start_date, goal.end_date)
+  if (totalDays <= 0) return null
+
+  const elapsed = Math.min(Math.max(daysBetween(goal.start_date, todayISO()), 0), totalDays)
+  const expectedPct = (elapsed / totalDays) * 100
+  const diff = goal.percentage - expectedPct
+
+  const status: PaceStatus =
+    diff >= ON_TRACK_TOLERANCE_PCT
+      ? "ahead"
+      : diff <= -ON_TRACK_TOLERANCE_PCT
+        ? "behind"
+        : "on_track"
+  const label =
+    status === "ahead" ? "Ahead of pace" : status === "behind" ? "Behind pace" : "On track"
+
+  const remainingValue = Math.max(goal.target_value - goal.current_value, 0)
+  const daysRemaining = totalDays - elapsed
+  const detail =
+    remainingValue > 0 && daysRemaining > 0
+      ? `${formatMetricValue(goal.metric, remainingValue / (daysRemaining / 7))}/week to finish`
+      : null
+
+  return { status, label, detail }
+}
+
+/** Tailwind classes for a pace badge, colored by how the goal is tracking. */
+function paceBadgeClass(status: PaceStatus): string {
+  switch (status) {
+    case "ahead":
+      return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
+    case "behind":
+      return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+    default:
+      return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+  }
 }
 
 function lerp(a: number, b: number, t: number): number {
@@ -321,6 +385,7 @@ function GoalCard({
   const pct = Math.min(goal.percentage, 100)
   const isComplete = pct >= 100
   const daysLeft = daysLeftLabel(goal.end_date)
+  const pacing = !isComplete && daysLeft !== null ? goalPacing(goal) : null
 
   async function handleDelete() {
     if (!athleteId) return
@@ -414,6 +479,17 @@ function GoalCard({
             {formatNumber(pct, 0)}%
           </span>
         </div>
+
+        {pacing && (
+          <div className="flex items-center gap-2 text-sm">
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${paceBadgeClass(pacing.status)}`}
+            >
+              {pacing.label}
+            </span>
+            {pacing.detail && <span className="text-gray-400">{pacing.detail}</span>}
+          </div>
+        )}
 
         <div className="flex justify-end gap-3">
           {athleteId && (
