@@ -144,6 +144,34 @@ function paceBadgeClass(status: PaceStatus): string {
   }
 }
 
+type GoalSort = "deadline" | "progress" | "metric"
+
+const GOAL_SORT_OPTIONS: { value: GoalSort; label: string }[] = [
+  { value: "deadline", label: "Deadline" },
+  { value: "progress", label: "Progress" },
+  { value: "metric", label: "Metric" },
+]
+
+/** Whether a goal counts toward ``sport`` ("all", or a specific sport value). */
+function goalMatchesSport(goal: GoalProgressResponse, sport: string): boolean {
+  if (sport === "all") return true
+  // An empty sport list means the goal counts toward every sport.
+  return goal.sport_types.length === 0 || goal.sport_types.includes(sport)
+}
+
+/** A new array of goals sorted by the chosen key (does not mutate the input). */
+function sortGoals(goals: GoalProgressResponse[], sortBy: GoalSort): GoalProgressResponse[] {
+  const sorted = [...goals]
+  switch (sortBy) {
+    case "progress":
+      return sorted.sort((a, b) => b.percentage - a.percentage)
+    case "metric":
+      return sorted.sort((a, b) => metricLabel(a.metric).localeCompare(metricLabel(b.metric)))
+    default:
+      return sorted.sort((a, b) => a.end_date.localeCompare(b.end_date))
+  }
+}
+
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
@@ -200,14 +228,24 @@ export default function GoalsPage() {
 
   const [showForm, setShowForm] = useState(false)
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null)
+  const [sortBy, setSortBy] = useState<GoalSort>("deadline")
+  const [sportFilter, setSportFilter] = useState("all")
 
   if (isLoading) return <Spinner label="Loading goals…" />
   if (error) return <ErrorState message="Could not load goals." />
 
   const allGoals = goals ?? []
-  const activeGoals = allGoals.filter((g) => g.end_date >= todayISO())
-  const pastGoals = allGoals.filter((g) => g.end_date < todayISO())
+  const filtered = allGoals.filter((g) => goalMatchesSport(g, sportFilter))
+  const activeGoals = sortGoals(
+    filtered.filter((g) => g.end_date >= todayISO()),
+    sortBy,
+  )
+  const pastGoals = sortGoals(
+    filtered.filter((g) => g.end_date < todayISO()),
+    sortBy,
+  )
   const selectedGoal = allGoals.find((g) => g.id === selectedGoalId) ?? null
+  const sportTypes = meta?.sport_types ?? []
 
   return (
     <div className="space-y-6">
@@ -231,12 +269,46 @@ export default function GoalsPage() {
           {showForm && athleteId && (
             <NewGoalForm
               athleteId={athleteId}
-              sportTypes={meta?.sport_types ?? []}
+              sportTypes={sportTypes}
               onCreated={() => {
                 setShowForm(false)
                 void mutateGoals()
               }}
             />
+          )}
+
+          {allGoals.length > 0 && (
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <label className="flex items-center gap-1.5">
+                <span className="text-gray-500">Sort</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as GoalSort)}
+                  className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900"
+                >
+                  {GOAL_SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5">
+                <span className="text-gray-500">Sport</span>
+                <select
+                  value={sportFilter}
+                  onChange={(e) => setSportFilter(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900"
+                >
+                  <option value="all">All sports</option>
+                  {sportTypes.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           )}
 
           {activeGoals.length > 0 && (
@@ -249,7 +321,7 @@ export default function GoalsPage() {
                   key={goal.id}
                   goal={goal}
                   athleteId={athleteId}
-                  sportTypes={meta?.sport_types ?? []}
+                  sportTypes={sportTypes}
                   selected={goal.id === selectedGoalId}
                   onSelect={() => setSelectedGoalId(goal.id)}
                   onMutate={() => void mutateGoals()}
@@ -268,7 +340,7 @@ export default function GoalsPage() {
                   key={goal.id}
                   goal={goal}
                   athleteId={athleteId}
-                  sportTypes={meta?.sport_types ?? []}
+                  sportTypes={sportTypes}
                   selected={goal.id === selectedGoalId}
                   onSelect={() => setSelectedGoalId(goal.id)}
                   onMutate={() => void mutateGoals()}
