@@ -184,6 +184,11 @@ const GOAL_ORANGE = [252, 76, 2] // first third (Strava-like)
 const GOAL_BLUE = [59, 130, 246] // middle third
 const GOAL_GREEN = [34, 197, 94] // final third
 
+// At or above this percent (but not yet complete) the bar gets an emphasis glow.
+const ALMOST_THERE_PCT = 90
+// Green glow drawn on the track wrapper (its parent does not clip the shadow).
+const ALMOST_THERE_GLOW = "shadow-[0_0_8px_2px_rgba(34,197,94,0.55)]"
+
 // Progress is split into three equal phases at these boundaries. The blend
 // between phases is kept narrow (half-width each side) so each phase reads as
 // its own solid color instead of a long muddy in-between.
@@ -475,6 +480,7 @@ function GoalCard({
 
   const pct = Math.min(goal.percentage, 100)
   const isComplete = pct >= 100
+  const almostThere = !isComplete && pct >= ALMOST_THERE_PCT
   const daysLeft = daysLeftLabel(goal.end_date)
   const pacing = !isComplete && daysLeft !== null ? goalPacing(goal) : null
   const projectedFinish = pacing ? projectedFinishISO(goal) : null
@@ -562,9 +568,11 @@ function GoalCard({
 
         {/* Progress bar */}
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+          <div
+            className={`flex-1 h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden ${almostThere ? ALMOST_THERE_GLOW : ""}`}
+          >
             <div
-              className="h-full rounded-full transition-all duration-500"
+              className={`h-full rounded-full transition-all duration-500 ${almostThere ? "animate-pulse" : ""}`}
               style={{ width: `${Math.max(pct, 1)}%`, backgroundImage: progressGradient(pct) }}
             />
           </div>
