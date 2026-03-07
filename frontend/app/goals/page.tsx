@@ -113,6 +113,25 @@ function goalPacing(goal: GoalProgressResponse): GoalPacing | null {
   return { status, label, detail }
 }
 
+/**
+ * Extrapolate a goal's current daily rate to the date its target would be met.
+ * Returns ``null`` when there is no elapsed time, no progress yet, or the goal
+ * is already met (so no projection is meaningful).
+ */
+function projectedFinishISO(goal: GoalProgressResponse): string | null {
+  const elapsed = daysBetween(goal.start_date, todayISO())
+  if (elapsed <= 0 || goal.current_value <= 0) return null
+
+  const remaining = goal.target_value - goal.current_value
+  if (remaining <= 0) return null
+
+  const ratePerDay = goal.current_value / elapsed
+  const daysToFinish = Math.ceil(remaining / ratePerDay)
+  const finish = new Date(`${todayISO()}T00:00:00`)
+  finish.setDate(finish.getDate() + daysToFinish)
+  return finish.toISOString().slice(0, 10)
+}
+
 /** Tailwind classes for a pace badge, colored by how the goal is tracking. */
 function paceBadgeClass(status: PaceStatus): string {
   switch (status) {
@@ -386,6 +405,8 @@ function GoalCard({
   const isComplete = pct >= 100
   const daysLeft = daysLeftLabel(goal.end_date)
   const pacing = !isComplete && daysLeft !== null ? goalPacing(goal) : null
+  const projectedFinish = pacing ? projectedFinishISO(goal) : null
+  const projectedLate = projectedFinish !== null && projectedFinish > goal.end_date
 
   async function handleDelete() {
     if (!athleteId) return
@@ -481,13 +502,20 @@ function GoalCard({
         </div>
 
         {pacing && (
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${paceBadgeClass(pacing.status)}`}
             >
               {pacing.label}
             </span>
             {pacing.detail && <span className="text-gray-400">{pacing.detail}</span>}
+            {projectedFinish && (
+              <span
+                className={projectedLate ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}
+              >
+                &middot; Projected finish {formatDate(projectedFinish, "MMM d, yyyy")}
+              </span>
+            )}
           </div>
         )}
 
