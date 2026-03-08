@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.best_efforts import compute_best_efforts
 from app.domain.dedup import activities_match
+from app.domain.plausibility import route_is_suspect
 from app.enums import SportType, StreamType
 from app.ingestion import polyline as polyline_codec
 from app.ingestion.export import CsvActivityRow
@@ -287,6 +288,7 @@ def upsert_activity(
     if parsed:
         activity.device_name = parsed.device_name
         activity.polyline = _build_polyline(parsed)
+        activity.route_is_suspect = route_is_suspect(parsed.latlng(), canonical.distance_m)
         if summary:
             activity.start_latitude = summary.start_latitude
             activity.start_longitude = summary.start_longitude

@@ -181,7 +181,11 @@ def heatmap_routes(
     count and ``country_count`` is the number of distinct countries across the
     whole filtered set (not just the returned page).
     """
-    conds = [Activity.athlete_id == athlete_id, Activity.polyline.is_not(None)]
+    conds = [
+        Activity.athlete_id == athlete_id,
+        Activity.polyline.is_not(None),
+        Activity.route_is_suspect.is_(False),
+    ]
     if sport_types:
         conds.append(Activity.sport_type.in_(sport_types))
     if activity_types:

@@ -57,6 +57,7 @@ def upgrade() -> None:
         sa.Column("start_longitude", sa.Float(), nullable=True),
         sa.Column("polyline", sa.String(), nullable=True),
         sa.Column("country_code", sa.String(length=2), nullable=True),
+        sa.Column("route_is_suspect", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("device_name", sa.String(), nullable=True),
         sa.Column("gear_id", sa.String(), nullable=True),
         sa.Column("gear_name", sa.String(), nullable=True),

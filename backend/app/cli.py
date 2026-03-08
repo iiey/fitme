@@ -87,6 +87,42 @@ def _cmd_recompute_best_efforts(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_flag_suspect_routes(args: argparse.Namespace) -> int:
+    """Re-evaluate GPS-route plausibility for stored activities.
+
+    Decodes each activity's stored polyline and flags the route as suspect when
+    it contains a physically impossible jump or an invalid fix, so a recording
+    glitch is dropped from the heatmap. Run this after adding the flag (or after
+    the plausibility rules change) to backfill existing activities.
+    """
+    from app.domain.plausibility import route_is_suspect
+    from app.ingestion import polyline as polyline_codec
+    from app.models import Activity
+
+    init_db()
+    scanned = 0
+    flagged = 0
+    changed = 0
+
+    with SessionLocal() as db:
+        stmt = select(Activity).where(Activity.polyline.is_not(None))
+        if args.athlete:
+            stmt = stmt.where(Activity.athlete_id == args.athlete)
+        for activity in db.execute(stmt).scalars():
+            scanned += 1
+            coords = polyline_codec.decode(activity.polyline)
+            suspect = route_is_suspect(coords, activity.distance_m)
+            if suspect != activity.route_is_suspect:
+                activity.route_is_suspect = suspect
+                changed += 1
+            if suspect:
+                flagged += 1
+        db.commit()
+
+    print(f"Route check complete: scanned={scanned} flagged={flagged} changed={changed}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="fitme", description="FitMe backend CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -123,6 +159,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Limit to this athlete id (default: all athletes)",
     )
     recompute_parser.set_defaults(func=_cmd_recompute_best_efforts)
+
+    flag_routes_parser = sub.add_parser(
+        "flag-suspect-routes",
+        help="Re-flag GPS-glitched routes from stored polylines (excluded from the heatmap)",
+    )
+    flag_routes_parser.add_argument(
+        "--athlete",
+        default=None,
+        help="Limit to this athlete id (default: all athletes)",
+    )
+    flag_routes_parser.set_defaults(func=_cmd_flag_suspect_routes)
 
     return parser
 

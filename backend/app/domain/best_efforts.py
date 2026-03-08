@@ -1,6 +1,24 @@
 from __future__ import annotations
 
+from app.domain.plausibility import (
+    MAX_PLAUSIBLE_RIDE_SPEED_MS,
+    MAX_PLAUSIBLE_RUN_SPEED_MS,
+    best_effort_is_plausible,
+    max_plausible_speed,
+)
 from app.enums import ActivityType, SportType, StreamType
+
+# Re-exported so callers and tests keep a single import site for these bounds;
+# they are defined in :mod:`app.domain.plausibility`.
+__all__ = [
+    "MAX_PLAUSIBLE_RIDE_SPEED_MS",
+    "MAX_PLAUSIBLE_RUN_SPEED_MS",
+    "best_effort_distances",
+    "compute_best_efforts",
+]
+
+# Backwards-compatible alias for the shared speed-cap lookup.
+_max_plausible_speed = max_plausible_speed
 
 # Standard "best effort" distances (metres) per broad activity type.
 RUN_DISTANCES = [400, 805, 1000, 1609, 3219, 5000, 10000, 15000, 21097, 42195]
@@ -29,26 +47,6 @@ def best_effort_distances(sport_type: SportType) -> list[int]:
     if sport_type.activity_type == ActivityType.RIDE:
         return RIDE_DISTANCES
     return []
-
-
-# Upper bound on a believable speed (m/s) per broad activity type. A
-# per-sample increment implying a speed above this is a GPS glitch - a teleport
-# in the trace that fabricates phantom distance - so it is clamped away before
-# any effort is measured. Running 10 m/s sits just past the 400 m world-record
-# pace (9.3 m/s): unreachable by amateurs yet safe for the fastest humans.
-# Cycling 30 m/s (108 km/h) leaves headroom for fast descents while still
-# rejecting teleport glitches (which imply hundreds of m/s).
-MAX_PLAUSIBLE_RUN_SPEED_MS = 10.0
-MAX_PLAUSIBLE_RIDE_SPEED_MS = 30.0
-_DEFAULT_MAX_PLAUSIBLE_SPEED_MS = 12.0
-
-
-def _max_plausible_speed(sport_type: SportType) -> float:
-    if sport_type.activity_type == ActivityType.RUN:
-        return MAX_PLAUSIBLE_RUN_SPEED_MS
-    if sport_type.activity_type == ActivityType.RIDE:
-        return MAX_PLAUSIBLE_RIDE_SPEED_MS
-    return _DEFAULT_MAX_PLAUSIBLE_SPEED_MS
 
 
 def _clean_distance_stream(
@@ -81,7 +79,8 @@ def compute_best_efforts(
 
     Returns a list of ``(distance_m, time_s)`` for every standard distance that
     fits within the activity. GPS-glitch jumps are removed first so a spurious
-    distance spike cannot produce an impossibly fast effort.
+    distance spike cannot produce an impossibly fast effort, and any residual
+    effort implying a superhuman pace is discarded as a final guard.
     """
     if not sport_type.supports_best_efforts:
         return []
@@ -98,7 +97,7 @@ def compute_best_efforts(
         if target > total:
             break
         best = _fastest_window(distances, times, target)
-        if best is not None:
+        if best is not None and best_effort_is_plausible(target, best, sport_type):
             results.append((target, best))
     return results
 

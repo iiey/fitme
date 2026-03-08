@@ -13,6 +13,9 @@ from sqlalchemy import (
     Integer,
     String,
 )
+from sqlalchemy import (
+    false as sa_false,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -75,6 +78,12 @@ class Activity(Base):
     start_longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     polyline: Mapped[str | None] = mapped_column(String, nullable=True)
     country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+
+    # A GPS trace with an impossible jump or an invalid fix; excluded from the
+    # heatmap so a recording glitch cannot draw a spurious line across the map.
+    route_is_suspect: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default=sa_false()
+    )
 
     device_name: Mapped[str | None] = mapped_column(String, nullable=True)
     gear_id: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
