@@ -413,6 +413,52 @@ def goal_progress(
     return float(db.execute(stmt).scalar_one())
 
 
+def goal_achieved_on(
+    db: Session,
+    athlete_id: str,
+    goal: Goal,
+) -> date | None:
+    """Date the goal's cumulative metric first reached its target.
+
+    Scans the goal's contributing activities in chronological order and returns
+    the date of the activity that pushed the running total to the target.
+    Returns ``None`` when the target is non-positive or was never reached within
+    the goal window.
+    """
+    if goal.target_value <= 0:
+        return None
+
+    start_dt = datetime.combine(goal.start_date, datetime.min.time())
+    end_dt = datetime.combine(goal.end_date, datetime.max.time())
+
+    value_col = None if goal.metric == "count" else _METRIC_COLUMNS.get(goal.metric)
+    if goal.metric != "count" and value_col is None:
+        return None
+
+    columns = [Activity.start_date_time]
+    if value_col is not None:
+        columns.append(func.coalesce(value_col, 0.0))
+
+    stmt = (
+        select(*columns)
+        .where(
+            Activity.athlete_id == athlete_id,
+            Activity.start_date_time >= start_dt,
+            Activity.start_date_time <= end_dt,
+        )
+        .order_by(Activity.start_date_time.asc())
+    )
+    if goal.sport_types:
+        stmt = stmt.where(Activity.sport_type.in_(goal.sport_types))
+
+    running = 0.0
+    for row in db.execute(stmt):
+        running += 1.0 if value_col is None else float(row[1])
+        if running >= goal.target_value:
+            return row[0].date()
+    return None
+
+
 def _apply_filters(
     stmt,
     sport_types,

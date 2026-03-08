@@ -65,11 +65,13 @@ def goals_progress(
         pct = (
             min(100.0, round(100.0 * current / goal.target_value, 1)) if goal.target_value else 0.0
         )
+        achieved_on = repository.goal_achieved_on(db, athlete_id, goal) if pct >= 100 else None
         result.append(
             GoalProgressResponse(
                 **_goal_response(goal).model_dump(),
                 current_value=current,
                 percentage=pct,
+                achieved_on=achieved_on,
             )
         )
     return result

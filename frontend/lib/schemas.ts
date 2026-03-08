@@ -312,6 +312,8 @@ export const GoalResponseSchema = z.object({
 export const GoalProgressResponseSchema = GoalResponseSchema.extend({
   current_value: z.number(),
   percentage: z.number(),
+  // Date the target was first reached (``YYYY-MM-DD``); null while unmet.
+  achieved_on: z.string().nullable(),
 })
 
 // -- Athlete config ---------------------------------------------------------

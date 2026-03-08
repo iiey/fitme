@@ -101,6 +101,21 @@ def test_progress_all_sports_counts_everything(client: TestClient):
     assert progress[0]["current_value"] == 3.0
 
 
+def test_progress_reports_achieved_date_when_met(client: TestClient):
+    _create_goal(client, sport_types=[], metric="count", target_value=3)
+    progress = client.get("/api/goals/progress", params={"athlete": ATHLETE_ID}).json()
+    assert progress[0]["percentage"] == 100.0
+    # The three seeded activities all fall on 2024-05-01, so the target is met then.
+    assert progress[0]["achieved_on"] == "2024-05-01"
+
+
+def test_progress_achieved_date_is_none_when_unmet(client: TestClient):
+    _create_goal(client, sport_types=[], metric="count", target_value=10)
+    progress = client.get("/api/goals/progress", params={"athlete": ATHLETE_ID}).json()
+    assert progress[0]["percentage"] < 100.0
+    assert progress[0]["achieved_on"] is None
+
+
 def test_update_replaces_sports(client: TestClient):
     goal = _create_goal(client, sport_types=["Run"])
     resp = client.put(

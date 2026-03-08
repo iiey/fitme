@@ -660,7 +660,13 @@ function GoalCard({
             <p className="text-sm text-gray-500">
               {formatDate(goal.start_date, "MMM d, yyyy")} &ndash;{" "}
               {formatDate(goal.end_date, "MMM d, yyyy")}
-              {daysLeft && <span className="ml-2 text-gray-400">&middot; {daysLeft}</span>}
+              {isComplete && goal.achieved_on ? (
+                <span className="ml-2 text-gray-400">
+                  &middot; Finished {formatDate(goal.achieved_on, "MMM d, yyyy")}
+                </span>
+              ) : (
+                daysLeft && <span className="ml-2 text-gray-400">&middot; {daysLeft}</span>
+              )}
             </p>
             {goal.note && <p className="mt-1 text-sm text-gray-500 italic">{goal.note}</p>}
           </div>

@@ -308,6 +308,8 @@ class GoalResponse(BaseModel):
 class GoalProgressResponse(GoalResponse):
     current_value: float
     percentage: float
+    # Date the target was first reached; ``None`` while the goal is unmet.
+    achieved_on: date | None = None
 
 
 # -- Athlete config ---------------------------------------------------------

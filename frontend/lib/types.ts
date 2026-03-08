@@ -428,6 +428,8 @@ export interface GoalResponse {
 export interface GoalProgressResponse extends GoalResponse {
   current_value: number
   percentage: number
+  /** Date the target was first reached (``YYYY-MM-DD``); ``null`` while unmet. */
+  achieved_on: string | null
 }
 
 export interface GoalCreate {
