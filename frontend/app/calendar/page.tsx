@@ -511,6 +511,28 @@ function DayStreakSummary({ days }: { days: MonthDay[] }) {
   )
 }
 
+/**
+ * Human-readable totals for a day, used as the day button's accessible label and
+ * the cell's hover title so the color-encoded intensity is not the only cue.
+ */
+function daySummary(
+  day: MonthDay,
+  dayActs: CalendarActivity[],
+  distUnit: string,
+  elevUnit: string,
+): string {
+  if (day.count === 0) return "no activities"
+  const load = dayActs.reduce((sum, a) => sum + a.load, 0)
+  const parts = [
+    `${day.count} ${day.count === 1 ? "activity" : "activities"}`,
+    formatHours(day.moving_time_s),
+  ]
+  if (day.distance > 0.1) parts.push(`${formatNumber(day.distance, 1)} ${distUnit}`)
+  if (day.elevation > 0) parts.push(`${formatNumber(day.elevation, 0)} ${elevUnit}`)
+  if (load > 0) parts.push(`load ${load}`)
+  return parts.join(", ")
+}
+
 /** Group activities by their local calendar date (``YYYY-MM-DD``). */
 function groupActivitiesByDate(activities: CalendarActivity[]): Map<string, CalendarActivity[]> {
   const byDate = new Map<string, CalendarActivity[]>()
@@ -546,6 +568,7 @@ function ActivityLine({
       <SportIcon
         className="h-3 w-3 shrink-0"
         style={{ color: colorForSportType(act.sport_type) }}
+        aria-hidden="true"
       />
       <span className="font-medium">{formatCompactTime(act.moving_time_s)}</span>
       {dist > 0.1 && (
@@ -554,9 +577,25 @@ function ActivityLine({
         </span>
       )}
       {act.average_heart_rate != null && (
-        <span className="text-red-400">♥{Math.round(act.average_heart_rate)}</span>
+        <span
+          role="img"
+          className="text-red-400"
+          title="Average heart rate"
+          aria-label={`${Math.round(act.average_heart_rate)} bpm average heart rate`}
+        >
+          ♥{Math.round(act.average_heart_rate)}
+        </span>
       )}
-      {act.load > 0 && <span className="text-brand">L{act.load}</span>}
+      {act.load > 0 && (
+        <span
+          role="img"
+          className="text-brand"
+          title="Training load"
+          aria-label={`Training load ${act.load}`}
+        >
+          L{act.load}
+        </span>
+      )}
     </div>
   )
 }
@@ -746,9 +785,12 @@ function CalendarGrid({
               const dayActs = activitiesByDate.get(day.date) ?? []
               const dayMatches =
                 !filterActive || day.sport_types.some((s) => selectedSports.includes(s))
+              const summary = daySummary(day, dayActs, distUnit, elevUnit)
+              const dateLabel = formatDate(day.date, "EEEE, d MMMM")
               return (
                 <div
                   key={day.date}
+                  title={day.count > 0 ? `${dateLabel}: ${summary}` : undefined}
                   className={clsx(
                     "flex min-h-[150px] flex-col rounded-lg border p-1.5 text-xs transition-opacity",
                     day.count > 0 ? "border-brand/30" : "border-gray-100 dark:border-gray-700",
@@ -768,7 +810,7 @@ function CalendarGrid({
                     type="button"
                     onClick={() => onSelectDay(day.date)}
                     className="mb-0.5 self-start text-xl font-bold text-gray-400 transition-colors hover:text-brand"
-                    aria-label={`View activities on ${day.date}`}
+                    aria-label={`${dateLabel}: ${summary}. View day.`}
                   >
                     {day.day}
                   </button>
@@ -786,7 +828,10 @@ function CalendarGrid({
                     </span>
                   )}
                   {day.count === 0 && (
-                    <span className="mt-auto self-center pb-0.5 text-[10px] uppercase tracking-wide text-gray-300 dark:text-gray-600">
+                    <span
+                      aria-hidden="true"
+                      className="mt-auto self-center pb-0.5 text-[10px] uppercase tracking-wide text-gray-300 dark:text-gray-600"
+                    >
                       rest
                     </span>
                   )}
