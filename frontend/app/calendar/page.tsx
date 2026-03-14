@@ -263,6 +263,7 @@ export default function CalendarPage() {
                 onSelectDay={setSelectedDate}
               />
             </div>
+            <DayStreakSummary days={data.days} />
           </Card>
 
           {data.per_sport.length > 0 && (
@@ -431,6 +432,38 @@ function SportChips({
         )
       })}
     </div>
+  )
+}
+
+/**
+ * Active/rest day counts and the longest run of consecutive active days within
+ * the month. The streak resets at month boundaries, so it is scoped to "this
+ * month" rather than an all-time figure.
+ */
+function summarizeDays(days: MonthDay[]): { active: number; rest: number; longestStreak: number } {
+  let active = 0
+  let longestStreak = 0
+  let run = 0
+  for (const day of days) {
+    if (day.count > 0) {
+      active += 1
+      run += 1
+      if (run > longestStreak) longestStreak = run
+    } else {
+      run = 0
+    }
+  }
+  return { active, rest: days.length - active, longestStreak }
+}
+
+/** One-line active/rest/streak summary for the visible month. */
+function DayStreakSummary({ days }: { days: MonthDay[] }) {
+  const { active, rest, longestStreak } = summarizeDays(days)
+  return (
+    <p className="mt-3 border-t border-gray-100 pt-2 text-center text-xs text-gray-500 dark:border-gray-700">
+      {active} active {active === 1 ? "day" : "days"} · {rest} rest {rest === 1 ? "day" : "days"} ·
+      longest streak {longestStreak} {longestStreak === 1 ? "day" : "days"}
+    </p>
   )
 }
 
@@ -695,6 +728,11 @@ function CalendarGrid({
                   {dayActs.length > 3 && (
                     <span className="mt-px text-[10px] text-gray-400">
                       +{dayActs.length - 3} more
+                    </span>
+                  )}
+                  {day.count === 0 && (
+                    <span className="mt-auto self-center pb-0.5 text-[10px] uppercase tracking-wide text-gray-300 dark:text-gray-600">
+                      rest
                     </span>
                   )}
                 </div>
