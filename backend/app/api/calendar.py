@@ -14,7 +14,7 @@ from app.db import get_db
 from app.domain.stats import calendar_days
 from app.domain.training_load import activity_training_load
 from app.domain.units import distance_for_unit, elevation_for_unit
-from app.enums import SportType
+from app.enums import ActivityType, SportType
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
@@ -70,8 +70,10 @@ def get_month(
     totals_moving = sum(a.moving_time_s for a in activities)
 
     per_sport: dict[str, dict] = {}
+    activity_type_by_sport: dict[str, ActivityType] = {}
     for activity in activities:
         sport = SportType.from_strava(activity.sport_type)
+        activity_type_by_sport[activity.sport_type] = sport.activity_type
         bucket = per_sport.setdefault(
             activity.sport_type,
             {"label": sport.label, "count": 0, "distance": 0.0, "moving_time_s": 0},
@@ -79,6 +81,19 @@ def get_month(
         bucket["count"] += 1
         bucket["distance"] += distance_for_unit(activity.distance_m, unit_system)
         bucket["moving_time_s"] += activity.moving_time_s
+
+    # Keep sports of the same broad activity type together (e.g. Run next to
+    # Trail Run) instead of interleaving them by distance alone: order the
+    # groups, then the sports within each group, by distance descending.
+    group_distance: dict[ActivityType, float] = {}
+    for sport_type, bucket in per_sport.items():
+        group = activity_type_by_sport[sport_type]
+        group_distance[group] = group_distance.get(group, 0.0) + bucket["distance"]
+
+    def _grouped_sort_key(item: tuple[str, dict]) -> tuple[float, str, float]:
+        sport_type, bucket = item
+        group = activity_type_by_sport[sport_type]
+        return (-group_distance[group], group.value, -bucket["distance"])
 
     return {
         "year": year,
@@ -98,9 +113,7 @@ def get_month(
                 "sport_type": key,
                 **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in value.items()},
             }
-            for key, value in sorted(
-                per_sport.items(), key=lambda kv: kv[1]["distance"], reverse=True
-            )
+            for key, value in sorted(per_sport.items(), key=_grouped_sort_key)
         ],
         "days": day_cells,
         "activities": [
