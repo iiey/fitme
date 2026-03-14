@@ -15,7 +15,7 @@ import { useMeta, useMonth } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { colorForSportType, formatDate, formatHours, formatNumber } from "@/lib/format"
 import { iconForSportType } from "@/lib/sportIcons"
-import type { CalendarActivity, MonthDay } from "@/lib/types"
+import type { CalendarActivity, MonthDay, MonthResponse } from "@/lib/types"
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const now = new Date()
@@ -27,6 +27,8 @@ export default function CalendarPage() {
   const [current, setCurrent] = useState<{ year: number; month: number } | null>(null)
   const [initialised, setInitialised] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  // Sports to highlight; an empty array means "no filter" (all shown normally).
+  const [selectedSports, setSelectedSports] = useState<string[]>([])
 
   useEffect(() => {
     if (initialised) return
@@ -57,10 +59,12 @@ export default function CalendarPage() {
   const { data: prevData } = useMonth(athleteId, prev.year, prev.month)
 
   const goPrev = () => {
+    setSelectedSports([])
     setCurrent(month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 })
   }
 
   const goNext = () => {
+    setSelectedSports([])
     setCurrent(month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 })
   }
 
@@ -169,12 +173,20 @@ export default function CalendarPage() {
           </div>
 
           <Card>
+            {data.per_sport.length > 1 && (
+              <SportChips
+                sports={data.per_sport}
+                selected={selectedSports}
+                onChange={setSelectedSports}
+              />
+            )}
             <div className="hidden md:block">
               <CalendarGrid
                 days={data.days}
                 firstWeekday={data.first_weekday}
                 unitSystem={data.unit_system}
                 activities={data.activities}
+                selectedSports={selectedSports}
                 onSelectDay={setSelectedDate}
               />
             </div>
@@ -183,6 +195,7 @@ export default function CalendarPage() {
                 days={data.days}
                 unitSystem={data.unit_system}
                 activities={data.activities}
+                selectedSports={selectedSports}
                 onSelectDay={setSelectedDate}
               />
             </div>
@@ -292,6 +305,71 @@ function formatCompactTime(seconds: number): string {
   return `${h}h${m}m`
 }
 
+/**
+ * Toggleable chips for the month's sports. Selecting sports highlights their
+ * activities and dims the rest; an empty selection shows everything normally.
+ */
+function SportChips({
+  sports,
+  selected,
+  onChange,
+}: {
+  sports: MonthResponse["per_sport"]
+  selected: string[]
+  onChange: (next: string[]) => void
+}) {
+  function toggle(sportType: string) {
+    onChange(
+      selected.includes(sportType)
+        ? selected.filter((s) => s !== sportType)
+        : [...selected, sportType],
+    )
+  }
+
+  return (
+    <div className="mb-3 flex flex-wrap gap-1.5">
+      <button
+        type="button"
+        onClick={() => onChange([])}
+        aria-pressed={selected.length === 0}
+        className={clsx(
+          "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+          selected.length === 0
+            ? "border-brand bg-brand/10 text-brand"
+            : "border-gray-300 text-gray-500 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800",
+        )}
+      >
+        All
+      </button>
+      {sports.map((sport) => {
+        const active = selected.includes(sport.sport_type)
+        const SportIcon = iconForSportType(sport.sport_type)
+        return (
+          <button
+            key={sport.sport_type}
+            type="button"
+            onClick={() => toggle(sport.sport_type)}
+            aria-pressed={active}
+            className={clsx(
+              "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              active
+                ? "border-brand bg-brand/10 text-brand"
+                : "border-gray-300 text-gray-500 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800",
+            )}
+          >
+            <SportIcon
+              className="h-3.5 w-3.5 shrink-0"
+              style={{ color: colorForSportType(sport.sport_type) }}
+              aria-hidden="true"
+            />
+            {sport.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 /** Group activities by their local calendar date (``YYYY-MM-DD``). */
 function groupActivitiesByDate(activities: CalendarActivity[]): Map<string, CalendarActivity[]> {
   const byDate = new Map<string, CalendarActivity[]>()
@@ -305,12 +383,25 @@ function groupActivitiesByDate(activities: CalendarActivity[]): Map<string, Cale
 }
 
 /** Single compact activity line shared by the grid cells and the mobile agenda. */
-function ActivityLine({ act, unitSystem }: { act: CalendarActivity; unitSystem: string }) {
+function ActivityLine({
+  act,
+  unitSystem,
+  dimmed,
+}: {
+  act: CalendarActivity
+  unitSystem: string
+  dimmed?: boolean
+}) {
   const distUnit = unitSystem === "imperial" ? "mi" : "km"
   const dist = unitSystem === "imperial" ? act.distance_mi : act.distance_km
   const SportIcon = iconForSportType(act.sport_type, act.activity_type)
   return (
-    <div className="mt-px flex flex-wrap items-center gap-x-1 text-[15px] leading-snug text-gray-600 dark:text-gray-300">
+    <div
+      className={clsx(
+        "mt-px flex flex-wrap items-center gap-x-1 text-[15px] leading-snug text-gray-600 dark:text-gray-300",
+        dimmed && "opacity-30",
+      )}
+    >
       <SportIcon
         className="h-3 w-3 shrink-0"
         style={{ color: colorForSportType(act.sport_type) }}
@@ -337,15 +428,18 @@ function AgendaList({
   days,
   unitSystem,
   activities,
+  selectedSports,
   onSelectDay,
 }: {
   days: MonthDay[]
   unitSystem: string
   activities: CalendarActivity[]
+  selectedSports: string[]
   onSelectDay: (date: string) => void
 }) {
   const byDate = groupActivitiesByDate(activities)
   const distUnit = unitSystem === "imperial" ? "mi" : "km"
+  const filterActive = selectedSports.length > 0
   const activeDays = days.filter((d) => d.count > 0)
 
   if (activeDays.length === 0) {
@@ -354,24 +448,38 @@ function AgendaList({
 
   return (
     <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-      {activeDays.map((day) => (
-        <li key={day.date} className="py-2 first:pt-0 last:pb-0">
-          <button
-            type="button"
-            onClick={() => onSelectDay(day.date)}
-            className="mb-1 flex w-full items-baseline justify-between gap-2 text-left"
+      {activeDays.map((day) => {
+        const dayMatches = !filterActive || day.sport_types.some((s) => selectedSports.includes(s))
+        return (
+          <li
+            key={day.date}
+            className={clsx(
+              "py-2 first:pt-0 last:pb-0",
+              filterActive && !dayMatches && "opacity-40",
+            )}
           >
-            <span className="font-semibold">{formatDate(day.date, "EEE d")}</span>
-            <span className="text-xs text-gray-500">
-              {formatCompactTime(day.moving_time_s)}
-              {day.distance > 0.1 && ` · ${formatNumber(day.distance, 1)} ${distUnit}`}
-            </span>
-          </button>
-          {(byDate.get(day.date) ?? []).map((act) => (
-            <ActivityLine key={act.activity_id} act={act} unitSystem={unitSystem} />
-          ))}
-        </li>
-      ))}
+            <button
+              type="button"
+              onClick={() => onSelectDay(day.date)}
+              className="mb-1 flex w-full items-baseline justify-between gap-2 text-left"
+            >
+              <span className="font-semibold">{formatDate(day.date, "EEE d")}</span>
+              <span className="text-xs text-gray-500">
+                {formatCompactTime(day.moving_time_s)}
+                {day.distance > 0.1 && ` · ${formatNumber(day.distance, 1)} ${distUnit}`}
+              </span>
+            </button>
+            {(byDate.get(day.date) ?? []).map((act) => (
+              <ActivityLine
+                key={act.activity_id}
+                act={act}
+                unitSystem={unitSystem}
+                dimmed={filterActive && !selectedSports.includes(act.sport_type)}
+              />
+            ))}
+          </li>
+        )
+      })}
     </ul>
   )
 }
@@ -381,17 +489,20 @@ function CalendarGrid({
   firstWeekday,
   unitSystem,
   activities,
+  selectedSports,
   onSelectDay,
 }: {
   days: MonthDay[]
   firstWeekday: number
   unitSystem: string
   activities: CalendarActivity[]
+  selectedSports: string[]
   onSelectDay: (date: string) => void
 }) {
   const maxDistance = Math.max(1, ...days.map((d) => d.distance))
   const distUnit = unitSystem === "imperial" ? "mi" : "km"
   const elevUnit = unitSystem === "imperial" ? "ft" : "m"
+  const filterActive = selectedSports.length > 0
 
   const activitiesByDate = groupActivitiesByDate(activities)
 
@@ -474,12 +585,15 @@ function CalendarGrid({
               // biome-ignore lint/suspicious/noArrayIndexKey: fixed positional placeholder in a 7-column week grid; blanks never reorder
               if (!day) return <div key={`blank-${week.weekNum}-${di}`} />
               const dayActs = activitiesByDate.get(day.date) ?? []
+              const dayMatches =
+                !filterActive || day.sport_types.some((s) => selectedSports.includes(s))
               return (
                 <div
                   key={day.date}
                   className={clsx(
-                    "flex min-h-[150px] flex-col rounded-lg border p-1.5 text-xs",
+                    "flex min-h-[150px] flex-col rounded-lg border p-1.5 text-xs transition-opacity",
                     day.count > 0 ? "border-brand/30" : "border-gray-100 dark:border-gray-700",
+                    filterActive && !dayMatches && "opacity-40",
                   )}
                   style={
                     day.count > 0
@@ -498,7 +612,12 @@ function CalendarGrid({
                     {day.day}
                   </button>
                   {dayActs.slice(0, 3).map((act) => (
-                    <ActivityLine key={act.activity_id} act={act} unitSystem={unitSystem} />
+                    <ActivityLine
+                      key={act.activity_id}
+                      act={act}
+                      unitSystem={unitSystem}
+                      dimmed={filterActive && !selectedSports.includes(act.sport_type)}
+                    />
                   ))}
                   {dayActs.length > 3 && (
                     <span className="mt-px text-[10px] text-gray-400">
