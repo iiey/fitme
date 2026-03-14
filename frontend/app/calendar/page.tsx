@@ -29,6 +29,15 @@ function isoDate(date: Date): string {
 
 const TODAY = isoDate(now)
 
+/** Which per-day metric drives the grid cell shading. */
+type ColorMetric = "distance" | "moving_time_s" | "elevation" | "load"
+const COLOR_METRICS: { value: ColorMetric; label: string }[] = [
+  { value: "distance", label: "Distance" },
+  { value: "moving_time_s", label: "Time" },
+  { value: "elevation", label: "Elevation" },
+  { value: "load", label: "Load" },
+]
+
 export default function CalendarPage() {
   const { athleteId } = useAthleteContext()
   const { data: meta } = useMeta(athleteId)
@@ -38,6 +47,8 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   // Sports to highlight; an empty array means "no filter" (all shown normally).
   const [selectedSports, setSelectedSports] = useState<string[]>([])
+  // Which metric drives the grid cell shading.
+  const [colorMetric, setColorMetric] = useState<ColorMetric>("distance")
 
   useEffect(() => {
     if (initialised) return
@@ -243,12 +254,14 @@ export default function CalendarPage() {
               />
             )}
             <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="hidden md:block">
+              <ColorMetricControl value={colorMetric} onChange={setColorMetric} />
               <CalendarGrid
                 days={data.days}
                 firstWeekday={data.first_weekday}
                 unitSystem={data.unit_system}
                 activities={data.activities}
                 selectedSports={selectedSports}
+                colorMetric={colorMetric}
                 today={TODAY}
                 onSelectDay={setSelectedDate}
               />
@@ -368,6 +381,37 @@ function formatCompactTime(seconds: number): string {
   if (h === 0) return `${m}m`
   if (m === 0) return `${h}h`
   return `${h}h${m}m`
+}
+
+/** Segmented control choosing which per-day metric shades the grid cells. */
+function ColorMetricControl({
+  value,
+  onChange,
+}: {
+  value: ColorMetric
+  onChange: (next: ColorMetric) => void
+}) {
+  return (
+    <div className="mb-2 flex items-center justify-end gap-1 text-xs text-gray-500">
+      <span className="mr-1">Shade by</span>
+      {COLOR_METRICS.map((metric) => (
+        <button
+          key={metric.value}
+          type="button"
+          onClick={() => onChange(metric.value)}
+          aria-pressed={value === metric.value}
+          className={clsx(
+            "rounded-md px-2 py-1 font-medium transition-colors",
+            value === metric.value
+              ? "bg-brand/10 text-brand"
+              : "hover:bg-gray-100 dark:hover:bg-gray-800",
+          )}
+        >
+          {metric.label}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 /**
@@ -592,6 +636,7 @@ function CalendarGrid({
   unitSystem,
   activities,
   selectedSports,
+  colorMetric,
   today,
   onSelectDay,
 }: {
@@ -600,15 +645,25 @@ function CalendarGrid({
   unitSystem: string
   activities: CalendarActivity[]
   selectedSports: string[]
+  colorMetric: ColorMetric
   today: string
   onSelectDay: (date: string) => void
 }) {
-  const maxDistance = Math.max(1, ...days.map((d) => d.distance))
   const distUnit = unitSystem === "imperial" ? "mi" : "km"
   const elevUnit = unitSystem === "imperial" ? "ft" : "m"
   const filterActive = selectedSports.length > 0
 
   const activitiesByDate = groupActivitiesByDate(activities)
+
+  // Value driving each cell's shade, per the selected metric. Load is summed
+  // from the day's activities since MonthDay has no load field.
+  const shadeValue = (day: MonthDay): number => {
+    if (colorMetric === "load") {
+      return (activitiesByDate.get(day.date) ?? []).reduce((sum, a) => sum + a.load, 0)
+    }
+    return day[colorMetric]
+  }
+  const maxShade = Math.max(1, ...days.map(shadeValue))
 
   const allCells: (MonthDay | null)[] = [...Array(firstWeekday).fill(null), ...days]
   while (allCells.length % 7 !== 0) allCells.push(null)
@@ -704,7 +759,7 @@ function CalendarGrid({
                   style={
                     day.count > 0
                       ? {
-                          backgroundColor: `rgba(59, 130, 246, ${0.05 + (day.distance / maxDistance) * 0.15})`,
+                          backgroundColor: `rgba(59, 130, 246, ${0.05 + (shadeValue(day) / maxShade) * 0.15})`,
                         }
                       : undefined
                   }
