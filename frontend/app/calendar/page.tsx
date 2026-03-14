@@ -4,7 +4,7 @@ import clsx from "clsx"
 import { getISOWeek, parseISO } from "date-fns"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { DayDetailModal } from "@/components/calendar/DayDetailModal"
 import { Card } from "@/components/ui/Card"
@@ -58,14 +58,52 @@ export default function CalendarPage() {
   const prev = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 }
   const { data: prevData } = useMonth(athleteId, prev.year, prev.month)
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
     setSelectedSports([])
     setCurrent(month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 })
-  }
+  }, [year, month])
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     setSelectedSports([])
     setCurrent(month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 })
+  }, [year, month])
+
+  // Arrow keys move between months, mirroring the header chevrons. Typing in a
+  // field or an open day drawer keeps its own key handling.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (selectedDate) return
+      const target = event.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      ) {
+        return
+      }
+      if (event.key === "ArrowLeft") goPrev()
+      else if (event.key === "ArrowRight") goNext()
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [goPrev, goNext, selectedDate])
+
+  // Horizontal swipes on the calendar area move between months on touch devices.
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const SWIPE_THRESHOLD_PX = 50
+  const onTouchStart = (event: React.TouchEvent) => {
+    const touch = event.touches[0]
+    touchStart.current = { x: touch.clientX, y: touch.clientY }
+  }
+  const onTouchEnd = (event: React.TouchEvent) => {
+    const start = touchStart.current
+    touchStart.current = null
+    if (!start) return
+    const touch = event.changedTouches[0]
+    const dx = touch.clientX - start.x
+    const dy = touch.clientY - start.y
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy)) return
+    if (dx < 0) goNext()
+    else goPrev()
   }
 
   return (
@@ -180,7 +218,7 @@ export default function CalendarPage() {
                 onChange={setSelectedSports}
               />
             )}
-            <div className="hidden md:block">
+            <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="hidden md:block">
               <CalendarGrid
                 days={data.days}
                 firstWeekday={data.first_weekday}
@@ -190,7 +228,7 @@ export default function CalendarPage() {
                 onSelectDay={setSelectedDate}
               />
             </div>
-            <div className="md:hidden">
+            <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="md:hidden">
               <AgendaList
                 days={data.days}
                 unitSystem={data.unit_system}
