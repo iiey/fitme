@@ -374,7 +374,9 @@ function MonthDelta({
   if (pct === 0) return <span className="text-gray-400">{`No change${suffix}`}</span>
   const up = pct > 0
   return (
-    <span className={up ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}>
+    <span
+      className={up ? "text-green-600 dark:text-green-500" : "text-gray-500 dark:text-gray-400"}
+    >
       {`${up ? "▲" : "▼"} ${Math.abs(pct)}%${suffix}`}
     </span>
   )
