@@ -20,6 +20,15 @@ import type { CalendarActivity, MonthDay, MonthResponse } from "@/lib/types"
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const now = new Date()
 
+/** Local calendar date as ``YYYY-MM-DD`` (avoids the UTC shift of toISOString). */
+function isoDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+const TODAY = isoDate(now)
+
 export default function CalendarPage() {
   const { athleteId } = useAthleteContext()
   const { data: meta } = useMeta(athleteId)
@@ -67,6 +76,12 @@ export default function CalendarPage() {
     setSelectedSports([])
     setCurrent(month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 })
   }, [year, month])
+
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
+  const goToday = () => {
+    setSelectedSports([])
+    setCurrent({ year: now.getFullYear(), month: now.getMonth() + 1 })
+  }
 
   // Arrow keys move between months, mirroring the header chevrons. Typing in a
   // field or an open day drawer keeps its own key handling.
@@ -153,6 +168,15 @@ export default function CalendarPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </button>
+          {!isCurrentMonth && (
+            <button
+              type="button"
+              onClick={goToday}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-100"
+            >
+              Today
+            </button>
+          )}
         </div>
       </header>
 
@@ -225,6 +249,7 @@ export default function CalendarPage() {
                 unitSystem={data.unit_system}
                 activities={data.activities}
                 selectedSports={selectedSports}
+                today={TODAY}
                 onSelectDay={setSelectedDate}
               />
             </div>
@@ -234,6 +259,7 @@ export default function CalendarPage() {
                 unitSystem={data.unit_system}
                 activities={data.activities}
                 selectedSports={selectedSports}
+                today={TODAY}
                 onSelectDay={setSelectedDate}
               />
             </div>
@@ -467,12 +493,14 @@ function AgendaList({
   unitSystem,
   activities,
   selectedSports,
+  today,
   onSelectDay,
 }: {
   days: MonthDay[]
   unitSystem: string
   activities: CalendarActivity[]
   selectedSports: string[]
+  today: string
   onSelectDay: (date: string) => void
 }) {
   const byDate = groupActivitiesByDate(activities)
@@ -501,7 +529,10 @@ function AgendaList({
               onClick={() => onSelectDay(day.date)}
               className="mb-1 flex w-full items-baseline justify-between gap-2 text-left"
             >
-              <span className="font-semibold">{formatDate(day.date, "EEE d")}</span>
+              <span className={clsx("font-semibold", day.date === today && "text-brand")}>
+                {formatDate(day.date, "EEE d")}
+                {day.date === today && " · Today"}
+              </span>
               <span className="text-xs text-gray-500">
                 {formatCompactTime(day.moving_time_s)}
                 {day.distance > 0.1 && ` · ${formatNumber(day.distance, 1)} ${distUnit}`}
@@ -528,6 +559,7 @@ function CalendarGrid({
   unitSystem,
   activities,
   selectedSports,
+  today,
   onSelectDay,
 }: {
   days: MonthDay[]
@@ -535,6 +567,7 @@ function CalendarGrid({
   unitSystem: string
   activities: CalendarActivity[]
   selectedSports: string[]
+  today: string
   onSelectDay: (date: string) => void
 }) {
   const maxDistance = Math.max(1, ...days.map((d) => d.distance))
@@ -631,6 +664,8 @@ function CalendarGrid({
                   className={clsx(
                     "flex min-h-[150px] flex-col rounded-lg border p-1.5 text-xs transition-opacity",
                     day.count > 0 ? "border-brand/30" : "border-gray-100 dark:border-gray-700",
+                    day.date === today &&
+                      "ring-2 ring-brand ring-offset-1 dark:ring-offset-gray-900",
                     filterActive && !dayMatches && "opacity-40",
                   )}
                   style={
