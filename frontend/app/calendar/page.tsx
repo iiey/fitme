@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
+import { DayDetailModal } from "@/components/calendar/DayDetailModal"
 import { Card } from "@/components/ui/Card"
 import { InfoTip } from "@/components/ui/InfoTip"
 import { StatCard } from "@/components/ui/StatCard"
@@ -25,6 +26,7 @@ export default function CalendarPage() {
   // Default to the month of the most recent activity (the export may be historical).
   const [current, setCurrent] = useState<{ year: number; month: number } | null>(null)
   const [initialised, setInitialised] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   useEffect(() => {
     if (initialised) return
@@ -130,6 +132,7 @@ export default function CalendarPage() {
               firstWeekday={data.first_weekday}
               unitSystem={data.unit_system}
               activities={data.activities}
+              onSelectDay={setSelectedDate}
             />
           </Card>
 
@@ -184,6 +187,17 @@ export default function CalendarPage() {
           )}
         </>
       )}
+
+      {selectedDate && data && (
+        <DayDetailModal
+          date={selectedDate}
+          activities={data.activities.filter(
+            (act) => act.start_date_time.split("T")[0] === selectedDate,
+          )}
+          unitSystem={data.unit_system}
+          onClose={() => setSelectedDate(null)}
+        />
+      )}
     </div>
   )
 }
@@ -201,11 +215,13 @@ function CalendarGrid({
   firstWeekday,
   unitSystem,
   activities,
+  onSelectDay,
 }: {
   days: MonthDay[]
   firstWeekday: number
   unitSystem: string
   activities: CalendarActivity[]
+  onSelectDay: (date: string) => void
 }) {
   const maxDistance = Math.max(1, ...days.map((d) => d.distance))
   const distUnit = unitSystem === "imperial" ? "mi" : "km"
@@ -313,12 +329,14 @@ function CalendarGrid({
                       : undefined
                   }
                 >
-                  <Link
-                    href={`/activities?from=${day.date}&to=${day.date}`}
-                    className="mb-0.5 text-xl font-bold text-gray-400 transition-colors hover:text-brand"
+                  <button
+                    type="button"
+                    onClick={() => onSelectDay(day.date)}
+                    className="mb-0.5 self-start text-xl font-bold text-gray-400 transition-colors hover:text-brand"
+                    aria-label={`View activities on ${day.date}`}
                   >
                     {day.day}
-                  </Link>
+                  </button>
                   {dayActs.slice(0, 3).map((act) => {
                     const dist = unitSystem === "imperial" ? act.distance_mi : act.distance_km
                     const SportIcon = iconForSportType(act.sport_type, act.activity_type)
