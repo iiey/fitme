@@ -6,7 +6,7 @@ export function StatCard({
 }: {
   label: string
   value: string
-  sub?: string
+  sub?: React.ReactNode
   accent?: boolean
 }) {
   return (

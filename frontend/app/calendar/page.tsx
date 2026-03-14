@@ -52,6 +52,10 @@ export default function CalendarPage() {
   const month = current?.month ?? now.getMonth() + 1
   const { data, error, isLoading } = useMonth(athleteId, year, month)
 
+  // Previous month, fetched for the month-over-month deltas on the stat cards.
+  const prev = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 }
+  const { data: prevData } = useMonth(athleteId, prev.year, prev.month)
+
   const goPrev = () => {
     setCurrent(month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 })
   }
@@ -117,13 +121,51 @@ export default function CalendarPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard label="Activities" value={formatNumber(data.totals.count)} accent />
+            <StatCard
+              label="Activities"
+              value={formatNumber(data.totals.count)}
+              accent
+              sub={
+                <MonthDelta
+                  current={data.totals.count}
+                  previous={prevData?.totals.count}
+                  label={prevData?.month_name}
+                />
+              }
+            />
             <StatCard
               label={`Distance (${data.unit_system === "imperial" ? "mi" : "km"})`}
               value={formatNumber(data.totals.distance, 1)}
+              sub={
+                <MonthDelta
+                  current={data.totals.distance}
+                  previous={prevData?.totals.distance}
+                  label={prevData?.month_name}
+                />
+              }
             />
-            <StatCard label="Elevation (m)" value={formatNumber(data.totals.elevation, 0)} />
-            <StatCard label="Moving Time" value={formatHours(data.totals.moving_time_s)} />
+            <StatCard
+              label="Elevation (m)"
+              value={formatNumber(data.totals.elevation, 0)}
+              sub={
+                <MonthDelta
+                  current={data.totals.elevation}
+                  previous={prevData?.totals.elevation}
+                  label={prevData?.month_name}
+                />
+              }
+            />
+            <StatCard
+              label="Moving Time"
+              value={formatHours(data.totals.moving_time_s)}
+              sub={
+                <MonthDelta
+                  current={data.totals.moving_time_s}
+                  previous={prevData?.totals.moving_time_s}
+                  label={prevData?.month_name}
+                />
+              }
+            />
           </div>
 
           <Card>
@@ -199,6 +241,36 @@ export default function CalendarPage() {
         />
       )}
     </div>
+  )
+}
+
+/**
+ * Percentage change of a stat versus the previous month. Rendered muted when
+ * there is no prior month to compare against (the first month of data).
+ */
+function MonthDelta({
+  current,
+  previous,
+  label,
+}: {
+  current: number
+  previous: number | undefined
+  label: string | undefined
+}) {
+  if (previous === undefined || label === undefined) return null
+  const suffix = ` vs ${label}`
+  if (previous === 0) {
+    return (
+      <span className="text-gray-400">{current > 0 ? `New${suffix}` : `No change${suffix}`}</span>
+    )
+  }
+  const pct = Math.round(((current - previous) / previous) * 100)
+  if (pct === 0) return <span className="text-gray-400">{`No change${suffix}`}</span>
+  const up = pct > 0
+  return (
+    <span className={up ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}>
+      {`${up ? "▲" : "▼"} ${Math.abs(pct)}%${suffix}`}
+    </span>
   )
 }
 
