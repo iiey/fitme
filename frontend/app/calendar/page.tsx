@@ -78,6 +78,11 @@ export default function CalendarPage() {
   const prev = month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 }
   const { data: prevData } = useMonth(athleteId, prev.year, prev.month)
 
+  // Only compare fully elapsed months: a still-running (current) month has fewer
+  // days on the clock, so a delta against a whole prior month would be misleading.
+  const monthComplete =
+    year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1)
+
   const goPrev = useCallback(() => {
     setSelectedSports([])
     setCurrent(month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 })
@@ -160,6 +165,15 @@ export default function CalendarPage() {
           <p className="text-sm text-gray-500">Monthly stats with an interactive calendar</p>
         </div>
         <div className="flex items-center gap-2">
+          {!isCurrentMonth && (
+            <button
+              type="button"
+              onClick={goToday}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-100"
+            >
+              Today
+            </button>
+          )}
           <button
             type="button"
             onClick={goPrev}
@@ -179,15 +193,6 @@ export default function CalendarPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </button>
-          {!isCurrentMonth && (
-            <button
-              type="button"
-              onClick={goToday}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-100"
-            >
-              Today
-            </button>
-          )}
         </div>
       </header>
 
@@ -205,7 +210,7 @@ export default function CalendarPage() {
               sub={
                 <MonthDelta
                   current={data.totals.count}
-                  previous={prevData?.totals.count}
+                  previous={monthComplete ? prevData?.totals.count : undefined}
                   label={prevData?.month_name}
                 />
               }
@@ -216,7 +221,7 @@ export default function CalendarPage() {
               sub={
                 <MonthDelta
                   current={data.totals.distance}
-                  previous={prevData?.totals.distance}
+                  previous={monthComplete ? prevData?.totals.distance : undefined}
                   label={prevData?.month_name}
                 />
               }
@@ -227,7 +232,7 @@ export default function CalendarPage() {
               sub={
                 <MonthDelta
                   current={data.totals.elevation}
-                  previous={prevData?.totals.elevation}
+                  previous={monthComplete ? prevData?.totals.elevation : undefined}
                   label={prevData?.month_name}
                 />
               }
@@ -238,7 +243,7 @@ export default function CalendarPage() {
               sub={
                 <MonthDelta
                   current={data.totals.moving_time_s}
-                  previous={prevData?.totals.moving_time_s}
+                  previous={monthComplete ? prevData?.totals.moving_time_s : undefined}
                   label={prevData?.month_name}
                 />
               }
