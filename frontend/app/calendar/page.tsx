@@ -13,7 +13,7 @@ import { StatCard } from "@/components/ui/StatCard"
 import { ErrorState, Spinner } from "@/components/ui/States"
 import { useMeta, useMonth } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
-import { colorForSportType, formatHours, formatNumber } from "@/lib/format"
+import { colorForSportType, formatDate, formatHours, formatNumber } from "@/lib/format"
 import { iconForSportType } from "@/lib/sportIcons"
 import type { CalendarActivity, MonthDay } from "@/lib/types"
 
@@ -169,13 +169,23 @@ export default function CalendarPage() {
           </div>
 
           <Card>
-            <CalendarGrid
-              days={data.days}
-              firstWeekday={data.first_weekday}
-              unitSystem={data.unit_system}
-              activities={data.activities}
-              onSelectDay={setSelectedDate}
-            />
+            <div className="hidden md:block">
+              <CalendarGrid
+                days={data.days}
+                firstWeekday={data.first_weekday}
+                unitSystem={data.unit_system}
+                activities={data.activities}
+                onSelectDay={setSelectedDate}
+              />
+            </div>
+            <div className="md:hidden">
+              <AgendaList
+                days={data.days}
+                unitSystem={data.unit_system}
+                activities={data.activities}
+                onSelectDay={setSelectedDate}
+              />
+            </div>
           </Card>
 
           {data.per_sport.length > 0 && (
@@ -282,6 +292,90 @@ function formatCompactTime(seconds: number): string {
   return `${h}h${m}m`
 }
 
+/** Group activities by their local calendar date (``YYYY-MM-DD``). */
+function groupActivitiesByDate(activities: CalendarActivity[]): Map<string, CalendarActivity[]> {
+  const byDate = new Map<string, CalendarActivity[]>()
+  for (const act of activities) {
+    const dateKey = act.start_date_time.split("T")[0]
+    const list = byDate.get(dateKey) ?? []
+    list.push(act)
+    byDate.set(dateKey, list)
+  }
+  return byDate
+}
+
+/** Single compact activity line shared by the grid cells and the mobile agenda. */
+function ActivityLine({ act, unitSystem }: { act: CalendarActivity; unitSystem: string }) {
+  const distUnit = unitSystem === "imperial" ? "mi" : "km"
+  const dist = unitSystem === "imperial" ? act.distance_mi : act.distance_km
+  const SportIcon = iconForSportType(act.sport_type, act.activity_type)
+  return (
+    <div className="mt-px flex flex-wrap items-center gap-x-1 text-[15px] leading-snug text-gray-600 dark:text-gray-300">
+      <SportIcon
+        className="h-3 w-3 shrink-0"
+        style={{ color: colorForSportType(act.sport_type) }}
+      />
+      <span className="font-medium">{formatCompactTime(act.moving_time_s)}</span>
+      {dist > 0.1 && (
+        <span>
+          {formatNumber(dist, 1)} {distUnit}
+        </span>
+      )}
+      {act.average_heart_rate != null && (
+        <span className="text-red-400">♥{Math.round(act.average_heart_rate)}</span>
+      )}
+      {act.load > 0 && <span className="text-brand">L{act.load}</span>}
+    </div>
+  )
+}
+
+/**
+ * Vertical day-by-day list shown on narrow screens, where the seven-column grid
+ * is too cramped to be legible. Only days with activities are listed.
+ */
+function AgendaList({
+  days,
+  unitSystem,
+  activities,
+  onSelectDay,
+}: {
+  days: MonthDay[]
+  unitSystem: string
+  activities: CalendarActivity[]
+  onSelectDay: (date: string) => void
+}) {
+  const byDate = groupActivitiesByDate(activities)
+  const distUnit = unitSystem === "imperial" ? "mi" : "km"
+  const activeDays = days.filter((d) => d.count > 0)
+
+  if (activeDays.length === 0) {
+    return <p className="py-6 text-center text-sm text-gray-400">No activities this month.</p>
+  }
+
+  return (
+    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+      {activeDays.map((day) => (
+        <li key={day.date} className="py-2 first:pt-0 last:pb-0">
+          <button
+            type="button"
+            onClick={() => onSelectDay(day.date)}
+            className="mb-1 flex w-full items-baseline justify-between gap-2 text-left"
+          >
+            <span className="font-semibold">{formatDate(day.date, "EEE d")}</span>
+            <span className="text-xs text-gray-500">
+              {formatCompactTime(day.moving_time_s)}
+              {day.distance > 0.1 && ` · ${formatNumber(day.distance, 1)} ${distUnit}`}
+            </span>
+          </button>
+          {(byDate.get(day.date) ?? []).map((act) => (
+            <ActivityLine key={act.activity_id} act={act} unitSystem={unitSystem} />
+          ))}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function CalendarGrid({
   days,
   firstWeekday,
@@ -299,13 +393,7 @@ function CalendarGrid({
   const distUnit = unitSystem === "imperial" ? "mi" : "km"
   const elevUnit = unitSystem === "imperial" ? "ft" : "m"
 
-  const activitiesByDate = new Map<string, CalendarActivity[]>()
-  for (const act of activities) {
-    const dateKey = act.start_date_time.split("T")[0]
-    const list = activitiesByDate.get(dateKey) ?? []
-    list.push(act)
-    activitiesByDate.set(dateKey, list)
-  }
+  const activitiesByDate = groupActivitiesByDate(activities)
 
   const allCells: (MonthDay | null)[] = [...Array(firstWeekday).fill(null), ...days]
   while (allCells.length % 7 !== 0) allCells.push(null)
@@ -409,33 +497,9 @@ function CalendarGrid({
                   >
                     {day.day}
                   </button>
-                  {dayActs.slice(0, 3).map((act) => {
-                    const dist = unitSystem === "imperial" ? act.distance_mi : act.distance_km
-                    const SportIcon = iconForSportType(act.sport_type, act.activity_type)
-                    return (
-                      <div
-                        key={act.activity_id}
-                        className="mt-px flex flex-wrap items-center gap-x-1 text-[15px] leading-snug text-gray-600 dark:text-gray-300"
-                      >
-                        <SportIcon
-                          className="h-3 w-3 shrink-0"
-                          style={{ color: colorForSportType(act.sport_type) }}
-                        />
-                        <span className="font-medium">{formatCompactTime(act.moving_time_s)}</span>
-                        {dist > 0.1 && (
-                          <span>
-                            {formatNumber(dist, 1)} {distUnit}
-                          </span>
-                        )}
-                        {act.average_heart_rate != null && (
-                          <span className="text-red-400">
-                            ♥{Math.round(act.average_heart_rate)}
-                          </span>
-                        )}
-                        {act.load > 0 && <span className="text-brand">L{act.load}</span>}
-                      </div>
-                    )
-                  })}
+                  {dayActs.slice(0, 3).map((act) => (
+                    <ActivityLine key={act.activity_id} act={act} unitSystem={unitSystem} />
+                  ))}
                   {dayActs.length > 3 && (
                     <span className="mt-px text-[10px] text-gray-400">
                       +{dayActs.length - 3} more
