@@ -7,7 +7,7 @@ import { ActivitySectionRenderer } from "@/components/activities/ActivitySection
 import { PrimaryStats } from "@/components/activities/PrimaryStats"
 import { ErrorState, Spinner } from "@/components/ui/States"
 import { resolveActivityProfile } from "@/lib/activityProfiles"
-import { useActivity, useMeta } from "@/lib/api"
+import { ApiError, useActivity, useMeta } from "@/lib/api"
 import { useAthleteContext } from "@/lib/athlete-context"
 import { formatDate } from "@/lib/format"
 import type { ActivityDetail } from "@/lib/types"
@@ -19,7 +19,14 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
   const { data: meta } = useMeta(athleteId)
 
   if (isLoading) return <Spinner label="Loading activity…" />
-  if (error || !activity) return <ErrorState message="Activity not found." />
+  if (error || !activity) {
+    const notFound = error instanceof ApiError && error.status === 404
+    return (
+      <ErrorState
+        message={notFound ? "Activity not found." : "Couldn't load this activity. Please try again."}
+      />
+    )
+  }
 
   const distanceUnit = meta?.distance_unit ?? "km"
   const profile = resolveActivityProfile(activity)
