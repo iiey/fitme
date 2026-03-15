@@ -51,24 +51,33 @@ export function ActivityNote({
     setEditing(true)
   }, [note])
 
-  const panelOpen = open || editing
-
-  const editor = (
-    <NoteEditor draft={draft} setDraft={setDraft} save={save} cancel={cancel} saving={saving} />
-  )
+  // Close the editing modal on Escape, mirroring the app's other note editors.
+  useEffect(() => {
+    if (!editing) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") cancel()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [editing, cancel])
 
   // Sits on the primary-stats row: the fixed-width stat tiles come in as
-  // `children` and the note takes the remaining width, collapsing to a slim
-  // icon button so the tiles keep their place.
+  // `children`; the note takes the remaining width and stretches to the tiles'
+  // height, collapsing to a slim icon button so the tiles keep their place.
+  //
+  // Editing opens in a modal rather than growing the note inline, so opening,
+  // collapsing or editing never changes the row's height and the charts below
+  // it stay put. The row keeps a fixed height on desktop; longer notes scroll
+  // within the compact preview.
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-      {children}
-      {panelOpen ? (
-        <div className="hidden min-w-[16rem] flex-1 lg:block">
-          <div className="card flex min-h-[7rem] flex-col p-4">
-            <header className="mb-3 flex items-center justify-between">
-              <h2 className="card-title">Note</h2>
-              {!editing && (
+    <>
+      <div className="flex flex-col gap-3 lg:h-28 lg:flex-row lg:items-stretch">
+        {children}
+        {open ? (
+          <div className="hidden min-w-[16rem] flex-1 lg:block">
+            <div className="card flex h-full flex-col p-4">
+              <header className="mb-3 flex items-center justify-between">
+                <h2 className="card-title">Note</h2>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
@@ -77,34 +86,67 @@ export function ActivityNote({
                 >
                   <CloseIcon />
                 </button>
-              )}
+              </header>
+              <div className="flex min-h-0 flex-1 flex-col">
+                <NoteDisplay note={note} onEdit={beginEdit} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={hasNote ? () => setOpen(true) : beginEdit}
+            className="card hidden w-12 shrink-0 items-center justify-center self-stretch p-0 text-gray-400 transition-colors hover:text-brand lg:flex"
+            aria-label={hasNote ? "Show note" : "Add note"}
+            title="Note"
+          >
+            <NoteIcon />
+          </button>
+        )}
+        <div className="w-full lg:hidden">
+          {hasNote ? (
+            <div className="card p-4">
+              <NoteDisplay note={note} onEdit={beginEdit} />
+            </div>
+          ) : (
+            <NoteDisplay note={note} onEdit={beginEdit} />
+          )}
+        </div>
+      </div>
+      {editing && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-dismiss is a mouse convenience; the dialog also closes via Escape and the close button
+        // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-dismiss is a mouse convenience; the dialog also closes via Escape and the close button
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) cancel()
+          }}
+        >
+          <div className="card flex w-full max-w-lg flex-col overflow-hidden">
+            <header className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-gray-700">
+              <h2 className="text-lg font-semibold">Note</h2>
+              <button
+                type="button"
+                onClick={cancel}
+                aria-label="Close"
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
+              >
+                <CloseIcon />
+              </button>
             </header>
-            <div className="flex flex-1 flex-col">
-              {editing ? editor : <NoteDisplay note={note} onEdit={beginEdit} />}
+            <div className="p-5">
+              <NoteEditor
+                draft={draft}
+                setDraft={setDraft}
+                save={save}
+                cancel={cancel}
+                saving={saving}
+              />
             </div>
           </div>
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={beginEdit}
-          className="card hidden w-12 shrink-0 items-center justify-center self-stretch p-0 text-gray-400 transition-colors hover:text-brand lg:flex"
-          aria-label="Add note"
-          title="Note"
-        >
-          <NoteIcon />
-        </button>
       )}
-      <div className="w-full lg:hidden">
-        {hasNote || editing ? (
-          <div className="card p-4">
-            {editing ? editor : <NoteDisplay note={note} onEdit={beginEdit} />}
-          </div>
-        ) : (
-          <NoteDisplay note={note} onEdit={beginEdit} />
-        )}
-      </div>
-    </div>
+    </>
   )
 }
 
@@ -144,7 +186,7 @@ function NoteDisplay({ note, onEdit }: { note: string | null; onEdit: () => void
     <button
       type="button"
       onClick={onEdit}
-      className="flex w-full flex-1 items-start text-left rounded-lg border border-dashed border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-400 dark:text-gray-500 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+      className="flex w-full min-h-0 flex-1 items-start overflow-y-auto text-left rounded-lg border border-dashed border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-400 dark:text-gray-500 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
     >
       {note ? (
         <span className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{note}</span>
@@ -174,13 +216,13 @@ function NoteEditor({
     textareaRef.current?.focus()
   }, [])
   return (
-    <div className="flex flex-1 flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <textarea
         ref={textareaRef}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="Write a note about this activity…"
-        className="min-h-[8rem] w-full flex-1 resize-none rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        className="min-h-[10rem] w-full resize-y rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
       />
       <div className="flex justify-end gap-2">
         <button

@@ -68,7 +68,7 @@ export function PrimaryStats({
           label={tile.label}
           value={tile.value}
           accent={i === 0}
-          className="w-36 grow sm:grow-0"
+          className="w-36 grow justify-center sm:grow-0"
         />
       ))}
     </div>
