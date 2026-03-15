@@ -15,15 +15,18 @@ import type { ActivityDetail } from "@/lib/types"
 export default function ActivityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { athleteId } = useAthleteContext()
-  const { data: activity, error, isLoading } = useActivity(athleteId, id)
+  const { data: activity, error, isLoading, mutate } = useActivity(athleteId, id)
   const { data: meta } = useMeta(athleteId)
 
   if (isLoading) return <Spinner label="Loading activity…" />
   if (error || !activity) {
     const notFound = error instanceof ApiError && error.status === 404
-    return (
+    return notFound ? (
+      <ErrorState message="Activity not found." />
+    ) : (
       <ErrorState
-        message={notFound ? "Activity not found." : "Couldn't load this activity. Please try again."}
+        message="Couldn't load this activity. Please try again."
+        onRetry={() => mutate()}
       />
     )
   }

@@ -7,10 +7,19 @@ export function Spinner({ label }: { label?: string }) {
   )
 }
 
-export function ErrorState({ message }: { message?: string }) {
+export function ErrorState({ message, onRetry }: { message?: string; onRetry?: () => void }) {
   return (
     <div className="card p-6 text-center text-sm text-red-600">
-      {message ?? "Something went wrong loading this data."}
+      <p>{message ?? "Something went wrong loading this data."}</p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-3 font-medium text-brand hover:underline"
+        >
+          Try again
+        </button>
+      )}
     </div>
   )
 }
