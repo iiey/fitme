@@ -85,7 +85,9 @@ function ActivityHeader({ activity }: { activity: ActivityDetail }) {
       <h1 className="mt-1 text-2xl font-bold">{activity.name}</h1>
       <p className="text-sm text-gray-500">
         {activity.sport_label} &middot;{" "}
-        {formatDate(activity.start_date_time, "EEEE yyyy-MM-dd 'at' HH:mm")}
+        <time dateTime={activity.start_date_time}>
+          {formatDate(activity.start_date_time, "EEEE yyyy-MM-dd 'at' HH:mm")}
+        </time>
       </p>
       {activity.description && (
         <p className="mt-2 text-sm text-gray-600 italic">{activity.description}</p>
