@@ -39,13 +39,13 @@ export interface ActivityProfile {
 const DISTANCE_PRIMARY: PrimaryStatKey[] = ["distance", "movingTime", "paceSpeed", "elevation"]
 const DURATION_PRIMARY: PrimaryStatKey[] = ["movingTime", "avgHr", "calories"]
 
-// Full endurance section set; sports prune from this. Pairs the renderer groups
-// into two-column rows (heartRate+hrZones, pace+paceZones, elevation+power) are
+// Full endurance section set; sports prune from this. The renderer's two-column
+// pairs (map+heartRate, hrCurve+hrZones, pace+paceZones, elevation+power) are
 // kept adjacent so that layout can be derived from order alone.
 const ENDURANCE_SECTIONS: ActivitySection[] = [
   "map",
-  "hrCurve",
   "heartRate",
+  "hrCurve",
   "hrZones",
   "pace",
   "paceZones",
@@ -66,8 +66,8 @@ export const ACTIVITY_PROFILES: Record<string, ActivityProfile> = {
     // No pace zones for rides (run-threshold model); power is the intensity metric.
     sections: [
       "map",
-      "hrCurve",
       "heartRate",
+      "hrCurve",
       "hrZones",
       "pace",
       "elevation",
@@ -96,13 +96,13 @@ export const ACTIVITY_PROFILES: Record<string, ActivityProfile> = {
   },
   RacquetPaddleSports: {
     primaryStats: DURATION_PRIMARY,
-    sections: ["hrCurve", "heartRate", "hrZones", "details"],
+    sections: ["heartRate", "hrCurve", "hrZones", "details"],
   },
   Fitness: {
     // Strength / crossfit / HIIT / elliptical / rower: effort is HR (and power on
     // indoor bikes/rowers); no distance, pace, elevation or GPS.
     primaryStats: ["movingTime", "avgHr", "calories", "power"],
-    sections: ["hrCurve", "heartRate", "hrZones", "power", "cadence", "details"],
+    sections: ["heartRate", "hrCurve", "hrZones", "power", "cadence", "details"],
   },
   MindBodySports: {
     // Yoga / pilates / physical therapy: duration and HR only.
@@ -116,7 +116,7 @@ export const ACTIVITY_PROFILES: Record<string, ActivityProfile> = {
   },
   TeamSports: {
     primaryStats: DURATION_PRIMARY,
-    sections: ["hrCurve", "heartRate", "hrZones", "details"],
+    sections: ["heartRate", "hrCurve", "hrZones", "details"],
   },
   AdaptiveInclusiveSports: {
     primaryStats: DURATION_PRIMARY,

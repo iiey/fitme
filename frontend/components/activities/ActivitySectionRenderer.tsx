@@ -8,8 +8,12 @@ import type { ActivityProfile, ActivitySection } from "@/lib/activityProfiles"
 import { SECTION_COMPONENTS, type SectionProps, sectionHasData } from "./sections"
 
 // When both members are present and listed adjacently, a pair renders as a
-// two-column row (preserving the page's prior HR / pace / elevation layout).
+// two-column row. The heart-rate trace sits beside the route map, and the
+// heart-rate curve takes the column next to the HR zones.
 const COLUMN_PAIRS: Partial<Record<ActivitySection, ActivitySection>> = {
+  map: "heartRate",
+  hrCurve: "hrZones",
+  // Fallback for HR-only sports (no map, no curve): keep HR beside its zones.
   heartRate: "hrZones",
   pace: "paceZones",
   elevation: "power",

@@ -83,22 +83,18 @@ function HrCurveSection({ activity }: SectionProps) {
   )
   if (!option) return null
   return (
-    <div className="flex justify-center">
-      <div className="w-full lg:w-1/3">
-        <Card
-          title={
-            <span className="inline-flex items-center">
-              Heart Rate Curve
-              <InfoTip width="w-72">
-                <span className="whitespace-pre-line">{HR_CURVE_HELP}</span>
-              </InfoTip>
-            </span>
-          }
-        >
-          <EChart option={option} height={240} />
-        </Card>
-      </div>
-    </div>
+    <Card
+      title={
+        <span className="inline-flex items-center">
+          Heart Rate Curve
+          <InfoTip width="w-72">
+            <span className="whitespace-pre-line">{HR_CURVE_HELP}</span>
+          </InfoTip>
+        </span>
+      }
+    >
+      <EChart option={option} height={240} />
+    </Card>
   )
 }
 
