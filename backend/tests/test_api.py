@@ -137,6 +137,13 @@ def test_activity_detail_roundtrip(client: TestClient):
     assert detail["activity_id"] == activity_id
     assert "streams" in detail
 
+    # The GPS track is surfaced as per-sample coordinates, index-aligned with the
+    # numeric streams, and kept out of the numeric-only streams map.
+    assert "latlng" not in detail["streams"]
+    coords = detail["coordinates"]
+    assert coords and coords[0] == [50.0, 4.0]
+    assert len(coords) == len(detail["streams"]["distance"])
+
 
 def test_delete_activities_removes_activity_and_streams(client: TestClient):
     activity_id = client.get("/api/activities").json()["items"][0]["activity_id"]

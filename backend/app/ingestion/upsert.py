@@ -54,6 +54,9 @@ _PERSISTED_STREAMS = [
     StreamType.HEART_RATE,
     StreamType.CADENCE,
     StreamType.WATTS,
+    # Per-sample GPS track, downsampled in lock-step with the numeric streams so
+    # it stays index-aligned; powers the map marker that follows chart hover.
+    StreamType.LAT_LNG,
 ]
 
 

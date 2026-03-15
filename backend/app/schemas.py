@@ -66,6 +66,9 @@ class ActivityDetail(ActivitySummary):
     start_latitude: float | None
     start_longitude: float | None
     streams: dict[str, list]
+    # Per-sample [lat, lng] pairs (``None`` where GPS dropped), index-aligned with
+    # the numeric streams. Kept out of ``streams`` because that map is numeric-only.
+    coordinates: list[list[float] | None] | None = None
     best_efforts: list[BestEffortItem]
     hr_zones: list[HrZoneItem] | None = None
     pace_zones: list[PaceZoneItem] | None = None

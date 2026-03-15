@@ -10,7 +10,7 @@ from app.domain.streams_analysis import (
     time_in_pace_zones,
 )
 from app.domain.units import m_to_km, m_to_mi, ms_to_kmh
-from app.enums import ActivityType, SportType
+from app.enums import ActivityType, SportType, StreamType
 from app.models import Activity, Gear
 from app.schemas import (
     ActivityDetail,
@@ -129,6 +129,10 @@ def serialize_activity_detail(
     sport = SportType.from_strava(activity.sport_type)
     is_run = sport.activity_type is ActivityType.RUN
     streams = _with_grade_adjusted_pace(streams, is_run=is_run)
+    # Split the geo track out of the numeric stream map: it carries [lat, lng]
+    # pairs, so it is surfaced as ``coordinates`` and left out of ``streams``.
+    coordinates = streams.get(StreamType.LAT_LNG.value)
+    numeric_streams = {k: v for k, v in streams.items() if k != StreamType.LAT_LNG.value}
     return ActivityDetail(
         **summary.model_dump(),
         description=activity.description,
@@ -146,7 +150,8 @@ def serialize_activity_detail(
         polyline=activity.polyline,
         start_latitude=activity.start_latitude,
         start_longitude=activity.start_longitude,
-        streams=streams,
+        streams=numeric_streams,
+        coordinates=coordinates,
         best_efforts=[
             BestEffortItem(
                 distance_m=distance_m,
