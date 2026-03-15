@@ -93,15 +93,21 @@ export function ActivityNote({
             </div>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={hasNote ? () => setOpen(true) : beginEdit}
-            className="card hidden w-12 shrink-0 items-center justify-center self-stretch p-0 text-gray-400 transition-colors hover:text-brand lg:flex"
-            aria-label={hasNote ? "Show note" : "Add note"}
-            title="Note"
-          >
-            <NoteIcon />
-          </button>
+          <div className="group relative hidden w-12 shrink-0 self-stretch lg:block">
+            <button
+              type="button"
+              onClick={hasNote ? () => setOpen(true) : beginEdit}
+              className="card flex h-full w-full items-center justify-center p-0 text-gray-400 transition-colors hover:text-brand"
+              aria-label={hasNote ? "Show note" : "Add note"}
+            >
+              <NoteIcon />
+            </button>
+            {hasNote && (
+              <span className="pointer-events-none absolute right-0 top-full z-50 mt-2 max-h-64 w-64 overflow-hidden whitespace-pre-wrap rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs leading-relaxed text-gray-900 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
+                {note}
+              </span>
+            )}
+          </div>
         )}
         <div className="w-full lg:hidden">
           {hasNote ? (
