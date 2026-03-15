@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { use } from "react"
+import { use, useEffect } from "react"
 
 import { ActivitySectionRenderer } from "@/components/activities/ActivitySectionRenderer"
 import { PrimaryStats } from "@/components/activities/PrimaryStats"
@@ -17,6 +17,17 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
   const { athleteId } = useAthleteContext()
   const { data: activity, error, isLoading, mutate } = useActivity(athleteId, id)
   const { data: meta } = useMeta(athleteId)
+
+  // Reflect the activity name in the browser tab; this is a client page, so
+  // the static metadata title ("FitMe") is all Next.js sets on its own.
+  useEffect(() => {
+    if (!activity) return
+    const previousTitle = document.title
+    document.title = `${activity.name} · FitMe`
+    return () => {
+      document.title = previousTitle
+    }
+  }, [activity])
 
   if (isLoading) return <Spinner label="Loading activity…" />
   if (error || !activity) {
