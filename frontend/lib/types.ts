@@ -165,6 +165,8 @@ export interface ActivityDetail extends ActivitySummary {
   start_latitude: number | null
   start_longitude: number | null
   streams: Record<string, (number | null)[]>
+  /** Per-sample [lat, lng] pairs (null where GPS dropped), index-aligned with streams. */
+  coordinates: ([number, number] | null)[] | null
   best_efforts: BestEffortItem[]
   hr_zones: HrZoneItem[] | null
   pace_zones: PaceZoneItem[] | null

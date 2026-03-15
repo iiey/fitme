@@ -217,6 +217,10 @@ export const ActivityDetailSchema = ActivitySummarySchema.extend({
   start_latitude: z.number().nullable(),
   start_longitude: z.number().nullable(),
   streams: z.record(z.string(), z.array(z.number().nullable())),
+  coordinates: z
+    .array(z.tuple([z.number(), z.number()]).nullable())
+    .nullable()
+    .default(null),
   best_efforts: z.array(
     z.object({
       distance_m: z.number(),
