@@ -45,10 +45,10 @@ const DURATION_PRIMARY: PrimaryStatKey[] = ["movingTime", "avgHr", "calories"]
 const ENDURANCE_SECTIONS: ActivitySection[] = [
   "map",
   "heartRate",
-  "hrCurve",
-  "hrZones",
   "pace",
   "paceZones",
+  "hrCurve",
+  "hrZones",
   "elevation",
   "power",
   "cadence",
@@ -67,9 +67,9 @@ export const ACTIVITY_PROFILES: Record<string, ActivityProfile> = {
     sections: [
       "map",
       "heartRate",
+      "pace",
       "hrCurve",
       "hrZones",
-      "pace",
       "elevation",
       "power",
       "cadence",

@@ -124,7 +124,7 @@ function HeartRateSection({ activity, distanceStream }: SectionProps) {
 function HrZonesSection({ activity }: SectionProps) {
   if (!activity.hr_zones || activity.hr_zones.length === 0) return null
   return (
-    <Card title="Time in Heart Rate Zones">
+    <Card title="Heart Rate Zones">
       <HrZones zones={activity.hr_zones} />
     </Card>
   )
