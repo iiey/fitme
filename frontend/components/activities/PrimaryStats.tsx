@@ -40,15 +40,11 @@ function statFor(key: PrimaryStatKey, a: ActivityDetail, distanceUnit: string): 
   }
 }
 
-const GRID_COLS: Record<number, string> = {
-  1: "grid-cols-1",
-  2: "grid-cols-2",
-  3: "grid-cols-3",
-  4: "grid-cols-2 md:grid-cols-4",
-}
-
-/** Top stat grid, driven by the sport profile. Tiles without a value are dropped
- *  and the first surviving tile is accented (the sport's primary metric). */
+/** Top stat tiles, driven by the sport profile. Tiles without a value are dropped
+ *  and the first surviving tile is accented (the sport's primary metric).
+ *
+ *  Tiles have a fixed width so they stay put when the adjacent note panel
+ *  expands or collapses; they wrap to the next line on narrow viewports. */
 export function PrimaryStats({
   activity,
   profile,
@@ -64,11 +60,16 @@ export function PrimaryStats({
 
   if (tiles.length === 0) return null
 
-  const colClass = GRID_COLS[Math.min(tiles.length, 4)]
   return (
-    <div className={`grid gap-3 ${colClass}`}>
+    <div className="flex flex-wrap gap-3">
       {tiles.map((tile, i) => (
-        <StatCard key={tile.label} label={tile.label} value={tile.value} accent={i === 0} />
+        <StatCard
+          key={tile.label}
+          label={tile.label}
+          value={tile.value}
+          accent={i === 0}
+          className="w-36 grow sm:grow-0"
+        />
       ))}
     </div>
   )

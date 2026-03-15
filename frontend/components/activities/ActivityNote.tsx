@@ -51,35 +51,20 @@ export function ActivityNote({
     setEditing(true)
   }, [note])
 
-  if (!children) {
-    return (
-      <div className="card p-4">
-        {editing ? (
-          <NoteEditor
-            draft={draft}
-            setDraft={setDraft}
-            save={save}
-            cancel={cancel}
-            saving={saving}
-          />
-        ) : (
-          <NoteDisplay note={note} onEdit={beginEdit} />
-        )}
-      </div>
-    )
-  }
-
   const panelOpen = open || editing
 
+  const editor = (
+    <NoteEditor draft={draft} setDraft={setDraft} save={save} cancel={cancel} saving={saving} />
+  )
+
+  // Sits on the primary-stats row: the fixed-width stat tiles come in as
+  // `children` and the note takes the remaining width, collapsing to a slim
+  // icon button so the tiles keep their place.
   return (
-    <div className="relative flex gap-6">
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
       {children}
-      <div
-        className={`hidden transition-all duration-300 ease-in-out lg:block ${
-          panelOpen ? "w-[33%] min-w-[260px] opacity-100" : "w-0 min-w-0 overflow-hidden opacity-0"
-        }`}
-      >
-        {panelOpen && (
+      {panelOpen ? (
+        <div className="hidden min-h-[7rem] min-w-[16rem] flex-1 self-stretch lg:block">
           <div className="card flex h-full flex-col p-4">
             <header className="mb-3 flex items-center justify-between">
               <h2 className="card-title">Note</h2>
@@ -88,76 +73,69 @@ export function ActivityNote({
                   type="button"
                   onClick={() => setOpen(false)}
                   className="rounded p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  aria-label="Close note"
+                  aria-label="Collapse note"
                 >
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path d="M6 18 18 6M6 6l12 12" />
-                  </svg>
+                  <CloseIcon />
                 </button>
               )}
             </header>
             <div className="flex flex-1 flex-col">
-              {editing ? (
-                <NoteEditor
-                  draft={draft}
-                  setDraft={setDraft}
-                  save={save}
-                  cancel={cancel}
-                  saving={saving}
-                />
-              ) : (
-                <NoteDisplay note={note} onEdit={beginEdit} />
-              )}
+              {editing ? editor : <NoteDisplay note={note} onEdit={beginEdit} />}
             </div>
           </div>
-        )}
-      </div>
-      {!panelOpen && (
+        </div>
+      ) : (
         <button
           type="button"
           onClick={beginEdit}
-          className="absolute right-3 top-3 hidden items-center gap-1.5 rounded-lg bg-gray-900/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-gray-900/80 lg:flex"
+          className="card hidden w-12 shrink-0 items-center justify-center self-stretch p-0 text-gray-400 transition-colors hover:text-brand lg:flex"
           aria-label="Add note"
+          title="Note"
         >
-          <svg
-            className="h-3.5 w-3.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-          Note
+          <NoteIcon />
         </button>
       )}
-      <div className="contents lg:hidden">
-        {(hasNote || editing) && (
+      <div className="w-full lg:hidden">
+        {hasNote || editing ? (
           <div className="card p-4">
-            {editing ? (
-              <NoteEditor
-                draft={draft}
-                setDraft={setDraft}
-                save={save}
-                cancel={cancel}
-                saving={saving}
-              />
-            ) : (
-              <NoteDisplay note={note} onEdit={beginEdit} />
-            )}
+            {editing ? editor : <NoteDisplay note={note} onEdit={beginEdit} />}
           </div>
+        ) : (
+          <NoteDisplay note={note} onEdit={beginEdit} />
         )}
       </div>
     </div>
+  )
+}
+
+function NoteIcon() {
+  return (
+    <svg
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  )
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path d="M6 18 18 6M6 6l12 12" />
+    </svg>
   )
 }
 

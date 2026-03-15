@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { use, useEffect } from "react"
 
+import { ActivityNote } from "@/components/activities/ActivityNote"
 import { ActivitySectionRenderer } from "@/components/activities/ActivitySectionRenderer"
 import { PrimaryStats } from "@/components/activities/PrimaryStats"
 import { ErrorState, Spinner } from "@/components/ui/States"
@@ -50,7 +51,9 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
   return (
     <div className="space-y-6">
       <ActivityHeader activity={activity} />
-      <PrimaryStats activity={activity} profile={profile} distanceUnit={distanceUnit} />
+      <ActivityNote activityId={id} athleteId={athleteId} note={activity.user_note}>
+        <PrimaryStats activity={activity} profile={profile} distanceUnit={distanceUnit} />
+      </ActivityNote>
       <ActivitySectionRenderer
         activity={activity}
         profile={profile}

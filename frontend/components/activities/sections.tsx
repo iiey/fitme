@@ -13,7 +13,6 @@ import { colorForActivityType, formatDate, formatDuration, formatNumber } from "
 import type { ActivityDetail } from "@/lib/types"
 import { useIsDark } from "@/lib/use-is-dark"
 
-import { ActivityNote } from "./ActivityNote"
 import { BestEfforts } from "./BestEfforts"
 import { HR_CURVE_HELP, hrCurveChart, type StreamAxis, streamChart } from "./charts"
 import { DetailRow } from "./DetailRow"
@@ -53,7 +52,7 @@ function streamAxis(
 // truth for both layout (column pairing) and the empty-state fallback. `map` and
 // `details` are always-on (note panel / summary) and excluded from emptiness.
 export const sectionHasData: Record<ActivitySection, (a: ActivityDetail) => boolean> = {
-  map: () => true,
+  map: (a) => !!a.polyline,
   hrCurve: (a) => !!a.hr_curve && a.hr_curve.length > 1,
   heartRate: (a) => a.average_heart_rate != null,
   hrZones: (a) => !!a.hr_zones && a.hr_zones.length > 0,
@@ -66,16 +65,13 @@ export const sectionHasData: Record<ActivitySection, (a: ActivityDetail) => bool
   details: () => true,
 }
 
-function MapSection({ activity, athleteId, activityId }: SectionProps) {
+function MapSection({ activity }: SectionProps) {
+  if (!activity.polyline) return null
   const color = colorForActivityType(activity.activity_type)
-  return activity.polyline ? (
-    <ActivityNote activityId={activityId} athleteId={athleteId} note={activity.user_note}>
-      <Card title="Route" className="min-w-0 flex-1">
-        <RouteMap polyline={activity.polyline} color={color} height={360} />
-      </Card>
-    </ActivityNote>
-  ) : (
-    <ActivityNote activityId={activityId} athleteId={athleteId} note={activity.user_note} />
+  return (
+    <Card title="Route" className="min-w-0 flex-1">
+      <RouteMap polyline={activity.polyline} color={color} height={360} />
+    </Card>
   )
 }
 
