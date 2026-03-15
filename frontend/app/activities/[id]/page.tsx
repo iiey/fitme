@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { use, useEffect } from "react"
 
 import { ActivitySectionRenderer } from "@/components/activities/ActivitySectionRenderer"
@@ -63,9 +64,22 @@ export default function ActivityDetailPage({ params }: { params: Promise<{ id: s
 }
 
 function ActivityHeader({ activity }: { activity: ActivityDetail }) {
+  const router = useRouter()
+
+  // Prefer going back so the list keeps its filters and scroll position; fall
+  // back to the plain link when there is no in-app history (e.g. a shared URL
+  // opened directly, or middle-click / open-in-new-tab).
+  const handleBack = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
+    if (window.history.length > 1) {
+      event.preventDefault()
+      router.back()
+    }
+  }
+
   return (
     <div>
-      <Link href="/activities" className="text-sm text-brand hover:underline">
+      <Link href="/activities" onClick={handleBack} className="text-sm text-brand hover:underline">
         &larr; Back to activities
       </Link>
       <h1 className="mt-1 text-2xl font-bold">{activity.name}</h1>
