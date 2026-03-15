@@ -64,8 +64,8 @@ export function ActivityNote({
     <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
       {children}
       {panelOpen ? (
-        <div className="hidden min-h-[7rem] min-w-[16rem] flex-1 self-stretch lg:block">
-          <div className="card flex h-full flex-col p-4">
+        <div className="hidden min-w-[16rem] flex-1 lg:block">
+          <div className="card flex min-h-[7rem] flex-col p-4">
             <header className="mb-3 flex items-center justify-between">
               <h2 className="card-title">Note</h2>
               {!editing && (
@@ -180,7 +180,7 @@ function NoteEditor({
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder="Write a note about this activity…"
-        className="w-full flex-1 resize-none rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        className="min-h-[8rem] w-full flex-1 resize-none rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
       />
       <div className="flex justify-end gap-2">
         <button
