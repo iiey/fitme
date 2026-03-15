@@ -11,6 +11,18 @@ export const ZONE_COLORS = ["#9ca3af", "#3b82f6", "#22c55e", "#f97316", "#ef4444
 export type StreamAxis = "distance" | "time"
 
 /**
+ * The x coordinate plotted for each sample: kilometres for the distance axis,
+ * seconds for the time axis. One value per sample, index-aligned with the raw
+ * streams - used both to build the chart and to map a hovered pixel back to a
+ * sample index for the route-map marker.
+ */
+export function streamXValues(axisStream: (number | null)[], axis: StreamAxis): number[] {
+  return axis === "distance"
+    ? axisStream.map((d) => (d ? d / 1000 : 0))
+    : axisStream.map((t) => t ?? 0)
+}
+
+/**
  * A simple line chart of `values` over either distance (km) or elapsed time.
  *
  * Distance is only meaningful for sports that record GPS distance; indoor /
@@ -28,10 +40,7 @@ export function streamChart(
   dark = false,
 ): EChartsOption {
   const t = themeColors(dark)
-  const data =
-    axis === "distance"
-      ? axisStream.map((d, index) => [d ? d / 1000 : 0, values[index]])
-      : axisStream.map((t, index) => [t ?? 0, values[index]])
+  const data = streamXValues(axisStream, axis).map((x, index) => [x, values[index]])
   const formatX = (x: number) =>
     axis === "distance" ? `${formatNumber(x, 2)} km` : formatWindowLabel(x)
   return {
@@ -115,12 +124,13 @@ export function multiStreamChart(
   dark = false,
 ): EChartsOption {
   const t = themeColors(dark)
+  const xs = streamXValues(axisStream, axis)
   const formatX = (x: number) =>
     axis === "distance" ? `${formatNumber(x, 2)} km` : formatWindowLabel(x)
-  const toPoint = (value: number | null, index: number): [number, number | null] =>
-    axis === "distance"
-      ? [axisStream[index] ? (axisStream[index] as number) / 1000 : 0, value]
-      : [axisStream[index] ?? 0, value]
+  const toPoint = (value: number | null, index: number): [number, number | null] => [
+    xs[index],
+    value,
+  ]
   return {
     grid: { left: 50, right: 20, top: 28, bottom: 36 },
     legend: {

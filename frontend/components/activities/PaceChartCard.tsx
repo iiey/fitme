@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 
-import { EChart } from "@/components/charts/EChart"
 import { Card } from "@/components/ui/Card"
 import { InfoTip } from "@/components/ui/InfoTip"
 import { StatCard } from "@/components/ui/StatCard"
@@ -10,7 +9,8 @@ import { formatActivityPace, formatPace, formatSpeed, KM_PER_MILE } from "@/lib/
 import type { ActivityDetail } from "@/lib/types"
 import { useIsDark } from "@/lib/use-is-dark"
 
-import { multiStreamChart, streamChart } from "./charts"
+import { multiStreamChart, streamChart, streamXValues } from "./charts"
+import { HoverStreamChart } from "./HoverSync"
 
 type SpeedMode = "pace" | "gap" | "both"
 
@@ -118,6 +118,8 @@ export function PaceChartCard({
     ],
   )
 
+  const xValues = useMemo(() => streamXValues(axisStream, axis), [axisStream, axis])
+
   const toggle = hasGap ? (
     <div className="flex items-center">
       <div className="flex rounded-md border border-gray-300 text-xs dark:border-gray-600">
@@ -157,7 +159,7 @@ export function PaceChartCard({
         <StatCard label="Average" value={averageValue} />
         <StatCard label="Max Speed" value={maxSpeedValue} />
       </div>
-      <EChart option={chartOption} height={220} />
+      <HoverStreamChart option={chartOption} height={220} xValues={xValues} />
     </Card>
   )
 }

@@ -5,6 +5,7 @@ import type React from "react"
 import { EmptyState } from "@/components/ui/States"
 import type { ActivityProfile, ActivitySection } from "@/lib/activityProfiles"
 
+import { ActivityHoverProvider } from "./HoverSync"
 import { SECTION_COMPONENTS, type SectionProps, sectionHasData } from "./sections"
 
 // When both members are present and listed adjacently, a pair renders as a
@@ -79,5 +80,12 @@ export function ActivitySectionRenderer({ profile, ...sectionProps }: RendererPr
     }
   }
 
-  return <div className="space-y-6">{nodes}</div>
+  // A per-sample GPS track lets chart hover drive a marker on the route map.
+  const hasCoordinates = !!activity.coordinates?.some((point) => point != null)
+
+  return (
+    <ActivityHoverProvider enabled={hasCoordinates}>
+      <div className="space-y-6">{nodes}</div>
+    </ActivityHoverProvider>
+  )
 }

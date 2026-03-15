@@ -2,7 +2,7 @@
 
 import type { LatLngBoundsExpression } from "leaflet"
 import { useEffect, useMemo } from "react"
-import { MapContainer, Polyline, TileLayer, useMap } from "react-leaflet"
+import { CircleMarker, MapContainer, Polyline, TileLayer, useMap } from "react-leaflet"
 
 import { decodePolyline } from "@/lib/polyline"
 
@@ -31,10 +31,13 @@ export default function RouteMap({
   polyline,
   color = "#3b82f6",
   height = 320,
+  highlight = null,
 }: {
   polyline: string
   color?: string
   height?: number
+  /** [lat, lng] to mark on the route (follows chart hover); null hides the marker. */
+  highlight?: [number, number] | null
 }) {
   // Memoize so the decoded array keeps a stable reference across renders;
   // otherwise FitBounds' effect dep changes every render and re-fits the map,
@@ -66,6 +69,13 @@ export default function RouteMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <Polyline positions={points} pathOptions={{ color, weight: 4 }} />
+        {highlight && (
+          <CircleMarker
+            center={highlight}
+            radius={6}
+            pathOptions={{ color: "#ffffff", weight: 2, fillColor: color, fillOpacity: 1 }}
+          />
+        )}
         <FitBounds bounds={bounds} />
         <InvalidateOnResize />
       </MapContainer>

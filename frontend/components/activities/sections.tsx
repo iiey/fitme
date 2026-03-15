@@ -14,8 +14,9 @@ import type { ActivityDetail } from "@/lib/types"
 import { useIsDark } from "@/lib/use-is-dark"
 
 import { BestEfforts } from "./BestEfforts"
-import { HR_CURVE_HELP, hrCurveChart, type StreamAxis, streamChart } from "./charts"
+import { HR_CURVE_HELP, hrCurveChart, type StreamAxis, streamChart, streamXValues } from "./charts"
 import { DetailRow } from "./DetailRow"
+import { HoverStreamChart, useHoverIndex } from "./HoverSync"
 import { HrZones } from "./HrZones"
 import { PaceChartCard } from "./PaceChartCard"
 import { PaceZones } from "./PaceZones"
@@ -66,11 +67,19 @@ export const sectionHasData: Record<ActivitySection, (a: ActivityDetail) => bool
 }
 
 function MapSection({ activity }: SectionProps) {
+  const hoverIndex = useHoverIndex()
   if (!activity.polyline) return null
   const color = colorForActivityType(activity.activity_type)
+  const highlight =
+    hoverIndex != null && activity.coordinates ? activity.coordinates[hoverIndex] : null
   return (
     <Card title="Route" className="min-w-0 flex-1">
-      <RouteMap polyline={activity.polyline} color={color} height={360} />
+      <RouteMap
+        polyline={activity.polyline}
+        color={color}
+        height={360}
+        highlight={highlight ?? null}
+      />
     </Card>
   )
 }
@@ -101,10 +110,13 @@ function HrCurveSection({ activity }: SectionProps) {
 function HeartRateSection({ activity, distanceStream }: SectionProps) {
   const dark = useIsDark()
   const heartrate = activity.streams.heartrate
-  const option = useMemo(() => {
+  const chart = useMemo(() => {
     if (!heartrate) return null
     const { stream, axis } = streamAxis(activity, distanceStream, heartrate)
-    return streamChart(stream, heartrate, "#dc2626", "bpm", axis, dark)
+    return {
+      option: streamChart(stream, heartrate, "#dc2626", "bpm", axis, dark),
+      xValues: streamXValues(stream, axis),
+    }
   }, [activity, distanceStream, heartrate, dark])
   if (activity.average_heart_rate == null) return null
   return (
@@ -116,7 +128,7 @@ function HeartRateSection({ activity, distanceStream }: SectionProps) {
           value={activity.max_heart_rate ? `${activity.max_heart_rate} bpm` : "-"}
         />
       </div>
-      {option && <EChart option={option} height={220} />}
+      {chart && <HoverStreamChart option={chart.option} xValues={chart.xValues} height={220} />}
     </Card>
   )
 }
@@ -174,10 +186,13 @@ function PaceZonesSection({ activity }: SectionProps) {
 function ElevationSection({ activity, distanceStream }: SectionProps) {
   const dark = useIsDark()
   const altitude = activity.streams.altitude
-  const option = useMemo(() => {
+  const chart = useMemo(() => {
     if (!altitude) return null
     const { stream, axis } = streamAxis(activity, distanceStream, altitude)
-    return streamChart(stream, altitude, "#16a34a", "m", axis, dark)
+    return {
+      option: streamChart(stream, altitude, "#16a34a", "m", axis, dark),
+      xValues: streamXValues(stream, axis),
+    }
   }, [activity, distanceStream, altitude, dark])
   if (!altitude) return null
   const present = altitude.filter((v): v is number => v != null)
@@ -190,7 +205,7 @@ function ElevationSection({ activity, distanceStream }: SectionProps) {
           value={`${formatNumber(Math.min(...present), 0)} – ${formatNumber(Math.max(...present), 0)} m`}
         />
       </div>
-      {option && <EChart option={option} height={220} />}
+      {chart && <HoverStreamChart option={chart.option} xValues={chart.xValues} height={220} />}
     </Card>
   )
 }
@@ -198,10 +213,13 @@ function ElevationSection({ activity, distanceStream }: SectionProps) {
 function PowerSection({ activity, distanceStream }: SectionProps) {
   const dark = useIsDark()
   const watts = activity.streams.watts
-  const option = useMemo(() => {
+  const chart = useMemo(() => {
     if (!watts) return null
     const { stream, axis } = streamAxis(activity, distanceStream, watts)
-    return streamChart(stream, watts, "#ca8a04", "W", axis, dark)
+    return {
+      option: streamChart(stream, watts, "#ca8a04", "W", axis, dark),
+      xValues: streamXValues(stream, axis),
+    }
   }, [activity, distanceStream, watts, dark])
   if (activity.average_power == null) return null
   return (
@@ -210,7 +228,7 @@ function PowerSection({ activity, distanceStream }: SectionProps) {
         <StatCard label="Average" value={`${activity.average_power} W`} />
         <StatCard label="Max" value={activity.max_power ? `${activity.max_power} W` : "-"} />
       </div>
-      {option && <EChart option={option} height={220} />}
+      {chart && <HoverStreamChart option={chart.option} xValues={chart.xValues} height={220} />}
     </Card>
   )
 }
